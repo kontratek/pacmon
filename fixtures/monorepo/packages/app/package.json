@@ -1,0 +1,8 @@
+{
+  "name": "fixture-monorepo-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.0",
+    "react-fake": "^18.0.0"
+  }
+}

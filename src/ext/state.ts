@@ -1,0 +1,119 @@
+import * as vscode from 'vscode';
+import type { DepEntry, NotesFileModel } from '../core/model';
+import { parseNotes } from '../core/parseNotes';
+import { extractDeps } from '../core/packageJson';
+
+interface CacheEntry<T> {
+  version: string;
+  value: T;
+}
+
+/**
+ * Versioned caches for parsed notes files and package.json dependency lists.
+ * All file IO goes through vscode.workspace.fs (web-safe). No work happens on
+ * keystrokes: callers are notified via a debounced onDidChange event and pull
+ * lazily.
+ */
+export class Store implements vscode.Disposable {
+  private notesCache = new Map<string, CacheEntry<NotesFileModel>>();
+  private depsCache = new Map<string, CacheEntry<DepEntry[]>>();
+  private emitter = new vscode.EventEmitter<void>();
+  readonly onDidChange = this.emitter.event;
+  private timer: ReturnType<typeof setTimeout> | undefined;
+
+  dispose(): void {
+    if (this.timer !== undefined) clearTimeout(this.timer);
+    this.emitter.dispose();
+  }
+
+  /** Debounced change signal (decorations/diagnostics refresh). */
+  fireSoon(): void {
+    if (this.timer !== undefined) clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.emitter.fire(), 300);
+  }
+
+  invalidate(uri: vscode.Uri): void {
+    const key = uri.toString();
+    this.notesCache.delete(key);
+    this.depsCache.delete(key);
+    this.fireSoon();
+  }
+
+  invalidateAll(): void {
+    this.notesCache.clear();
+    this.depsCache.clear();
+    this.fireSoon();
+  }
+
+  /** Text of a file. The open document wins only while it has unsaved edits;
+   *  otherwise disk is the source of truth (mirrors writeNotesText). */
+  async getText(uri: vscode.Uri): Promise<string | undefined> {
+    const open = this.openDoc(uri);
+    if (open && open.isDirty) return open.getText();
+    try {
+      const bytes = await vscode.workspace.fs.readFile(uri);
+      return new TextDecoder('utf-8').decode(bytes);
+    } catch {
+      return open ? open.getText() : undefined;
+    }
+  }
+
+  async getNotes(uri: vscode.Uri): Promise<NotesFileModel | undefined> {
+    const key = uri.toString();
+    const version = await this.versionKey(uri);
+    if (version === undefined) {
+      this.notesCache.delete(key);
+      return undefined;
+    }
+    const hit = this.notesCache.get(key);
+    if (hit && hit.version === version) return hit.value;
+    const text = await this.getText(uri);
+    if (text === undefined) return undefined;
+    const value = parseNotes(text);
+    this.notesCache.set(key, { version, value });
+    return value;
+  }
+
+  async getDeps(uri: vscode.Uri): Promise<DepEntry[]> {
+    const key = uri.toString();
+    const version = await this.versionKey(uri);
+    if (version === undefined) {
+      this.depsCache.delete(key);
+      return [];
+    }
+    const hit = this.depsCache.get(key);
+    if (hit && hit.version === version) return hit.value;
+    const text = await this.getText(uri);
+    if (text === undefined) return [];
+    const value = extractDeps(text);
+    this.depsCache.set(key, { version, value });
+    return value;
+  }
+
+  /** Deps straight from an open document (hover path — no fs round-trip). */
+  depsForDocument(doc: vscode.TextDocument): DepEntry[] {
+    const key = doc.uri.toString();
+    const version = `doc:${doc.version}`;
+    const hit = this.depsCache.get(key);
+    if (hit && hit.version === version) return hit.value;
+    const value = extractDeps(doc.getText());
+    this.depsCache.set(key, { version, value });
+    return value;
+  }
+
+  private openDoc(uri: vscode.Uri): vscode.TextDocument | undefined {
+    const key = uri.toString();
+    return vscode.workspace.textDocuments.find((d) => d.uri.toString() === key);
+  }
+
+  private async versionKey(uri: vscode.Uri): Promise<string | undefined> {
+    const open = this.openDoc(uri);
+    if (open) return `doc:${open.version}`;
+    try {
+      const stat = await vscode.workspace.fs.stat(uri);
+      return `fs:${stat.mtime}:${stat.size}`;
+    } catch {
+      return undefined;
+    }
+  }
+}

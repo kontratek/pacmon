@@ -1,0 +1,268 @@
+{
+  "name": "pacmon",
+  "displayName": "Pacmon — Dependency Docs",
+  "description": "Dependency notes from .pacmon/DEPENDENCIES.md, right on your package.json. Document why each dependency exists. 100% offline — no account, no network, no telemetry.",
+  "version": "0.1.0",
+  "publisher": "pacmon",
+  "private": true,
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kontratek/pacmon.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kontratek/pacmon/issues"
+  },
+  "homepage": "https://github.com/kontratek/pacmon#readme",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "dependencies",
+    "package.json",
+    "documentation",
+    "notes",
+    "dependency management"
+  ],
+  "activationEvents": [
+    "onLanguage:json",
+    "onLanguage:jsonc",
+    "workspaceContains:**/.pacmon/DEPENDENCIES.md",
+    "onView:pacmon.settings"
+  ],
+  "main": "./dist/extension.js",
+  "browser": "./dist/extension.web.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "Pacmon only reads and writes documentation files inside the workspace. It never executes code and never accesses the network."
+    },
+    "virtualWorkspaces": true
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "pacmon.addOrEditNote",
+        "title": "Add/Edit Dependency Note",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.openNotesFile",
+        "title": "Open DEPENDENCIES.md",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.openPackageJson",
+        "title": "Open package.json",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.normalizeNotesFile",
+        "title": "Format DEPENDENCIES.md",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.showCoverage",
+        "title": "Documentation Coverage",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.setupAiInstructions",
+        "title": "Set Up AI Instructions",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.toggleDecorations",
+        "title": "Toggle Note Markers",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.saveNoteComment",
+        "title": "Save note",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.resetView",
+        "title": "Reset to Defaults",
+        "category": "Pacmon",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "pacmon.openSettings",
+        "title": "Open Pacmon Settings",
+        "category": "Pacmon",
+        "icon": "$(gear)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "pacmon.addOrEditNote",
+          "when": "resourceFilename == package.json && editorTextFocus",
+          "group": "1_modification@100"
+        }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "pacmon.saveNoteComment",
+          "group": "inline",
+          "when": "commentController == pacmon"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "pacmon.resetView",
+          "when": "view == pacmon.settings",
+          "group": "navigation@1"
+        },
+        {
+          "command": "pacmon.openSettings",
+          "when": "view == pacmon.settings",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "pacmon.saveNoteComment",
+          "when": "false"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pacmon",
+          "title": "Pacmon",
+          "icon": "media/pacmon.svg"
+        }
+      ]
+    },
+    "views": {
+      "pacmon": [
+        {
+          "id": "pacmon.settings",
+          "name": "Dependency Docs",
+          "type": "webview",
+          "icon": "media/pacmon.svg"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Pacmon",
+      "properties": {
+        "pacmon.decorations": {
+          "type": "string",
+          "enum": [
+            "preview",
+            "badge",
+            "off"
+          ],
+          "default": "preview",
+          "description": "End-of-line hint on package.json lines that have a note: 'preview' shows a one-line preview of the note (which layer: see pacmon.inlineSource), 'badge' shows a small marker, 'off' disables it."
+        },
+        "pacmon.inlineSource": {
+          "type": "string",
+          "enum": [
+            "human-first",
+            "ai-first",
+            "human-only",
+            "ai-only"
+          ],
+          "default": "human-first",
+          "enumDescriptions": [
+            "The first line people wrote; the agent's purpose line when there is none.",
+            "The agent's purpose line; the first line people wrote when there is none.",
+            "Only what people wrote; a plain marker when the section has none.",
+            "Only what agents wrote; a plain marker when the section has no agent block."
+          ],
+          "markdownDescription": "Which layer of a note shows next to the dependency in `package.json` and leads its hover. Every note has two layers: the text people write right under `## name`, and the `### Agent notes` block AI agents fill in. The hover always shows both — this picks their order and the one-line preview."
+        },
+        "pacmon.noteEntry": {
+          "type": "string",
+          "enum": [
+            "panel",
+            "peek",
+            "input",
+            "inputBeside",
+            "comments"
+          ],
+          "default": "panel",
+          "enumDescriptions": [
+            "A note editor opens in a panel beside package.json — write multi-line Markdown, Ctrl/Cmd+S to save. Unsaved text is kept as a draft when you switch dependencies.",
+            "An embedded editor opens right below the dependency line (like Peek Definition), showing the note section — write multi-line Markdown in place, Esc to close, Ctrl+S to save.",
+            "Quick single-line capture in an input box; multi-line notes open the file in the active column.",
+            "Like input, but multi-line notes open the file in a split BESIDE package.json.",
+            "EXPERIMENTAL: dependency lines get a comment-thread UI (multi-line input right on the line, saved to the notes file)."
+          ],
+          "description": "How notes are entered from package.json."
+        },
+        "pacmon.noteButtons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "iconLeft",
+              "link",
+              "codelens",
+              "inlayHint",
+              "lightbulb"
+            ],
+            "enumDescriptions": [
+              "A single glyph just before the package name (✎ documented, + not yet), with the words in the hover. Plain click, and the mouse turns into a hand over it.",
+              "The package name itself opens its note on Ctrl+click. Adds nothing to the file.",
+              "A clickable line above each dependency. Unmissable, and it roughly doubles the apparent height of package.json.",
+              "The words spelled out at the end of the line, where they compete with the note preview. Needs Ctrl+click.",
+              "A code action, so the lightbulb appears only on the line the cursor is on. Marks nothing at rest, but costs two clicks."
+            ]
+          },
+          "uniqueItems": true,
+          "default": [
+            "iconLeft",
+            "link"
+          ],
+          "markdownDescription": "Clickable ways into a dependency's note from `package.json`. Toggle these in the **Pacmon** view in the activity bar. Set to `[]` to remove all of them — the right-click menu and the `Pacmon: Add/Edit Dependency Note` command always work. Note that everything except `lightbulb` marks dependencies that have no note yet, which is the one thing Pacmon otherwise never does."
+        },
+        "pacmon.monorepo": {
+          "type": "string",
+          "enum": [
+            "nearest",
+            "rootOnly"
+          ],
+          "default": "nearest",
+          "description": "Which notes file applies to a package.json: the nearest .pacmon/DEPENDENCIES.md walking up to the workspace root, or only the one at the workspace root."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "pretest:integration": "node esbuild.mjs && tsc -p tsconfig.test.json",
+    "test:integration": "vscode-test",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.1",
+    "@types/vscode": "~1.100.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.9.1",
+    "ovsx": "^1.1.1",
+    "prettier": "^3.9.6",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^4.1.11"
+  }
+}

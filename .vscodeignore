@@ -1,0 +1,8 @@
+**
+!dist/extension.js
+!dist/extension.web.js
+!media/**
+!README.md
+!CHANGELOG.md
+!LICENSE
+!NOTICE

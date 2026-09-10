@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-test/
+.vscode-test/
+.vscode-test-web/
+*.vsix
+
+# Written by the extension during F5 and integration runs
+fixtures/**/.pacmon/AGENTS.md
+
+# Format experiments and scratch — never part of the repository
+tmp/

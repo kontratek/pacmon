@@ -1,0 +1,214 @@
+import * as vscode from 'vscode';
+import { analyze } from '../core/analyze';
+import {
+  ALL_NOTE_BUTTONS,
+  isPackageJson,
+  type NoteButton,
+  decorationsSetting,
+  inlineSource,
+  noteButtonEnabled,
+  noteEntryMode,
+  notesFileLabel,
+} from './config';
+import { logError } from './log';
+import { defaultPackageJson } from './resolveNotesFile';
+import { resolveNotesFileFor } from './resolveNotesFile';
+import { choiceValues } from './settingChoices';
+import { renderHtml } from './settingsViewHtml';
+import type { Store } from './state';
+import { S } from './strings';
+
+const VIEW_ID = 'pacmon.settings';
+
+interface Incoming {
+  type: 'ready' | 'setButtons' | 'setChoice' | 'command';
+  value?: string[] | string;
+  key?: string;
+  id?: string;
+}
+
+/** Commands the view may run — the id off the wire is never trusted. */
+const ALLOWED_COMMANDS = new Set([
+  'pacmon.openNotesFile',
+  'pacmon.openPackageJson',
+  'pacmon.showCoverage',
+  'pacmon.normalizeNotesFile',
+  'pacmon.setupAiInstructions',
+]);
+
+/**
+ * The Pacmon view in the activity bar: turn the in-editor affordances on and
+ * off, pick where a note is written, and reach the four commands — without
+ * hunting through Settings.
+ *
+ * A webview rather than a tree, because the point is to SHOW what each option
+ * does to a package.json line; a tree gives you a label, a description and an
+ * icon and nothing else. It stays offline by construction all the same:
+ * `localResourceRoots: []`, CSP `default-src 'none'`, markup bundled with the
+ * extension.
+ */
+export class SettingsView implements vscode.WebviewViewProvider, vscode.Disposable {
+  private view: vscode.WebviewView | undefined;
+  private readonly disposables: vscode.Disposable[] = [];
+  /** Last package.json seen in an editor — so the coverage list does not go
+   *  blank the moment you switch to DEPENDENCIES.md or anything else. */
+  private lastPkg: vscode.Uri | undefined;
+
+  constructor(private readonly store: Store) {
+    this.disposables.push(
+      vscode.window.registerWebviewViewProvider(VIEW_ID, this),
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration('pacmon')) void this.postState();
+      }),
+      store.onDidChange(() => void this.postState()),
+      vscode.window.onDidChangeActiveTextEditor(() => void this.postState()),
+    );
+  }
+
+  dispose(): void {
+    for (const d of this.disposables) d.dispose();
+    this.disposables.length = 0;
+  }
+
+  resolveWebviewView(view: vscode.WebviewView): void {
+    this.view = view;
+    view.webview.options = { enableScripts: true, localResourceRoots: [] };
+    view.webview.html = renderHtml();
+    view.webview.onDidReceiveMessage(
+      (m: Incoming) => void this.onMessage(m),
+      undefined,
+      this.disposables,
+    );
+    view.onDidDispose(
+      () => {
+        this.view = undefined;
+      },
+      undefined,
+      this.disposables,
+    );
+  }
+
+  private async onMessage(m: Incoming): Promise<void> {
+    try {
+      switch (m.type) {
+        case 'ready':
+          await this.postState();
+          break;
+        case 'setButtons': {
+          // Only ids we know, in the canonical order, so the written value
+          // reads the same however it was toggled.
+          const asked = new Set(Array.isArray(m.value) ? m.value : []);
+          await this.write('noteButtons', ALL_NOTE_BUTTONS.filter((b) => asked.has(b)));
+          await this.revealManifest();
+          break;
+        }
+        case 'setChoice': {
+          // Only the groups the view draws, only the values it offers.
+          const key = m.key;
+          if (typeof key !== 'string') return;
+          const allowed = choiceValues(key);
+          if (!allowed || typeof m.value !== 'string' || !allowed.includes(m.value)) return;
+          await this.write(key, m.value);
+          await this.revealManifest();
+          break;
+        }
+        case 'command': {
+          if (typeof m.id !== 'string' || !ALLOWED_COMMANDS.has(m.id)) return;
+          await vscode.commands.executeCommand(m.id);
+          break;
+        }
+      }
+    } catch (e) {
+      logError(`settingsView.${m.type}`, e);
+    }
+  }
+
+  /**
+   * Every setting in this view changes how package.json looks. Showing the
+   * result is the point, so bring the manifest into view when none is on
+   * screen — as a preview tab, and without taking focus, so a run of toggles
+   * stays a run of toggles.
+   */
+  private async revealManifest(): Promise<void> {
+    if (vscode.window.visibleTextEditors.some((e) => isPackageJson(e.document.uri))) return;
+    const pkgUri = this.lastPkg ?? (await defaultPackageJson(this.store));
+    if (!pkgUri) return;
+    const doc = await vscode.workspace.openTextDocument(pkgUri);
+    await vscode.window.showTextDocument(doc, { preserveFocus: true, preview: true });
+  }
+
+  private async write(key: string, value: unknown): Promise<void> {
+    await vscode.workspace
+      .getConfiguration('pacmon')
+      .update(key, value, vscode.ConfigurationTarget.Global);
+  }
+
+  private async postState(): Promise<void> {
+    if (!this.view) return;
+    const on: NoteButton[] = ALL_NOTE_BUTTONS.filter(noteButtonEnabled);
+    void this.view.webview.postMessage({
+      type: 'state',
+      noteButtons: on,
+      noteEntry: noteEntryMode(),
+      decorations: decorationsSetting(),
+      inlineSource: inlineSource(),
+      count: S.viewTargetsCount(on.length, ALL_NOTE_BUTTONS.length),
+      markersLede: S.viewMarkersHelp(notesFileLabel()),
+      otherEntry: S.viewOtherEntry(noteEntryMode()),
+      openNotesLabel: S.viewOpenNotes(notesFileLabel()),
+      coverage: await this.coverage(),
+    });
+  }
+
+  /**
+   * How much of the package.json in play is documented. Numbers only — which
+   * dependencies have notes is already visible on the manifest itself.
+   */
+  private async coverage(): Promise<{
+    ratio: string;
+    percent: number;
+    pkgLabel: string;
+    status: string;
+  }> {
+    const empty = (status: string): {
+      ratio: string;
+      percent: number;
+      pkgLabel: string;
+      status: string;
+    } => ({ ratio: '', percent: 0, pkgLabel: '', status });
+
+    const active = vscode.window.activeTextEditor?.document.uri;
+    if (active && isPackageJson(active)) this.lastPkg = active;
+    const pkgUri = this.lastPkg ?? (await defaultPackageJson(this.store));
+    if (!pkgUri) return empty(S.viewCoverageEmpty);
+
+    const deps = await this.store.getDeps(pkgUri);
+    if (deps.length === 0) return empty(S.viewCoverageNoDeps);
+
+    const notesUri = await resolveNotesFileFor(pkgUri);
+    const notes = notesUri ? await this.store.getNotes(notesUri) : undefined;
+    const { documented, undocumented } = analyze(deps, notes);
+    return {
+      ratio: S.viewCoverageRatio(documented.length, deps.length),
+      percent: Math.round((documented.length / deps.length) * 100),
+      pkgLabel: vscode.workspace.asRelativePath(pkgUri),
+      status:
+        undocumented.length === 0
+          ? S.viewCoverageAllDone
+          : S.viewCoverageMissing(undocumented.length),
+    };
+  }
+}
+
+/** View title action: drop every setting this view controls back to defaults. */
+export async function resetView(): Promise<void> {
+  const cfg = vscode.workspace.getConfiguration('pacmon');
+  for (const key of ['noteButtons', 'noteEntry', 'decorations', 'inlineSource']) {
+    await cfg.update(key, undefined, vscode.ConfigurationTarget.Global);
+  }
+}
+
+/** View title action: the full settings UI, for everything not shown here. */
+export async function openSettings(): Promise<void> {
+  await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:pacmon.pacmon');
+}

@@ -1,0 +1,186 @@
+import { FORMAT_VERSION } from '../core/template';
+
+/** Centralized user-facing strings (EN). l10n-ready: swap this module later. */
+export const S = {
+  hoverSourceSuffix: (fileName: string) => `— ${fileName}`,
+  hoverEditNote: 'Edit note',
+  hoverOpenFile: (fileName: string) => `Open ${fileName}`,
+  pickDepPlaceholder: 'Select a dependency',
+  noWorkspace: 'Pacmon: open a folder first.',
+  noPackageJson: 'Pacmon: no package.json found in this workspace folder.',
+  noNotesFile: (fileName: string) => `Pacmon: no ${fileName} found. Use "Add/Edit Dependency Note" to create one.`,
+  formatted: (fileName: string) => `Pacmon: ${fileName} formatted.`,
+  alreadyCanonical: (fileName: string) => `Pacmon: ${fileName} is already in canonical form.`,
+  decorationsOn: 'Pacmon: note markers on.',
+  decorationsOff: 'Pacmon: note markers off.',
+  aiSetupDone: (files: string) => `Pacmon: AI instructions written to ${files}.`,
+  aiSetupPickPlaceholder: 'Write dependency-notes format instructions into…',
+  coveragePlaceholder: (documented: number, total: number) =>
+    `Documentation coverage: ${documented}/${total} dependencies documented`,
+  coverageDocumented: 'Documented',
+  coverageUndocumented: 'Undocumented — pick to add a note',
+  duplicateSection: (name: string, firstLine: number) =>
+    `"${name}" is already defined at line ${firstLine} — only the first section is read.`,
+  // Sections whose package is not in package.json: a marker before the heading, not a diagnostic.
+  orphanGlyph: '⚠︎',
+  orphanHover: (name: string) =>
+    `**${name}** is not in package.json. Removed? The notes can stay — agents mark it \`status: removed\`.`,
+  orphanHoverTypo: (name: string, guess: string) => `**${name}** is not in package.json — did you mean **${guess}**?`,
+  orphanHoverRemoved: (name: string) => `**${name}** is not in package.json — marked removed, kept on purpose.`,
+  willUpdate: 'exists — block will be updated',
+  willCreate: 'will be created',
+  addNoteTitle: (name: string) => `Note for ${name}`,
+  editNoteTitle: (name: string) => `Edit note for ${name}`,
+  addNotePrompt: (fileName: string) =>
+    `Saved to ${fileName} — you stay right here. Leave empty + Enter to open the file for a longer note.`,
+  addNotePlaceholder: 'Why this package is here — one line is enough',
+  noteSaved: (name: string, fileName: string) => `Pacmon: note for ${name} saved to ${fileName}.`,
+  peekHint: (fileName: string) => `Pacmon: editing ${fileName} in place — Esc closes, Ctrl+S saves.`,
+  // Side panel (pacmon.noteEntry = "panel")
+  panelTitle: (name: string) => (name ? `Note — ${name}` : 'Dependency Note'),
+  panelPlaceholder:
+    'Why is this package here, and what must the next person know? Plain text — the first line shows next to the dependency.',
+  panelAgentNotes: 'Agent notes',
+  panelAgentHelp:
+    'Written by AI agents as "- key: value" lines (rules in .pacmon/AGENTS.md). Edit if you must; agents revise these as they work.',
+  panelAgentPlaceholder: '- purpose: …',
+  panelOpenFile: 'Open notes file',
+  panelSaving: 'Saving…',
+  panelSavedAt: (time: string) => `Saved ${time}`,
+  panelEmptyHuman: 'Nothing written yet — click to write.',
+  panelEmptyAgent: 'No agent notes yet — click to add.',
+  panelEditHint: 'Saves as you type · Esc when done',
+  panelTargetSuffix: (fileName: string) => `→ ${fileName}`,
+  // Clickable note affordances on package.json lines (pacmon.noteButtons)
+  buttonAdd: 'Add note',
+  buttonEdit: 'Edit note',
+  // Icon-only labels for the left-hand glyph, where every column pushes the
+  // package name further right. It is a decoration attachment, whose
+  // contentText is a plain string — no codicon ($(edit)) support — so these
+  // are glyphs.
+  // U+FE0E forces text presentation so the pencil never renders as emoji.
+  // Swap these if your editor font lacks the glyph and shows a box.
+  buttonIconAdd: '+',
+  buttonIconEdit: '✎︎',
+  buttonTooltip: (name: string) => `Pacmon: write the dependency note for ${name}`,
+  // Pacmon view (activity bar)
+  viewTitle: 'Pacmon — Dependency Docs',
+  viewGroupTargets: 'Click targets',
+  viewTargetsLede: 'How you open a dependency’s note from package.json. Right-click always works too.',
+  viewGroupActions: 'Actions',
+  viewOpenNotes: (fileName: string) => `Open ${fileName}`,
+  viewOpenPackage: 'Open package.json',
+  viewOpenPackageHelp: 'The manifest these notes describe.',
+  viewSearch: 'Search dependencies…',
+  viewSearchHelp: 'Filter by name when the list below is long.',
+  viewGroupCoverage: 'Coverage',
+  viewCoverageRatio: (documented: number, total: number) => `${documented} of ${total}`,
+  viewCoverageEmpty: 'Open a package.json to see its dependencies here.',
+  viewCoverageAllDone: 'Every dependency has a note.',
+  viewCoverageMissing: (n: number) =>
+    n === 1 ? '1 dependency has no note yet.' : `${n} dependencies have no note yet.`,
+  viewCoverageNoDeps: 'This package.json has no dependencies.',
+  viewFormat: 'Format notes file',
+  viewAiSetup: 'Set up AI instructions',
+  viewOpenNotesHelp: 'The notes file for the package.json you are in.',
+  viewFormatHelp: 'Sort sections and canonicalize headings. Prose untouched.',
+  viewAiSetupHelp: 'Generate .pacmon/AGENTS.md — the rules agents follow — and point AGENTS.md, CLAUDE.md and friends at it.',
+  viewOtherEntry: (value: string) => `Currently set to "${value}" in your settings.`,
+  viewNoteEntry: 'Note editor',
+  viewMarkers: 'Note markers',
+  viewNoteEntryHelp: 'Where a note is written when you open one from package.json.',
+  viewMarkersHelp: (fileName: string) =>
+    `End-of-line hint on dependencies that already have a note in ${fileName}.`,
+  viewInlineSource: 'Inline note source',
+  viewInlineSourceHelp:
+    'Which layer of a note shows next to the dependency and leads its hover. Every note has two: what people write under the heading, and the “Agent notes” block AI agents fill in. The hover always shows both.',
+  buttonLabel: (id: string): string =>
+    (({
+      iconLeft: 'Icon before the name',
+      link: 'The package name',
+      codelens: 'Line above the dependency',
+      inlayHint: 'Chip at end of line',
+      lightbulb: 'Lightbulb on the cursor line',
+    }) as Record<string, string>)[id] ?? id,
+  buttonIcon: (id: string): string =>
+    (({
+      iconLeft: 'pencil',
+      link: 'link',
+      codelens: 'list-flat',
+      inlayHint: 'symbol-string',
+      lightbulb: 'lightbulb',
+    }) as Record<string, string>)[id] ?? 'circle-outline',
+  viewTargetsCount: (on: number, total: number) => `${on} of ${total}`,
+  viewReset: 'Reset to defaults',
+  viewOpenSettings: 'Open Pacmon settings',
+  buttonGesture: (id: string): string =>
+    (({
+      iconLeft: 'click',
+      link: 'Ctrl+click',
+      codelens: 'click',
+      inlayHint: 'Ctrl+click',
+      lightbulb: 'two clicks',
+    }) as Record<string, string>)[id] ?? '',
+  buttonHelp: (id: string): string =>
+    (({
+      iconLeft:
+        '`✎` when the dependency has a note, `+` when it does not. The mouse turns into a hand over it.',
+      link: 'The package name itself opens its note. Adds nothing to the file.',
+      codelens: 'Unmissable — and it roughly doubles the apparent height of package.json.',
+      inlayHint: 'Spelled out at the end of the line, where it competes with the note preview.',
+      lightbulb: 'The quietest option: nothing is drawn until the cursor is on the line.',
+    }) as Record<string, string>)[id] ?? '',
+  settingChoiceHelp: (key: string, value: string): string =>
+    (({
+      'noteEntry:panel': 'A note editor beside package.json (default).',
+      'noteEntry:peek': 'An embedded editor below the dependency line.',
+      'noteEntry:input': 'A one-line input box; longer notes open the file.',
+      'noteEntry:inputBeside': 'Like input, but the file opens in a split beside package.json.',
+      'noteEntry:comments': 'Experimental: a comment thread on the line.',
+      'decorations:preview': 'Show the first line of the note at end of line.',
+      'decorations:badge': 'Show a plain marker instead of the note text.',
+      'decorations:off': 'No end-of-line hint at all.',
+      'inlineSource:human-first': 'What people wrote; the agent’s purpose line when there is none.',
+      'inlineSource:ai-first': 'The agent’s purpose line; what people wrote when there is none.',
+      'inlineSource:human-only': 'Only what people wrote.',
+      'inlineSource:ai-only': 'Only what agents wrote.',
+    }) as Record<string, string>)[`${key}:${value}`] ?? '',
+  wrongHeadingLevel: (name: string) => `"${name}" is a dependency — write "## ${name}" so tools find this note.`,
+  missingSpaceAfterHashes: (name: string) => `Missing space: write "## ${name}".`,
+  unknownAgentKey: (key: string) => `Unknown field "${key}:" — keep it as "note:" or remove it. Fields: .pacmon/AGENTS.md`,
+  unknownAgentKeySuggest: (key: string, suggestion: string) => `Unknown field "${key}:" — did you mean "${suggestion}:"?`,
+  emptyAgentValue: (key: string) => `"${key}:" is empty — remove the line.`,
+  badAgentValue: (key: string, expected: string) => `"${key}:" expects ${expected}.`,
+  fixRenameKey: (key: string) => `Change to "${key}:"`,
+  fixKeepAsNote: 'Keep it as "- note: …"',
+  fixRemoveLine: 'Remove this line',
+  fixAllTitle: (n: number) => (n === 1 ? 'Pacmon: fix 1 agent-notes field' : `Pacmon: fix ${n} agent-notes fields`),
+  // Problems made visible: inline text, code lens, status bar, panel
+  problemCount: (n: number) => (n === 1 ? '1 problem' : `${n} problems`),
+  inlineProblemPrefix: '⚠︎ ',
+  lensProblems: (n: number) => `$(warning) ${n === 1 ? '1 problem' : `${n} problems`} in this block — show`,
+  lensFixable: (n: number, fixable: number) =>
+    `$(warning) ${n === 1 ? '1 problem' : `${n} problems`} in this block — fix ${fixable === n ? 'all' : String(fixable)}`,
+  statusProblems: (n: number) =>
+    `Pacmon: ${n === 1 ? '1 problem' : `${n} problems`} in the agent notes of this file — click to open Problems.`,
+  panelProblemsHeader: (n: number) => (n === 1 ? '1 problem in the agent notes:' : `${n} problems in the agent notes:`),
+  panelProblemUnknown: (line: number, key: string) => `line ${line}: "${key}:" is not a field`,
+  panelProblemSuggest: (line: number, key: string, suggestion: string) => `line ${line}: "${key}:" → "${suggestion}:"?`,
+  panelProblemEmpty: (line: number, key: string) => `line ${line}: "${key}:" has no value`,
+  panelProblemBad: (line: number, key: string, expected: string) => `line ${line}: "${key}:" expects ${expected}`,
+  panelFix: 'Fix',
+  missingFrontmatter: 'No frontmatter — "Format DEPENDENCIES.md" adds it.',
+  unknownFormat: (version: string) => `Unknown format "${version}" — this Pacmon reads ${FORMAT_VERSION}.`,
+  missingTitle: 'No "# Dependencies" title — "Format DEPENDENCIES.md" adds it.',
+  wrongTitle: 'The title is "# Dependencies".',
+  extraTitle: 'Only one "#" heading, "# Dependencies" — make this plain text.',
+  strayHeading: 'Only "### Agent notes" may head a section — make this plain text.',
+  strayHeadingAgent: 'Did you mean "### Agent notes"?',
+  strayHeadingGenerated: '"### Generated" is reserved for tools — nothing writes it yet.',
+  removedButPresent: (name: string) => `"${name}" is in package.json — remove "status: removed".`,
+  fixTitle: 'Change to "# Dependencies"',
+  fixAgentHeading: 'Change to "### Agent notes"',
+  fixPlainText: 'Make it plain text',
+  fixHeading: (name: string) => `Change to "## ${name}"`,
+  runFormat: 'Format the file (Pacmon)',
+};

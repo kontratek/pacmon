@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "outDir": "dist-test",
+    "rootDir": "src",
+    "sourceMap": true,
+    "types": ["node", "mocha"]
+  },
+  "include": ["src/test/integration/**/*", "src/core/**/*"]
+}

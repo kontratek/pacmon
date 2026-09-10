@@ -1,0 +1,7 @@
+{
+  "name": "fixture-monorepo-root",
+  "version": "1.0.0",
+  "dependencies": {
+    "turbo-fake": "^1.0.0"
+  }
+}
