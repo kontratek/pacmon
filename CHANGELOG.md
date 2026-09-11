@@ -1,5 +1,16 @@
 # Changelog
 
+<!-- Write what changed under "Unreleased" as it lands, in the same pull request.
+  Releasing (Actions -> Release -> Run workflow) renames that heading to the new
+  version, uses the section as the release notes, and opens a fresh empty one.
+  See docs/releasing.md. -->
+
+## Unreleased
+
+- Releasing is a button: Actions → Release → Run workflow, pick patch / minor /
+  major. The run raises the version, names this section, runs the tests, and
+  publishes one VSIX to the Marketplace, to Open VSX and to a GitHub Release.
+
 ## 0.1.0 — 2026-09-11
 
 Format round (2026-09-05):

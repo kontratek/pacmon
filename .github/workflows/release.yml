@@ -1,20 +1,38 @@
 name: Release
 
-# One tagged commit becomes one release: the full test suite runs, one VSIX is
-# built, and that same file goes to the Visual Studio Marketplace, to Open VSX
-# and onto a GitHub Release. Trigger it by pushing a tag that matches
-# package.json — `pnpm version patch`, then `git push --follow-tags`.
-# Tokens live in repository secrets, never on a laptop. See docs/releasing.md.
+# Publishing is a button, never a side effect of merging. Actions -> Release ->
+# Run workflow, pick patch / minor / major. The run raises the version, turns the
+# CHANGELOG's "Unreleased" section into that version, runs the whole test suite,
+# builds one VSIX, pushes the version commit and its tag to main, and sends that
+# same file to the Visual Studio Marketplace and to Open VSX.
+#
+# A version number is spent the moment a registry accepts it, so nothing here is
+# retried blindly. Both publish steps skip a version the registry already has,
+# and the version commit is skipped when its tag is already on the remote — so
+# "Re-run failed jobs" is the recovery path after an expired token, and it
+# cannot raise the version a second time.
+#
+# Tokens are the VSCE_PAT and OVSX_PAT repository secrets. See docs/releasing.md.
 
 on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Which part of the version to raise'
+        required: true
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+  # Escape hatch: a hand-pushed tag releases the version already in
+  # package.json, whose CHANGELOG section must already exist.
   push:
     tags: ['v*']
 
 permissions:
-  contents: write # gh release create / upload
+  contents: write # the version commit, the tag, and the GitHub Release
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 jobs:
@@ -22,7 +40,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # Anyone with write access can press the button; only these accounts get
+      # past this step, and nothing has run yet when it fails. ACTOR arrives as
+      # an environment variable rather than inline ${{ }} so a crafted login
+      # cannot become shell.
+      - name: Authorize actor
+        env:
+          ACTOR: ${{ github.actor }}
+        run: |
+          ALLOWED="yavuzatlas-kontra"
+          if echo " $ALLOWED " | grep -qF " $ACTOR "; then
+            echo "Authorized: $ACTOR"
+          else
+            echo "::error::'$ACTOR' may not publish Pacmon (allowlist: $ALLOWED)."
+            exit 1
+          fi
+
+      # Pinned to the triggering commit, so a re-run sees the identical tree and
+      # computes the identical version.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: 11
@@ -32,38 +70,77 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
-      # Nothing is published unless the tag, package.json and CHANGELOG.md agree
-      # on the version. The changelog section becomes the release notes.
-      - name: Check the tag against package.json and CHANGELOG.md
+      - name: Set the version and the release notes
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
         run: |
-          version=$(node -p "require('./package.json').version")
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
-            exit 1
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            # The notes are written under "## Unreleased" as work lands; the
+            # release names that section.
+            grep -q '^## Unreleased$' CHANGELOG.md || {
+              echo "::error::CHANGELOG.md has no '## Unreleased' section."; exit 1; }
+            if ! awk '/^## Unreleased$/{on=1;next} /^## /&&on{exit} on' CHANGELOG.md | grep -q '[^[:space:]]'; then
+              echo "::error::The '## Unreleased' section is empty — write what changed before releasing."
+              exit 1
+            fi
+            pnpm version "$BUMP" --no-git-tag-version --no-git-checks > /dev/null
+            version=$(node -p "require('./package.json').version")
+            # A fresh, empty "Unreleased" is left above it for the next round.
+            sed -i "0,/^## Unreleased$/s//## Unreleased\n\n## $version — $(date -u +%Y-%m-%d)/" CHANGELOG.md
+          else
+            version=$(node -p "require('./package.json').version")
+            if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+              echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
+              exit 1
+            fi
           fi
-          awk -v v="$version" '$0 ~ ("^## " v "([^0-9.]|$)") {on=1; next} /^## / && on {exit} on {print}' CHANGELOG.md > release-notes.md
+          awk -v v="$version" '$0 ~ ("^## " v "([^0-9.]|$)") {on=1;next} /^## /&&on{exit} on' CHANGELOG.md > release-notes.md
           if ! grep -q '[^[:space:]]' release-notes.md; then
-            echo "::error::CHANGELOG.md has no '## $version' section"
+            echo "::error::CHANGELOG.md has no section for $version."
             exit 1
           fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing $version"
 
+      # Everything below runs against the tree that actually ships.
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test
       - run: pnpm run pretest:integration
       - run: xvfb-run -a pnpm run test:integration
 
-      # vsce package runs vscode:prepublish (the production build) first.
+      # vsce package runs vscode:prepublish, which is the production build.
       - run: pnpm exec vsce package --no-dependencies -o pacmon.vsix
       - uses: actions/upload-artifact@v4
         with:
           name: pacmon-vsix
           path: pacmon.vsix
 
-      # Both registries get the file that was just built and tested.
-      # --skip-duplicate makes a re-run safe: a version a registry already has
-      # is skipped instead of failing, so a run that stopped half-way (an
-      # expired token, say) is re-run after the fix and finishes the rest.
+      # Git first: the history should record a release before the registries
+      # can hand it to anyone. A push with the built-in token starts no further
+      # workflow run, so main does not re-run CI for this commit.
+      - name: Push the version commit and its tag
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null 2>&1; then
+            echo "$TAG is already on the remote — resuming an earlier run, nothing to commit."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json CHANGELOG.md
+          git commit -m "Release $TAG"
+          git tag -a "$TAG" -m "$TAG"
+          # Fails rather than forces if main moved after the button was pressed.
+          git push origin "HEAD:main"
+          git push origin "$TAG"
+
       - name: Publish to the Visual Studio Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
@@ -73,12 +150,15 @@ jobs:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: pnpm exec ovsx publish --packagePath pacmon.vsix --skip-duplicate
 
-      - name: Attach the VSIX to a GitHub Release
+      # The Release carries the VSIX, for anyone installing without a registry.
+      - name: Publish the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" pacmon.vsix --clobber
+          set -euo pipefail
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" pacmon.vsix --clobber
           else
-            gh release create "$GITHUB_REF_NAME" pacmon.vsix --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+            gh release create "$TAG" pacmon.vsix --title "$TAG" --notes-file release-notes.md
           fi
