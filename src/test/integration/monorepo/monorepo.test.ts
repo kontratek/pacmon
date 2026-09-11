@@ -58,7 +58,7 @@ const cfg = (): vscode.WorkspaceConfiguration => vscode.workspace.getConfigurati
 suite('pacmon monorepo', () => {
   suiteSetup(async function () {
     this.timeout(30000);
-    const ext = vscode.extensions.getExtension('pacmon.pacmon');
+    const ext = vscode.extensions.getExtension('kontra.pacmon');
     assert.ok(ext, 'extension not found');
     await ext.activate();
     await cfg().update('noteEntry', 'input', vscode.ConfigurationTarget.Global);

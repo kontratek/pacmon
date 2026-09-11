@@ -30,7 +30,7 @@ async function readText(uri: vscode.Uri): Promise<string> {
 suite('pacmon integration', () => {
   suiteSetup(async function () {
     this.timeout(30000);
-    const ext = vscode.extensions.getExtension('pacmon.pacmon');
+    const ext = vscode.extensions.getExtension('kontra.pacmon');
     assert.ok(ext, 'extension not found');
     await ext.activate();
     // The default "panel" entry opens UI whose contents automated tests cannot
@@ -422,7 +422,7 @@ suite('pacmon integration', () => {
 
   test('the Pacmon view is contributed and its rows toggle the setting', async function () {
     this.timeout(20000);
-    const ext = vscode.extensions.getExtension('pacmon.pacmon')!;
+    const ext = vscode.extensions.getExtension('kontra.pacmon')!;
     const contributes = ext.packageJSON.contributes as {
       viewsContainers: { activitybar: { id: string; icon: string }[] };
       views: Record<string, { id: string; type?: string }[]>;

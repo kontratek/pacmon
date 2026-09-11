@@ -208,7 +208,9 @@ export async function resetView(): Promise<void> {
   }
 }
 
-/** View title action: the full settings UI, for everything not shown here. */
-export async function openSettings(): Promise<void> {
-  await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:pacmon.pacmon');
+/** View title action: the full settings UI, for everything not shown here. The id
+ *  comes from the running extension, so a publisher change cannot leave this
+ *  filter pointing at a name that no longer exists. */
+export async function openSettings(extensionId: string): Promise<void> {
+  await vscode.commands.executeCommand('workbench.action.openSettings', `@ext:${extensionId}`);
 }

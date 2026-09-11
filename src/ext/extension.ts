@@ -103,7 +103,7 @@ export function activate(context: vscode.ExtensionContext): void {
       return addOrEditNote(store, notePanel, name, body);
     }),
     command('pacmon.resetView', () => resetView()),
-    command('pacmon.openSettings', () => openSettings()),
+    command('pacmon.openSettings', () => openSettings(context.extension.id)),
     command('pacmon.openNotesFile', () => openNotesFile(store)),
     command('pacmon.openPackageJson', () => openPackageJson(store)),
     command('pacmon.normalizeNotesFile', () => normalizeNotesFile(store)),

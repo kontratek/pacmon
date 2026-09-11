@@ -3,7 +3,7 @@
   "displayName": "Pacmon — Dependency Docs",
   "description": "Dependency notes from .pacmon/DEPENDENCIES.md, right on your package.json. Document why each dependency exists. 100% offline — no account, no network, no telemetry.",
   "version": "0.1.0",
-  "publisher": "pacmon",
+  "publisher": "kontra",
   "private": true,
   "license": "Apache-2.0",
   "repository": {
@@ -35,6 +35,7 @@
   ],
   "main": "./dist/extension.js",
   "browser": "./dist/extension.web.js",
+  "icon": "media/icon.png",
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true,
@@ -238,6 +239,7 @@
     }
   },
   "scripts": {
+    "vscode:prepublish": "node esbuild.mjs --production",
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
