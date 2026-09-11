@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.1.1 — 2026-09-11
+
 - New icon: the mark now sits on a dark disc, so it holds its shape against a
   light background as well as a dark one.
 
