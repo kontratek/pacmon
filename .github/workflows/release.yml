@@ -1,0 +1,84 @@
+name: Release
+
+# One tagged commit becomes one release: the full test suite runs, one VSIX is
+# built, and that same file goes to the Visual Studio Marketplace, to Open VSX
+# and onto a GitHub Release. Trigger it by pushing a tag that matches
+# package.json — `pnpm version patch`, then `git push --follow-tags`.
+# Tokens live in repository secrets, never on a laptop. See docs/releasing.md.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # gh release create / upload
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Nothing is published unless the tag, package.json and CHANGELOG.md agree
+      # on the version. The changelog section becomes the release notes.
+      - name: Check the tag against package.json and CHANGELOG.md
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+          awk -v v="$version" '$0 ~ ("^## " v "([^0-9.]|$)") {on=1; next} /^## / && on {exit} on {print}' CHANGELOG.md > release-notes.md
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "::error::CHANGELOG.md has no '## $version' section"
+            exit 1
+          fi
+
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm test
+      - run: pnpm run pretest:integration
+      - run: xvfb-run -a pnpm run test:integration
+
+      # vsce package runs vscode:prepublish (the production build) first.
+      - run: pnpm exec vsce package --no-dependencies -o pacmon.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pacmon-vsix
+          path: pacmon.vsix
+
+      # Both registries get the file that was just built and tested.
+      # --skip-duplicate makes a re-run safe: a version a registry already has
+      # is skipped instead of failing, so a run that stopped half-way (an
+      # expired token, say) is re-run after the fix and finishes the rest.
+      - name: Publish to the Visual Studio Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: pnpm exec vsce publish --packagePath pacmon.vsix --skip-duplicate
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: pnpm exec ovsx publish --packagePath pacmon.vsix --skip-duplicate
+
+      - name: Attach the VSIX to a GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" pacmon.vsix --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" pacmon.vsix --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+          fi
