@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Docs",
-  "description": "Dependency notes from .pacmon/DEPENDENCIES.md, right on your package.json. Document why each dependency exists. 100% offline — no account, no network, no telemetry.",
+  "description": "Dependency notes from .pacmon/DEPENDENCIES.md, right on your package.json. Document why each dependency exists — plain Markdown, stored in your own repository.",
   "version": "0.1.0",
   "publisher": "kontra",
   "private": true,
