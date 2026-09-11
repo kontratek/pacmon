@@ -7,6 +7,9 @@
 
 ## Unreleased
 
+- New icon: the mark now sits on a dark disc, so it holds its shape against a
+  light background as well as a dark one.
+
 ## 0.1.0 — 2026-09-11
 
 Format round (2026-09-05):
