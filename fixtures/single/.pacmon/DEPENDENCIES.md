@@ -38,8 +38,3 @@ Replaced by lodash.
 ### Agent notes
 
 - status: removed 2026-06 — replaced by lodash
-
-## vitest
-
-* fasfas
-* fdasfsadf
