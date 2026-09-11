@@ -7,10 +7,6 @@
 
 ## Unreleased
 
-- Releasing is a button: Actions → Release → Run workflow, pick patch / minor /
-  major. The run raises the version, names this section, runs the tests, and
-  publishes one VSIX to the Marketplace, to Open VSX and to a GitHub Release.
-
 ## 0.1.0 — 2026-09-11
 
 Format round (2026-09-05):

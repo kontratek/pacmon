@@ -13,12 +13,18 @@ Repository → Settings → Secrets and variables → Actions → New repository
 | Secret | Where it comes from |
 |---|---|
 | `VSCE_PAT` | Azure DevOps personal access token for the `kontra` publisher: https://dev.azure.com → User settings → Personal access tokens. Organization "All accessible organizations", scope Marketplace → **Manage**. Azure DevOps caps the lifetime at one year, so note the expiry. |
-| `OVSX_PAT` | Open VSX access token: https://open-vsx.org/user-settings/tokens. The `kontra` namespace has to exist there once: `pnpm exec ovsx create-namespace kontra -p <token>`. |
+| `OVSX_PAT` | Open VSX access token: https://open-vsx.org/user-settings/tokens. Publishing also needs the `kontra` namespace, created once with `pnpm exec ovsx create-namespace kontra -p <token>`. It already exists. |
 
 Who may release is an allowlist in the workflow's first step — currently
-`yavuzatlas-kontra`. Anyone else with write access can press the button, but the
-run stops there, before anything is built or published. Add an account by
-editing that line.
+`yavuzatlas` and `yavuzatlas-kontra`. Anyone else with write access can press the
+button, but the run stops there, before anything is built or published. Add an
+account by editing that line.
+
+The `kontra` namespace on Open VSX is **unverified**: the account that created it
+holds contributor access, not ownership, and the extension page carries no
+publisher badge. Ownership is granted on request — open a namespace claim at
+https://github.com/EclipseFdn/open-vsx.org/issues. Worth doing for a name the
+trademark policy reserves.
 
 ## Every release
 

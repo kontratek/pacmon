@@ -48,7 +48,7 @@ jobs:
         env:
           ACTOR: ${{ github.actor }}
         run: |
-          ALLOWED="yavuzatlas-kontra"
+          ALLOWED="yavuzatlas yavuzatlas-kontra"
           if echo " $ALLOWED " | grep -qF " $ACTOR "; then
             echo "Authorized: $ACTOR"
           else
