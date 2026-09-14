@@ -36,9 +36,6 @@ trademark policy reserves.
 That is the whole ritual. The run refuses to publish if the "Unreleased" section
 is empty, and every test runs against the tree that actually ships.
 
-Version numbers follow VS Code's channel convention: releases take even minors
-(`0.2.x`, `0.4.x`). Odd minors are reserved for pre-releases.
-
 ## When something goes wrong
 
 - **A test fails.** Nothing was published and nothing was committed. Fix it on
@@ -62,13 +59,13 @@ CHANGELOG section must already exist. This path skips the version bump entirely:
 git tag -a v0.1.1 -m v0.1.1 && git push origin v0.1.1
 ```
 
-## Pre-releases and manual publishing
+## Publishing by hand
 
-The workflow publishes release versions only. For a pre-release, or to publish
-from a machine, build with `pnpm run package` and then, with `VSCE_PAT` and
-`OVSX_PAT` set in the environment:
+Every published version is a release; there is no pre-release channel. To
+publish from a machine, build with `pnpm run package` and then, with
+`VSCE_PAT` and `OVSX_PAT` set in the environment:
 
 ```sh
-pnpm exec vsce publish --packagePath pacmon-X.Y.Z.vsix [--pre-release]
+pnpm exec vsce publish --packagePath pacmon-X.Y.Z.vsix
 pnpm exec ovsx publish --packagePath pacmon-X.Y.Z.vsix
 ```
