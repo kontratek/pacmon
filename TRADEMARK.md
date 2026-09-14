@@ -9,7 +9,7 @@ The source code in this repository is licensed under the Apache License, Version
 - Use, modify, and redistribute the code under the terms of the Apache License, Version 2.0.
 - State truthfully that your software is **based on**, **derived from**, **compatible with**, or **a fork of** Pacmon, for example: *"MyTool is a fork of Pacmon."*
 - Refer to Pacmon by name when writing about it, reviewing it, teaching it, or linking to it.
-- Use the name "Pacmon" in the title of a talk, article, tutorial, or community group about Pacmon, as long as it is clear that Kontra does not run or endorse it.
+- Use the name "Pacmon" in the title of a talk, article, or tutorial about Pacmon, as long as it is clear that Kontra does not run or endorse it.
 
 ## What you may not do without written permission
 
@@ -25,6 +25,6 @@ An open source license lets anyone build on the code. A trademark tells users wh
 
 ## Questions and permissions
 
-If you are unsure whether a use is allowed, or you want permission for a use that is not covered above, contact Kontra at https://kontra.com.tr/. Requests are answered case by case; permission, when granted, is specific to the use described in the request.
+If you are unsure whether a use is allowed, or you want permission for a use that is not covered above, write to info@pacmon.dev. Kontra decides case by case; permission, when granted, is specific to the use described in the request.
 
 Kontra may update this policy. The version in the repository's default branch is the current one.

@@ -1,6 +1,6 @@
 # Contributor License Agreement — Version 1
 
-**Effective:** 2026-09-10
+**Effective:** 2026-09-14
 **Licensee:** Kontra Siber Savunma Teknoloji Ltd. Şti. ("Kontra")
 **Applies to:** Pacmon and any other project maintained by Kontra that links to this document (each, the "Project")
 
@@ -62,11 +62,13 @@ You accept this Agreement electronically by posting the following sentence, exac
 
 > I have read the CLA Document and I hereby sign the CLA
 
-Kontra's automated check records Your GitHub account, the date, the pull request, and the version of this Agreement that You accepted, and stores that record in the Project's repository. Posting the sentence from Your GitHub account is Your electronic signature and has the same legal effect as a handwritten signature. You only need to accept once per version of this Agreement; if Kontra publishes a new version, You will be asked to accept it before further Contributions are merged.
+Kontra's automated check records Your GitHub account, the date, the pull request, and the version of this Agreement that You accepted, and stores that record in the Project's repository. Posting the sentence from Your GitHub account is how You accept this Agreement, and that record is evidence of Your acceptance. You only need to accept once per version of this Agreement; if Kontra publishes a new version, You will be asked to accept it before further Contributions are merged.
 
-If You are accepting on behalf of a legal entity, You may instead contact Kontra to execute a corporate version of this Agreement that lists the individuals authorized to contribute on the entity's behalf.
+## 10. Governing Law and Jurisdiction
 
-## 10. Miscellaneous
+This Agreement is governed by the laws of the Republic of Türkiye. The İstanbul Anadolu Courts and Enforcement Offices (İstanbul Anadolu Mahkemeleri ve İcra Daireleri) have jurisdiction over any dispute arising out of or in connection with this Agreement.
+
+## 11. Miscellaneous
 
 This Agreement is the entire agreement between You and Kontra regarding Your Contributions and supersedes any prior agreements on that subject. If any provision of this Agreement is held unenforceable, the remaining provisions remain in effect and the unenforceable provision will be construed to give effect to its intent as far as the law allows. Kontra may assign this Agreement, in whole or in part, to a successor of the Project or of Kontra's business. Kontra may publish updated versions of this Agreement; an updated version applies only to Contributions submitted after You accept it.
 
