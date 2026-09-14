@@ -58,7 +58,7 @@ export function serialize(model: NotesFileModel): string {
   out.push(...AI_FORMAT_COMMENT_LINES);
 
   out.push('');
-  // The title is the format's, like the header comment: always `# Dependencies`.
+  // The title is the format's, like the header comment: always `# Dependency Notes`.
   out.push(DEFAULT_TITLE);
 
   if (model.intro) {

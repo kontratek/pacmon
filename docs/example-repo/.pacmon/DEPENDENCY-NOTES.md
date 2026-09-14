@@ -7,7 +7,7 @@ lang: en
   heading is written by people. "### Agent notes" and everything below it is written
   by AI agents — rules in .pacmon/AGENT-RULES.md. -->
 
-# Dependencies
+# Dependency Notes
 
 Team rules: every runtime dependency gets a line from a person saying why it is
 here; a pinned version says who pinned it and why. Keep the first line short — it

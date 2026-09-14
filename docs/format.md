@@ -1,14 +1,16 @@
 # The `dependency-notes/1` format
 
-Reference for `.pacmon/DEPENDENCY-NOTES.md`: the notes a repository keeps about the dependencies of one `package.json`. This describes version `1`; see [Versioning](#versioning).
+This document describes `.pacmon/DEPENDENCY-NOTES.md`. That file holds the notes a repository keeps about the dependencies of one `package.json`. This is version `1` of the format. See [Versioning](#versioning).
 
 ## The notes file
 
-`.pacmon/DEPENDENCY-NOTES.md` sits in the directory of the `package.json` it describes. Where packages are nested, the nearest file walking up from a `package.json` to the repository root applies to it.
+The file is `.pacmon/DEPENDENCY-NOTES.md`. It sits in the same directory as the `package.json` it describes.
 
-UTF-8. Line ending: CRLF if the file contains one, otherwise LF. A byte order mark is accepted and dropped when the file is rewritten.
+A repository can have several `package.json` files, one inside another. A `package.json` without a notes file of its own uses the notes file of the closest ancestor directory that has one, up to the repository root.
 
-The parts of the file, in order:
+The file is UTF-8. Its line ending is CRLF if the file contains one CRLF, otherwise LF. A byte order mark at the start is accepted; a tool that rewrites the file drops it.
+
+The file has these parts, in this order: frontmatter, header comment, title, introduction, sections.
 
 ```md
 ---
@@ -20,7 +22,7 @@ lang: en
   heading is written by people. "### Agent notes" and everything below it is written
   by AI agents — rules in .pacmon/AGENT-RULES.md. -->
 
-# Dependencies
+# Dependency Notes
 
 Repository-wide rules, free text.
 
@@ -33,114 +35,132 @@ Human layer.
 - key: value
 ```
 
-Frontmatter, header comment and title belong to the format. The introduction belongs to the people who maintain the repository. A section belongs to people and to AI agents, by layer. Lines inside a fenced code block (` ``` ` or `~~~`, indented up to three spaces) are never headings or fields.
+The frontmatter, the header comment and the title have fixed content, given below. A tool that formats the file rewrites them. The introduction is written by people. A section has layers: one is written by people, one by AI agents.
+
+A fenced code block starts and ends with a line of three or more backticks or tildes, indented by at most three spaces. Inside a fenced code block, a line is never a heading and never a field.
 
 ## Frontmatter
 
-Present when line 1 is `---`; it ends at the next line that is `---`. Each line inside is `key: value`, `key` matching `[A-Za-z][\w-]*`. A key with an empty value is not read.
+The frontmatter is present when the first line of the file is `---`. It ends at the next line that is `---`. Each line between them is `key: value`. A key is a letter followed by letters, digits, `_` or `-`. A key with an empty value is not read.
 
-`format` names the version of these rules the file follows: `dependency-notes/1`. When missing, the file is read as `dependency-notes/1`.
+The format defines two keys.
 
-`lang` names the language the values are written in; keys are always English. Default `en`.
+`format` names the version of these rules the file follows. Its value is `dependency-notes/1`. When the key is missing, the file is read as `dependency-notes/1`.
 
-Any other key is kept in place and not read.
+`lang` names the language the values are written in. Keys are always English. When the key is missing, the language is `en`.
+
+Any other key is kept where it is and is not read.
 
 ## Header comment
 
-The first HTML comment at the top of the file, after the frontmatter if there is one. Its text belongs to the format and is the three lines shown above; it tells a reader who writes where, and points AI agents to `.pacmon/AGENT-RULES.md`, the instruction file kept next to the notes, which is not part of this format. A file's own commentary goes in the introduction.
+The header comment is the first HTML comment at the top of the file, after the frontmatter if there is one. Its text is fixed: the three lines shown above. It says who writes where, and it points AI agents to `.pacmon/AGENT-RULES.md`. That file holds instructions for agents and is not part of this format. A file's own commentary goes in the introduction, not in the header comment.
 
 ## Title
 
-The one level-1 heading, `# Dependencies`. Any other level-1 heading is a mistake; a level-1 heading that names a dependency is a section at the wrong level.
+The title is the only level-1 heading in the file. Its text is `# Dependency Notes`. A second level-1 heading is a mistake. A level-1 heading that names a dependency is a section at the wrong level.
 
 ## Introduction
 
-Everything between the title and the first section: the repository's own dependency rules, free text, never parsed. Headings of level 3 and deeper are allowed here.
+The introduction is everything between the title and the first section. It holds the repository's own rules about dependencies. It is free text and is never parsed. It may contain headings of level 3 or deeper.
 
 ## Sections
 
-`## <name>`, where `<name>` is the package name as it appears in `package.json`, `@scope/` included. `##` is reserved for package names everywhere in the file.
+A section starts with a level-2 heading: `## <name>`. `<name>` is the package name exactly as it appears in `package.json`, including `@scope/`. Level-2 headings are reserved for package names everywhere in the file.
 
-A dependency is any key under `dependencies`, `devDependencies`, `peerDependencies` or `optionalDependencies`. Names are matched after trimming, removing one pair of surrounding quotes or backticks, and lower-casing.
+A dependency is any key under `dependencies`, `devDependencies`, `peerDependencies` or `optionalDependencies` in `package.json`.
 
-One section per dependency. When two sections name the same package, the first is read and the second is a mistake. Sections are kept in name order, the matched form compared code unit by code unit, so `@scope/x` sorts first.
+A section name matches a dependency name when the two are equal after both are trimmed, stripped of one pair of surrounding quotes or backticks, and lower-cased.
 
-A section whose name matches no dependency is an orphan, unless its agent layer says `status: removed …`: then it is a removed section, kept on purpose. `status: removed …` on a package that is present is a mistake. A section with nothing under its heading documents nothing.
+Each dependency has at most one section. Two sections with the same name are a mistake; the file does not say which one is wrong. Until it is fixed, tools read the first one in the file.
+
+Sections are sorted by name. The sort compares the matched names character by character, so `@scope/x` comes before `a`.
+
+A section whose name matches no dependency is an orphan. An orphan whose agent layer has `status: removed …` is a removed section. A removed section is kept on purpose, for a package that left `package.json`. `status: removed …` in the section of a package that is still in `package.json` is a mistake.
+
+A section with an empty body does not count as a note.
 
 ## Layers
 
-A section has up to three layers, split by reserved level-3 headings compared case-insensitively after trimming. The human layer runs from the line after `## <name>`. The agent layer runs from the line after `### Agent notes`. The generated layer runs from `### Generated`, heading included, to the end of the section; it is reserved, nothing writes it yet, and whatever is there is kept as is.
+The body of a section has up to two layers. The reserved heading `### Agent notes` splits it. The heading is matched after trimming and without regard to case.
 
-The first `### Agent notes` opens the agent layer; one placed after `### Generated` does not. Inside a section, `### Agent notes` is the only heading; any other heading of level 3 or deeper, `### Generated` included, is a mistake.
+- The human layer starts on the line after `## <name>`. It ends before `### Agent notes`, or at the end of the section when there is no such heading.
+- The agent layer starts on the line after `### Agent notes` and runs to the end of the section.
+
+The first `### Agent notes` in a section is the one that counts. Inside a section, `### Agent notes` is the only allowed heading. Any other heading of level 3 or deeper is a mistake.
 
 ### Human layer
 
-Free text, written by people. Tools display it and take its first non-empty line as the summary, shown in place of the section; a leading `- ` or `* ` is dropped from the summary. Tools and agents do not change this layer.
+The human layer is free text written by people. Tools do not parse it. They display it, and they show its first non-empty line as the summary of the section. A leading `- ` or `* ` is dropped from the summary. Tools and AI agents do not change this layer.
 
 ### Agent layer
 
-Field lines and prose, written by AI agents. A field line is
+The agent layer is written by AI agents. It holds field lines. It may also hold prose.
 
-```md
-- key: value
-```
+A field line is a list item of the form `- key: value`. The exact pattern is `^\s*[-*]\s+([a-z][a-z0-9_-]*)\s*:\s*(.*)$`, matched without regard to case. The key is read lower-cased. The value is read trimmed. A list item whose value starts with `//` is a bare URL, such as `- https://…`, not a field. Any line that does not match the pattern is prose and is not read.
 
-matched by `^\s*[-*]\s+([a-z][a-z0-9_-]*)\s*:\s*(.*)$`, case-insensitively; `key` is lower-cased, `value` trimmed. Any other line is prose and is not read. A line whose value starts with `//`, a bare URL such as `- https://…`, is not a field.
-
-Keys come from the list below; an unknown key is a mistake. Keys may repeat; where one value is needed, the first line wins. A value that is empty or only dashes is a mistake.
+A key must be one of the fields listed below. An unknown key is a mistake. A key may appear on several lines. When one value is needed, the first line is used. A value that is empty, or that consists only of dashes, is a mistake.
 
 ## Fields
 
-The first six are the core fields, expected whenever they can be filled truthfully; the rest apply when true and non-obvious.
+The first six fields are the core fields. They are filled whenever there is something true to say. The other fields are added when they are true and not obvious.
 
-- `purpose` — the package's role in this project: what it is and why this repository uses it, one sentence.
-- `usage` — entry points, wrapper module, config; the rule for using it.
-- `constraint` — a pin, a forbidden upgrade, a coordination requirement: the rule and its reason.
+- `purpose` — the package's role in this project: what it is and why this repository uses it. One sentence.
+- `usage` — where and how the package is wired in: entry points, wrapper module, config, and the rule for using it.
+- `constraint` — something that must not change: a pin, a forbidden upgrade, a coordination requirement. The rule and its reason.
 - `verify` — a command or a flow that shows the package still works.
-- `log` — one dated event per line: added, upgrade attempted, proposal rejected, with a commit, PR or advisory id.
-- `verified` — the installed version the notes were last checked against. Starts with a version number, `v` optional.
-- `risk` — a judgment: security exposure, native binary, licence obligation, maintenance state.
-- `runtime` — where it executes: `server`, `client`, `build`, `dev` or `deploy`.
-- `exposure` — `untrusted-input` or `internal`.
-- `bump-with` — packages that must be upgraded together.
-- `remove-when` — the exit condition.
-- `alternatives` — real decisions only, dated, with a verdict.
-- `owner` — a team, a person, a channel.
-- `status` — `dead`, `removal-planned`, or `removed YYYY-MM — reason`; absent means active.
-- `links` — changelog, docs, upstream issue, registry page: the specific ones.
-- `note` — anything that fits no other field, one thought per line.
+- `log` — one dated event per line: added, upgrade attempted, proposal rejected. With a commit, PR or advisory id.
+- `verified` — the installed version the notes were last checked against. The value starts with a version number; a leading `v` is allowed.
+- `risk` — a judgment about what the package costs or endangers: security exposure, native binary, licence obligation, maintenance state.
+- `runtime` — where the package executes. One of `server`, `client`, `build`, `dev`, `deploy`.
+- `exposure` — whether the package handles untrusted input. One of `untrusted-input`, `internal`.
+- `bump-with` — packages that must be upgraded together with this one.
+- `remove-when` — the condition under which the package should be removed.
+- `alternatives` — real decisions about replacements, dated, with a verdict.
+- `owner` — who to ask: a team, a person, a channel.
+- `status` — whether the package is still here. One of `dead`, `removal-planned`, or `removed` followed by a year and month as `YYYY-MM` and, usually, a reason. A missing `status` means the package is active.
+- `links` — changelog, docs, upstream issue, registry page. The specific ones.
+- `note` — anything that fits no other field. One thought per line.
 
-`runtime` and `exposure` accept several values separated by `,`, `|` or `/`. Enumerated values are compared lower-cased.
+`runtime` and `exposure` may hold several values, separated by `,`, `|` or `/`. The values of `runtime`, `exposure` and `status` are matched without regard to case.
 
 ## Validity
 
-A file is valid when none of the following holds. Each is a mistake with a fix; the human layer is never checked.
+A file is valid when none of the following is true. Each of them is a mistake with a fix. The human layer is never checked.
 
-- no frontmatter block;
-- `format` is present and is not `dependency-notes/1`;
-- no level-1 heading, a level-1 heading other than `# Dependencies`, or a second level-1 heading;
-- a dependency name as a heading of a level other than 2, or `##name` without the space;
-- a heading of level 3 or deeper inside a section, other than `### Agent notes`;
-- a second section for the same package;
-- a field line whose key is not in the list, or whose value is empty or only dashes;
-- `runtime`, `exposure`, `status` or `verified` with a value of the wrong shape;
-- `status: removed …` in the section of a package that is in `package.json`.
+- The file has no frontmatter.
+- `format` is present and its value is not `dependency-notes/1`.
+- The file has no level-1 heading, or its level-1 heading is not `# Dependency Notes`, or it has a second level-1 heading.
+- A dependency name is a heading of a level other than 2, or is written `##name`, without the space.
+- A section contains a heading of level 3 or deeper other than `### Agent notes`.
+- Two sections have the same name.
+- A field line has a key that is not a field, or a value that is empty or only dashes.
+- `runtime`, `exposure`, `status` or `verified` has a value of the wrong shape.
+- `status: removed …` appears in the section of a package that is in `package.json`.
 
-An orphan is not a mistake: a typo, or a package that left `package.json` without its notes.
+An orphan is not a mistake. It may be a typo, or a package that left `package.json` without its notes.
 
 ## Canonical form
 
-A file in canonical form is, in this order: the frontmatter as written, `format` and `lang` appended when missing; one blank line; the header comment; one blank line; `# Dependencies`; the introduction, if any, after one blank line, outer blank lines removed; then each section in name order as one blank line, `## <name>` with the name as written, one blank line, and the body with outer blank lines removed and the inside verbatim; and one line ending at the end of the file. Duplicate sections keep their relative order.
+A file in canonical form has these parts, in this order:
 
-A tool that rewrites a file into canonical form changes nothing else. A section added by a tool goes to its sorted position when the file is sorted, otherwise to the end.
+1. The frontmatter as written, with `format` and `lang` appended when missing. A file without frontmatter gets these two keys.
+2. One blank line, then the header comment.
+3. One blank line, then `# Dependency Notes`.
+4. If the file has an introduction: one blank line, then the introduction with its outer blank lines removed.
+5. For each section, in name order: one blank line, then `## <name>` with the name as written, then one blank line, then the body with its outer blank lines removed. The inside of the body is kept as it is.
+6. One line ending at the end of the file.
+
+Duplicate sections keep their relative order. A tool that rewrites a file into canonical form changes nothing else.
+
+A tool that adds a section puts it at its sorted position when the file is sorted. Otherwise it appends the section at the end.
 
 ## Versioning
 
-`format` is the reader's contract. The number is a major version alone: it changes when a file valid under version *n* would be invalid under *n + 1*, and for no other reason. Additions are recorded under [Changes](#changes) and do not change it. A reader that meets a version it does not know reports it.
+`format` is the contract between the file and its reader. The number is a major version alone. It changes when a file that is valid under version *n* would be invalid under version *n + 1*. It changes for no other reason. Additions are recorded under [Changes](#changes) and do not change the number. A reader that meets a version it does not know reports it.
 
 ## Changes
 
-- 2026-09-14 — Named `dependency-notes/1`, in `.pacmon/DEPENDENCY-NOTES.md`. The same layout was released as `deps-notes/1` in `.pacmon/DEPENDENCIES.md` (0.1.0, 2026-09-11). The `agents` frontmatter key is no longer written.
+None yet.
 
 ## Example
 

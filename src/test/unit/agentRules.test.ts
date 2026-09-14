@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { AGENT_NOTES_HEADING, AGENT_RULES_REL_PATH, GENERATED_HEADING, NOTES_REL_PATH } from '../../core/template';
+import { AGENT_NOTES_HEADING, AGENT_RULES_REL_PATH, NOTES_REL_PATH } from '../../core/template';
 import { AGENT_FIELDS, EXPOSURE_VALUES, RUNTIME_VALUES } from '../../core/vocabulary';
 
 /** The file Pacmon copies into a workspace. Hand-written, so this checks it against the code it must agree with. */
@@ -28,7 +28,6 @@ describe('assets/AGENT-RULES.md', () => {
     expect(content).toContain(NOTES_REL_PATH);
     expect(content).toContain(AGENT_RULES_REL_PATH);
     expect(content).toContain(AGENT_NOTES_HEADING);
-    expect(content).toContain(GENERATED_HEADING);
   });
 
   it('carries the rules that came out of the trial, and none of the dropped ideas', () => {

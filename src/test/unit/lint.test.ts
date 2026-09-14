@@ -4,7 +4,7 @@ import { parseNotes } from '../../core/parseNotes';
 import { insertSectionIntoText, replaceSectionBodyInText } from '../../core/serialize';
 
 const deps = ['express', '@scope/util', 'lodash'];
-const HEAD = ['---', 'format: dependency-notes/1', '---', '', '# Dependencies', ''];
+const HEAD = ['---', 'format: dependency-notes/1', '---', '', '# Dependency Notes', ''];
 
 function of(text: string, kinds: readonly LintFinding['kind'][], names: readonly string[] = deps): LintFinding[] {
   return lintNotes(parseNotes(text), names).filter((f) => kinds.includes(f.kind));
@@ -35,12 +35,12 @@ describe('lintNotes — frontmatter and title', () => {
   it('reports missing frontmatter once, and an unknown format version', () => {
     expect(of('## express\nx', ['missingFrontmatter'])).toHaveLength(1);
     expect(of('---\nformat: dependency-notes/1\n---\n## express\nx', ['missingFrontmatter', 'unknownFormat'])).toEqual([]);
-    expect(of('---\nlang: en\nformat: dependency-notes/2\n---\n# Dependencies\n', ['unknownFormat'])).toEqual([
+    expect(of('---\nlang: en\nformat: dependency-notes/2\n---\n# Dependency Notes\n', ['unknownFormat'])).toEqual([
       { kind: 'unknownFormat', line: 2, version: 'dependency-notes/2' },
     ]);
   });
 
-  it('wants exactly one title, worded "# Dependencies"', () => {
+  it('wants exactly one title, worded "# Dependency Notes"', () => {
     expect(of(HEAD.join('\n'), ['missingTitle', 'wrongTitle', 'extraTitle'])).toEqual([]);
     expect(of('---\nformat: dependency-notes/1\n---\n\n## express\nx', ['missingTitle'])).toEqual([{ kind: 'missingTitle', line: 3 }]);
     expect(of('---\nformat: dependency-notes/1\n---\n\n# My Deps\n', ['wrongTitle'])).toEqual([{ kind: 'wrongTitle', line: 4, text: 'My Deps' }]);

@@ -24,7 +24,7 @@ export const DEFAULT_FRONTMATTER_LINES = [
   '---',
 ];
 
-export const DEFAULT_TITLE = '# Dependencies';
+export const DEFAULT_TITLE = '# Dependency Notes';
 
 /**
  * The header comment is owned by the format: the normalizer rewrites it from

@@ -7,7 +7,7 @@ lang: en
   heading is written by people. "### Agent notes" and everything below it is written
   by AI agents — rules in .pacmon/AGENT-RULES.md. -->
 
-# Dependencies
+# Dependency Notes
 
 ## turbo-fake
 

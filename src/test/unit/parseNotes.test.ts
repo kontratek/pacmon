@@ -9,7 +9,7 @@ const sample = [
   '',
   '<!-- header -->',
   '',
-  '# Dependencies',
+  '# Dependency Notes',
   '',
   'Some intro text.',
   '',
@@ -78,7 +78,7 @@ describe('parseNotes', () => {
   });
 
   it('does not start the agent layer before a section exists', () => {
-    const m = parseNotes('# Dependencies\n\n### Agent notes\n\n## a\nx');
+    const m = parseNotes('# Dependency Notes\n\n### Agent notes\n\n## a\nx');
     expect(m.sections).toHaveLength(1);
     expect(m.sections[0]!.agentHeadingLine).toBeUndefined();
   });

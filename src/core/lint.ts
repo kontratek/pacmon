@@ -20,7 +20,7 @@ export type LintFinding =
   | { kind: 'missingFrontmatter'; line: number }
   /** `format:` names a version this Pacmon does not read. */
   | { kind: 'unknownFormat'; line: number; version: string }
-  /** The one `#` heading is `# Dependencies`: missing, worded differently, or repeated. */
+  /** The one `#` heading is `# Dependency Notes`: missing, worded differently, or repeated. */
   | { kind: 'missingTitle'; line: number }
   | { kind: 'wrongTitle'; line: number; text: string }
   | { kind: 'extraTitle'; line: number; text: string }
@@ -88,7 +88,7 @@ function valueProblem(key: string, value: string): string | undefined {
 
 /**
  * Format lint — every finding is a mistake with a fix, never a matter of taste:
- * - the frontmatter and its `format:` version; the one `# Dependencies` title;
+ * - the frontmatter and its `format:` version; the one `# Dependency Notes` title;
  * - `## name` is a package (so a dependency name under another level, or
  *   `##name`, is a mistake), and inside a section the only heading is
  *   `### Agent notes` — anything else is plain text;

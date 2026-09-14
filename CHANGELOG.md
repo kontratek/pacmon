@@ -36,6 +36,7 @@
   still finds a block with the old markers and replaces it.
 - `docs/format.md` is the reference for the format; `docs/example-repo/` is a
   complete example, lint-checked by the unit tests.
+- The title of the notes file is `# Dependency Notes`, matching the file name.
 
 ## 0.1.1 — 2026-09-11
 

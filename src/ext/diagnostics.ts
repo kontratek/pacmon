@@ -26,7 +26,7 @@ export type DiagCode =
  * Guidance, only while a notes file is open — and every item a Warning: one
  * colour, one meaning, something here is wrong and has a fix.
  * - duplicate sections
- * - format lint: frontmatter and its version; the one `# Dependencies` title;
+ * - format lint: frontmatter and its version; the one `# Dependency Notes` title;
  *   a dependency name under the wrong heading level or as "##name"; a heading
  *   inside a section other than `### Agent notes`
  * - agent-block lint: a key outside the vocabulary, an empty value, an

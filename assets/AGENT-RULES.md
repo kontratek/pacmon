@@ -6,7 +6,7 @@
 
 ## Before you touch a dependency
 
-Its notes are in `.pacmon/DEPENDENCY-NOTES.md` next to the `package.json` you are changing; in a monorepo, the nearest one walking up. Read two things first: the free text between `# Dependencies` and the first section (this repository's own rules), then the package's `## <name>` section.
+Its notes are in `.pacmon/DEPENDENCY-NOTES.md` next to the `package.json` you are changing; in a monorepo, the nearest one walking up. Read two things first: the free text between `# Dependency Notes` and the first section (this repository's own rules), then the package's `## <name>` section.
 
 - **Adding a package:** open its section in the same commit, with at least `purpose:`. Say what you considered and why this one, in `alternatives:` or `log:`.
 - **Upgrading:** read its `constraint:` and `verify:` lines, then run what `verify:` says. Log the attempt with its outcome even if you reverted it — the next agent must not repeat it.
@@ -30,7 +30,7 @@ Text written by people. Do not touch it.
 - **`### Agent notes` is yours.** Lower-case keys, one fact per line, keys may repeat (several `constraint:` or `log:` lines are normal). Keys outside the vocabulary below are flagged by Pacmon; if something fits none of them, write it as `note:` — never invent a key.
 - One `## name` section per direct dependency, in alphabetical order. `##` is reserved for package names; inside a section the only heading is `### Agent notes`.
 - Never write an empty field or a dash placeholder. If you have nothing true to say, leave the field out.
-- Write judgments, not measurements. Installed versions, licences, sizes and audit results belong to a future `### Generated` block that tools write — never write that block by hand.
+- Write judgments, not measurements.
 - Revise, do not accumulate: correct a line instead of adding a contradicting one. `log:` is the exception — it is the history.
 - Field keys are English. Write the values in the language given by `lang:` in the file's frontmatter.
 - Never remove the frontmatter or the header comment at the top of the file. If you are asked to draft the first human line, keep it short: it shows next to the dependency in `package.json`.

@@ -24,7 +24,7 @@ describe('normalize/serialize', () => {
         '',
         ...AI_FORMAT_COMMENT_LINES,
         '',
-        '# Dependencies',
+        '# Dependency Notes',
         '',
         '## alpha',
         '',
@@ -66,8 +66,8 @@ describe('normalize/serialize', () => {
     // The header comment is the format's, not the file's: a custom one is replaced.
     expect(out).not.toContain('<!-- custom comment -->');
     expect(out).toContain(AI_FORMAT_COMMENT_LINES[0]!);
-    // The title is the format's too: one `#` heading, always `# Dependencies`.
-    expect(out).toContain('\n# Dependencies\n\nIntro paragraph.');
+    // The title is the format's too: one `#` heading, always `# Dependency Notes`.
+    expect(out).toContain('\n# Dependency Notes\n\nIntro paragraph.');
     expect(out).not.toContain('# My Deps');
   });
 
