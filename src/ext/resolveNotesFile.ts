@@ -27,7 +27,7 @@ function parentDir(uri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(uri, '..');
 }
 
-/** The notes file that belongs to a directory: `<dir>/.pacmon/DEPENDENCIES.md`. */
+/** The notes file that belongs to a directory: `<dir>/.pacmon/DEPENDENCY-NOTES.md`. */
 export function notesUriIn(dir: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(dir, ...NOTES_REL_PATH.split('/'));
 }

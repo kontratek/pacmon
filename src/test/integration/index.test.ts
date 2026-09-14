@@ -98,7 +98,7 @@ suite('pacmon integration', () => {
 
   test('sections not in package.json get no diagnostic, and everything Pacmon reports is a warning', async function () {
     this.timeout(15000);
-    const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
+    const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const doc = await vscode.workspace.openTextDocument(notes);
     const editor = await vscode.window.showTextDocument(doc);
     // Force one real diagnostic so we know the refresh has run.
@@ -125,7 +125,7 @@ suite('pacmon integration', () => {
 
   test('a stray heading, a second title and a stale removed status are flagged with one-click fixes', async function () {
     this.timeout(20000);
-    const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
+    const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const doc = await vscode.workspace.openTextDocument(notes);
     const editor = await vscode.window.showTextDocument(doc);
     const lines = doc.getText().split(/\r?\n/);
@@ -173,7 +173,7 @@ suite('pacmon integration', () => {
 
   test('an unknown key in the agent block gets a diagnostic and a keep-as-note fix', async function () {
     this.timeout(15000);
-    const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
+    const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const doc = await vscode.workspace.openTextDocument(notes);
     const editor = await vscode.window.showTextDocument(doc);
     const line = doc.getText().split(/\r?\n/).findIndex((l) => l.startsWith('- verified: 4.18.0'));
@@ -258,7 +258,7 @@ suite('pacmon integration', () => {
 
   test('normalize canonicalizes a messy heading and is undoable (buffer only)', async function () {
     this.timeout(15000);
-    const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
+    const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const doc = await vscode.workspace.openTextDocument(notes);
     const editor = await vscode.window.showTextDocument(doc);
     await editor.edit((b) => {
@@ -274,7 +274,7 @@ suite('pacmon integration', () => {
 
   test('addOrEditNote with a body writes inline and stays in package.json', async function () {
     this.timeout(15000);
-    const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
+    const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const original = await vscode.workspace.fs.readFile(notes);
     try {
       const pkg = fixtureUri('package.json');
@@ -299,7 +299,7 @@ suite('pacmon integration', () => {
 
   test('context-menu style invocation (Uri as first arg) resolves the dep from the cursor', async function () {
     this.timeout(15000);
-    const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
+    const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const original = await vscode.workspace.fs.readFile(notes);
     try {
       const pkg = fixtureUri('package.json');
@@ -334,7 +334,7 @@ suite('pacmon integration', () => {
     await vscode.commands.executeCommand('pacmon.addOrEditNote', 'express');
     await poll(() => {
       const uri = vscode.window.activeTextEditor?.document.uri;
-      return uri && uri.path.endsWith('.pacmon/DEPENDENCIES.md') ? true : undefined;
+      return uri && uri.path.endsWith('.pacmon/DEPENDENCY-NOTES.md') ? true : undefined;
     });
     const ed = vscode.window.activeTextEditor!;
     const headingLine = ed.document.lineAt(Math.max(ed.selection.active.line - 1, 0)).text;
@@ -379,7 +379,7 @@ suite('pacmon integration', () => {
 
   test('opening package.json from the command works from anywhere', async function () {
     this.timeout(15000);
-    const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
+    const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(notes));
     await vscode.commands.executeCommand('pacmon.openPackageJson');
     const uri = await poll(() => {
@@ -581,7 +581,7 @@ suite('pacmon integration', () => {
           'no command links',
         );
         // The right-click command must still work with every affordance off.
-        const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
+        const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
         const original = await vscode.workspace.fs.readFile(notes);
         try {
           await vscode.commands.executeCommand('pacmon.addOrEditNote', 'vitest', 'still reachable');
@@ -631,7 +631,7 @@ suite('pacmon integration', () => {
   test('the first note creates .pacmon/, the notes file and AGENT-RULES.md', async function () {
     this.timeout(30000);
     const dir = fixtureUri('.pacmon');
-    const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
+    const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const agents = fixtureUri('.pacmon', 'AGENT-RULES.md');
     const original = await vscode.workspace.fs.readFile(notes);
     try {
@@ -653,7 +653,7 @@ suite('pacmon integration', () => {
         }
       });
       assert.ok(
-        text.startsWith('---\nformat: pacmon/1\nlang: en\n---\n'),
+        text.startsWith('---\nformat: dependency-notes/1\nlang: en\n---\n'),
         `template missing, got: ${text.slice(0, 120)}`,
       );
       assert.ok(text.includes('## lodash\n\nfresh start'), 'section missing');
@@ -711,7 +711,7 @@ suite('pacmon integration', () => {
 
   test('a human edit replaces only the human text — the agent block survives', async function () {
     this.timeout(15000);
-    const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
+    const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const agents = fixtureUri('.pacmon', 'AGENT-RULES.md');
     const original = await vscode.workspace.fs.readFile(notes);
     try {

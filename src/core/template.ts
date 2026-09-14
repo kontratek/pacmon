@@ -1,9 +1,9 @@
-export const FORMAT_VERSION = 'pacmon/1';
+export const FORMAT_VERSION = 'dependency-notes/1';
 export const DEFAULT_LANG = 'en';
 
 /** Everything Pacmon owns lives in this directory, next to the package.json it describes. */
 export const NOTES_DIR = '.pacmon';
-export const NOTES_FILE_NAME = 'DEPENDENCIES.md';
+export const NOTES_FILE_NAME = 'DEPENDENCY-NOTES.md';
 export const AGENT_RULES_FILE_NAME = 'AGENT-RULES.md';
 export const NOTES_REL_PATH = `${NOTES_DIR}/${NOTES_FILE_NAME}`;
 export const AGENT_RULES_REL_PATH = `${NOTES_DIR}/${AGENT_RULES_FILE_NAME}`;
@@ -57,7 +57,7 @@ export function newNotesFileContent(eol: string, firstSectionName?: string, body
 
 const AI_BLOCK_START = '<!-- pacmon:start -->';
 const AI_BLOCK_END = '<!-- pacmon:end -->';
-/** Written before the format was named `pacmon/1`. Still found, never written. */
+/** Written before the format was named `dependency-notes/1`. Still found, never written. */
 const LEGACY_AI_BLOCK = ['<!-- pacmon:deps-notes:start -->', '<!-- pacmon:deps-notes:end -->'] as const;
 
 /**

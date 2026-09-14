@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Docs",
-  "description": "Dependency notes from .pacmon/DEPENDENCIES.md, right on your package.json. Document why each dependency exists — plain Markdown, stored in your own repository.",
+  "description": "Dependency notes from .pacmon/DEPENDENCY-NOTES.md, right on your package.json. Document why each dependency exists — plain Markdown, stored in your own repository.",
   "version": "0.1.1",
   "publisher": "kontra",
   "private": true,
@@ -30,7 +30,7 @@
   "activationEvents": [
     "onLanguage:json",
     "onLanguage:jsonc",
-    "workspaceContains:**/.pacmon/DEPENDENCIES.md",
+    "workspaceContains:**/.pacmon/DEPENDENCY-NOTES.md",
     "onView:pacmon.settings"
   ],
   "main": "./dist/extension.js",
@@ -52,7 +52,7 @@
       },
       {
         "command": "pacmon.openNotesFile",
-        "title": "Open DEPENDENCIES.md",
+        "title": "Open DEPENDENCY-NOTES.md",
         "category": "Pacmon"
       },
       {
@@ -62,7 +62,7 @@
       },
       {
         "command": "pacmon.normalizeNotesFile",
-        "title": "Format DEPENDENCIES.md",
+        "title": "Format DEPENDENCY-NOTES.md",
         "category": "Pacmon"
       },
       {
@@ -233,7 +233,7 @@
             "rootOnly"
           ],
           "default": "nearest",
-          "description": "Which notes file applies to a package.json: the nearest .pacmon/DEPENDENCIES.md walking up to the workspace root, or only the one at the workspace root."
+          "description": "Which notes file applies to a package.json: the nearest .pacmon/DEPENDENCY-NOTES.md walking up to the workspace root, or only the one at the workspace root."
         }
       }
     }

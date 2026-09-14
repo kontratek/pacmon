@@ -15,7 +15,7 @@ describe('template: frontmatter and header', () => {
     expect(DEFAULT_FRONTMATTER_LINES[0]).toBe('---');
     expect(DEFAULT_FRONTMATTER_LINES[DEFAULT_FRONTMATTER_LINES.length - 1]).toBe('---');
     expect(DEFAULT_FRONTMATTER_LINES.slice(1, -1)).toEqual([
-      'format: pacmon/1',
+      'format: dependency-notes/1',
       'lang: en',
     ]);
   });

@@ -11,7 +11,7 @@ import { upsertNote } from './commands/writeNote';
 /**
  * EXPERIMENTAL note-entry surface (pacmon.noteEntry = "comments"):
  * dependency lines get a commenting range; the comment thread's multi-line
- * input box writes straight to DEPENDENCIES.md via the "Save note" button.
+ * input box writes straight to DEPENDENCY-NOTES.md via the "Save note" button.
  */
 export class NoteComments implements vscode.Disposable {
   private readonly controller: vscode.CommentController;

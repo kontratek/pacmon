@@ -2,7 +2,7 @@
 
 **Pacmon documents *why* each dependency exists — right next to your `package.json`.**
 
-Today Pacmon ships as a **VS Code extension**: hover a dependency to read its note, right-click to write one. Notes live in your repository in `.pacmon/DEPENDENCIES.md`, travel with git, and render on GitHub. Notes are plain Markdown and stay in your repository.
+Today Pacmon ships as a **VS Code extension**: hover a dependency to read its note, right-click to write one. Notes live in your repository in `.pacmon/DEPENDENCY-NOTES.md`, travel with git, and render on GitHub. Notes are plain Markdown and stay in your repository.
 
 - Install: [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Kontra.pacmon)
 - Source and issues: [github.com/kontratek/pacmon](https://github.com/kontratek/pacmon)

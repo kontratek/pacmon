@@ -3,7 +3,7 @@ import { findSection, parseNotes, sectionBody } from '../../core/parseNotes';
 
 const sample = [
   '---',
-  'format: pacmon/1',
+  'format: dependency-notes/1',
   'lang: en',
   '---',
   '',
@@ -31,7 +31,7 @@ const sample = [
 describe('parseNotes', () => {
   it('parses frontmatter keys, comment, title, intro and sections', () => {
     const m = parseNotes(sample);
-    expect(m.frontmatter?.formatVersion).toBe('pacmon/1');
+    expect(m.frontmatter?.formatVersion).toBe('dependency-notes/1');
     expect(m.frontmatter?.lang).toBe('en');
     expect(m.aiComment).toBeDefined();
     expect(m.titleLine).toBe(7);
@@ -41,8 +41,8 @@ describe('parseNotes', () => {
   });
 
   it('keeps unknown frontmatter keys as lines and ignores empty values', () => {
-    const m = parseNotes('---\nformat: pacmon/1\nextra: kept\nlang:\n---\n## a\nx');
-    expect(m.frontmatter?.formatVersion).toBe('pacmon/1');
+    const m = parseNotes('---\nformat: dependency-notes/1\nextra: kept\nlang:\n---\n## a\nx');
+    expect(m.frontmatter?.formatVersion).toBe('dependency-notes/1');
     expect(m.frontmatter?.lang).toBeUndefined();
     expect(m.lines[2]).toBe('extra: kept');
   });

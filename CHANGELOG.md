@@ -20,11 +20,13 @@
   `renderOptions`. VS Code turns every distinct `renderOptions` object into its
   own dynamic CSS rule; two fixed types mean two rules and no per-dependency
   hashing, however long the dependency list.
-- **The format is `pacmon/1`.** Same layout as `deps-notes/1`; only the name in
-  the frontmatter changes. A file that still says `deps-notes/1` gets an
-  "unknown format" warning on that line — edit the line. The `agents:`
-  frontmatter key is no longer written: it repeated the header comment.
-  Existing lines are kept and ignored.
+- **The format is `dependency-notes/1`, in `.pacmon/DEPENDENCY-NOTES.md`.** The
+  same layout as `deps-notes/1` in `.pacmon/DEPENDENCIES.md`; the names now say
+  what the file holds, and the file name and the format name agree. A file
+  that still says `deps-notes/1` gets an "unknown format" warning on that
+  line, and a `.pacmon/DEPENDENCIES.md` is no longer read — rename it. The
+  `agents:` frontmatter key is no longer written: it repeated the header
+  comment. Existing lines are kept and ignored.
 - **`.pacmon/AGENT-RULES.md` replaces `.pacmon/AGENTS.md`**, so the file no
   longer shares a name with the root `AGENTS.md`. It is a hand-written file
   shipped with the extension (`assets/AGENT-RULES.md`) and copied into the

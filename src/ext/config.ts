@@ -81,8 +81,8 @@ export function isPackageJson(uri: vscode.Uri): boolean {
   return uriBasename(uri) === 'package.json';
 }
 
-/** `DEPENDENCIES.md` inside a `.pacmon/` directory — nothing else counts, not
- *  even a `DEPENDENCIES.md` at the root. */
+/** `DEPENDENCY-NOTES.md` inside a `.pacmon/` directory — nothing else counts, not
+ *  even a `DEPENDENCY-NOTES.md` at the root. */
 export function isNotesFile(uri: vscode.Uri): boolean {
   const parts = uri.path.split('/');
   return parts[parts.length - 1] === NOTES_FILE_NAME && parts[parts.length - 2] === NOTES_DIR;

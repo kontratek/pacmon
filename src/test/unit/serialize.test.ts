@@ -18,7 +18,7 @@ describe('normalize/serialize', () => {
     expect(out).toBe(
       [
         '---',
-        'format: pacmon/1',
+        'format: dependency-notes/1',
         'lang: en',
         '---',
         '',
@@ -47,7 +47,7 @@ describe('normalize/serialize', () => {
   it('keeps unknown frontmatter keys, adds the missing format keys, owns the header and the title, keeps the intro', () => {
     const input = [
       '---',
-      'format: pacmon/1',
+      'format: dependency-notes/1',
       'extra: kept',
       '---',
       '',
@@ -62,7 +62,7 @@ describe('normalize/serialize', () => {
     ].join('\n');
     const out = normalizeText(input);
     const fm = out.slice(0, out.indexOf('\n---\n', 4) + 5);
-    expect(fm).toBe('---\nformat: pacmon/1\nextra: kept\nlang: en\n---\n');
+    expect(fm).toBe('---\nformat: dependency-notes/1\nextra: kept\nlang: en\n---\n');
     // The header comment is the format's, not the file's: a custom one is replaced.
     expect(out).not.toContain('<!-- custom comment -->');
     expect(out).toContain(AI_FORMAT_COMMENT_LINES[0]!);

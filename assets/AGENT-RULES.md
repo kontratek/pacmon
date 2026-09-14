@@ -6,7 +6,7 @@
 
 ## Before you touch a dependency
 
-Its notes are in `.pacmon/DEPENDENCIES.md` next to the `package.json` you are changing; in a monorepo, the nearest one walking up. Read two things first: the free text between `# Dependencies` and the first section (this repository's own rules), then the package's `## <name>` section.
+Its notes are in `.pacmon/DEPENDENCY-NOTES.md` next to the `package.json` you are changing; in a monorepo, the nearest one walking up. Read two things first: the free text between `# Dependencies` and the first section (this repository's own rules), then the package's `## <name>` section.
 
 - **Adding a package:** open its section in the same commit, with at least `purpose:`. Say what you considered and why this one, in `alternatives:` or `log:`.
 - **Upgrading:** read its `constraint:` and `verify:` lines, then run what `verify:` says. Log the attempt with its outcome even if you reverted it — the next agent must not repeat it.

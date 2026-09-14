@@ -30,7 +30,7 @@ function revealSection(editor: vscode.TextEditor, name: string): void {
 
 /**
  * Mode "peek": an embedded editor opens right below the dependency line,
- * showing the note's section in .pacmon/DEPENDENCIES.md — real multi-line
+ * showing the note's section in .pacmon/DEPENDENCY-NOTES.md — real multi-line
  * Markdown editing without leaving package.json. Esc closes, Ctrl+S saves.
  * Requires the package.json editor to be active.
  */

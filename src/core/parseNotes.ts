@@ -13,7 +13,7 @@ const subHeadingKey = (heading: string): string => heading.replace(/^###\s+/, ''
 const AGENT_KEY = subHeadingKey(AGENT_NOTES_HEADING);
 const GENERATED_KEY = subHeadingKey(GENERATED_HEADING);
 
-/** Parse a DEPENDENCIES.md text into a line-oriented model. Tolerant by design. */
+/** Parse a DEPENDENCY-NOTES.md text into a line-oriented model. Tolerant by design. */
 export function parseNotes(text: string): NotesFileModel {
   let hadBom = false;
   if (text.charCodeAt(0) === 0xfeff) {

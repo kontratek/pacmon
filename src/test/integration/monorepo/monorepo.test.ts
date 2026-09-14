@@ -74,7 +74,7 @@ suite('pacmon monorepo', () => {
     }
   });
 
-  test('the nearest .pacmon/DEPENDENCIES.md wins for a nested package.json', async function () {
+  test('the nearest .pacmon/DEPENDENCY-NOTES.md wins for a nested package.json', async function () {
     this.timeout(15000);
     const text = await poll(async () => {
       const t = await hoverText(at('packages', 'app', 'package.json'), 'express');
@@ -110,8 +110,8 @@ suite('pacmon monorepo', () => {
 
   test('a new note for a nested package lands in its own .pacmon/; the agent rules land once, at the root', async function () {
     this.timeout(20000);
-    const appNotes = at('packages', 'app', '.pacmon', 'DEPENDENCIES.md');
-    const rootNotes = at('.pacmon', 'DEPENDENCIES.md');
+    const appNotes = at('packages', 'app', '.pacmon', 'DEPENDENCY-NOTES.md');
+    const rootNotes = at('.pacmon', 'DEPENDENCY-NOTES.md');
     const originalApp = await vscode.workspace.fs.readFile(appNotes);
     const originalRoot = await vscode.workspace.fs.readFile(rootNotes);
     try {

@@ -1,5 +1,5 @@
 ---
-format: pacmon/1
+format: dependency-notes/1
 lang: en
 ---
 

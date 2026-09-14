@@ -51,7 +51,7 @@ export class SettingsView implements vscode.WebviewViewProvider, vscode.Disposab
   private view: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
   /** Last package.json seen in an editor — so the coverage list does not go
-   *  blank the moment you switch to DEPENDENCIES.md or anything else. */
+   *  blank the moment you switch to DEPENDENCY-NOTES.md or anything else. */
   private lastPkg: vscode.Uri | undefined;
 
   constructor(private readonly store: Store) {
