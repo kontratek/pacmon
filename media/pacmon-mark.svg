@@ -1,0 +1,9 @@
+<!-- The Pacmon mark: three bars on an 8x8 grid. Bars are 6x2, gaps are 1,
+     the top bar sits 2 in from the left. Every edge lands on a whole unit,
+     so the mark is pixel-crisp at any multiple of 8 px.
+     Colour comes from the consumer: currentColor, or a substituted fill. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 8 8" fill="currentColor">
+  <rect x="2" y="0" width="6" height="2"/>
+  <rect x="0" y="3" width="6" height="2"/>
+  <rect x="0" y="6" width="6" height="2"/>
+</svg>

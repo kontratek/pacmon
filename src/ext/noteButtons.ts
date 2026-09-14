@@ -3,6 +3,7 @@ import type { DepEntry } from '../core/model';
 import { findSection } from '../core/parseNotes';
 import { isPackageJson, type NoteButton, noteButtonEnabled } from './config';
 import { logError } from './log';
+import { MARK } from './markIcon';
 import { resolveNotesFileFor } from './resolveNotesFile';
 import type { Store } from './state';
 import { S } from './strings';
@@ -13,14 +14,23 @@ import { S } from './strings';
  *
  * ON BY DEFAULT — the pair that won the 2026-09-04 comparison:
  *
- *   iconLeft  a single glyph just before the package name (✎ documented,
- *             + undocumented), with the words in the hover. A DECORATION, not
- *             an inlay hint: only decorations expose `cursor`, so only they can
- *             turn the mouse into a hand, and the styling is ours. Like an
- *             inlay hint it is injected into the rendered line, so each
- *             dependency key is pushed right while `name`/`version` stay put —
- *             the indent column survives, the keys no longer align, and one
- *             glyph keeps that to a single column.
+ *   iconLeft  the Pacmon mark just before the package name — filled when the
+ *             dependency has a note, hollow when it does not — with the words
+ *             in the hover. A DECORATION, not an inlay hint: only decorations
+ *             expose `cursor`, so only they can turn the mouse into a hand,
+ *             and the styling is ours. Like an inlay hint it is injected into
+ *             the rendered line, so each dependency key is pushed right while
+ *             `name`/`version` stay put — the indent column survives, the keys
+ *             no longer align, and the mark plus its margin keeps that to
+ *             roughly two columns.
+ *
+ *             Drawing it at the START of the line instead was built and
+ *             dropped (2026-09-13). The marks line up in a column either way,
+ *             because every dependency key in a package.json sits at the same
+ *             depth; the line start only moves that column four characters
+ *             left, and it costs the indent ladder — the whole line shifts by
+ *             the mark's width, so a marked line no longer steps out from the
+ *             `"devDependencies"` above it.
  *             Decorations take no click event, so the plain click is read off
  *             the caret: a click still moves it, and a mouse-kind caret landing
  *             at or before the key opens the note. The target is exactly the
@@ -59,6 +69,28 @@ const SELECTOR: vscode.DocumentSelector = [
   { language: 'jsonc', pattern: '**/package.json' },
 ];
 
+/**
+ * One decoration type for one state of the mark. `light` and `dark` repeat the
+ * whole `before` block rather than adding to a shared one above them: the theme
+ * merge is shallow, so a `before` inside `light` replaces the outer one
+ * outright instead of extending it.
+ */
+function markType(uris: { light: vscode.Uri; dark: vscode.Uri }): vscode.TextEditorDecorationType {
+  const before = (
+    contentIconPath: vscode.Uri,
+  ): vscode.ThemableDecorationAttachmentRenderOptions => ({
+    contentIconPath,
+    margin: '0 0.35em 0 0',
+    textDecoration: 'none; cursor: pointer',
+  });
+  return vscode.window.createTextEditorDecorationType({
+    light: { before: before(uris.light) },
+    dark: { before: before(uris.dark) },
+    cursor: 'pointer',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+  });
+}
+
 /** Every affordance fires the same command, so they differ only in shape. */
 function noteCommand(name: string, documented: boolean): vscode.Command {
   return {
@@ -80,24 +112,21 @@ export class NoteButtons implements vscode.Disposable {
    */
   private linkReg: vscode.Disposable | undefined;
   /**
-   * The iconLeft glyph. `cursor` turns the mouse into a hand over the
-   * decorated character; the `textDecoration` escape hatch carries the same
-   * rule onto the injected glyph itself, which has no property of its own.
+   * The iconLeft mark, one decoration type per state — NOT one type carrying
+   * per-range `renderOptions`. VS Code hashes each distinct `renderOptions`
+   * object into its own dynamic CSS rule, so two fixed types mean two rules
+   * and no per-dependency hashing, however long the file's dependency list.
    */
-  private readonly iconType = vscode.window.createTextEditorDecorationType({
-    before: {
-      color: new vscode.ThemeColor('textLink.foreground'),
-      margin: '0 0.35em 0 0',
-      textDecoration: 'none; cursor: pointer',
-    },
-    cursor: 'pointer',
-    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-  });
+  private readonly markTypes = {
+    documented: markType(MARK.documented),
+    undocumented: markType(MARK.undocumented),
+  };
 
   constructor(private readonly store: Store) {
     this.disposables.push(
       this.refresh,
-      // A note written elsewhere flips + to ✎ (and "Add note" to "Edit note");
+      // A note written elsewhere fills the hollow mark (and turns "Add note"
+      // into "Edit note");
       // a config change switches whole affordances on and off.
       store.onDidChange(() => this.onChanged()),
       vscode.window.onDidChangeTextEditorSelection((e) => void this.onIconClick(e)),
@@ -160,7 +189,8 @@ export class NoteButtons implements vscode.Disposable {
 
   dispose(): void {
     this.linkReg?.dispose();
-    this.iconType.dispose();
+    this.markTypes.documented.dispose();
+    this.markTypes.undocumented.dispose();
     for (const d of this.disposables) d.dispose();
     this.disposables.length = 0;
   }
@@ -199,11 +229,11 @@ export class NoteButtons implements vscode.Disposable {
     }
   }
 
-  /** Draw (or clear) the iconLeft glyph on one editor. */
+  /** Draw (or clear) the iconLeft mark on one editor. */
   private async drawIcons(editor: vscode.TextEditor): Promise<void> {
     const doc = editor.document;
     if (!isPackageJson(doc.uri)) return;
-    const options = await this.guard('iconLeft', doc, (deps, has) =>
+    const marks = await this.guard('iconLeft', doc, (deps, has) =>
       deps.map((d) => {
         const keyPos = doc.positionAt(d.keyOffset);
         const documented = has(d);
@@ -214,23 +244,33 @@ export class NoteButtons implements vscode.Disposable {
           `[${documented ? S.buttonEdit : S.buttonAdd}](command:pacmon.addOrEditNote?${arg}) — ${d.name}`,
         );
         return {
-          // One character wide: the opening quote of the key. The glyph is
-          // rendered just before it, and the hand cursor covers both.
-          range: new vscode.Range(keyPos, keyPos.translate(0, 1)),
-          hoverMessage: hover,
-          renderOptions: {
-            before: { contentText: documented ? S.buttonIconEdit : S.buttonIconAdd },
-          },
-        } satisfies vscode.DecorationOptions;
+          documented,
+          option: {
+            // One character wide: the opening quote of the key. The mark is
+            // rendered just before it, and the hand cursor covers both.
+            range: new vscode.Range(keyPos, keyPos.translate(0, 1)),
+            hoverMessage: hover,
+          } satisfies vscode.DecorationOptions,
+        };
       }),
     );
-    editor.setDecorations(this.iconType, options);
+    // Two passes, because the state is the decoration type. An empty array is
+    // how a type is cleared, so a note written elsewhere moves its dependency
+    // from one pass to the other without leaving the old mark behind.
+    editor.setDecorations(
+      this.markTypes.documented,
+      marks.filter((m) => m.documented).map((m) => m.option),
+    );
+    editor.setDecorations(
+      this.markTypes.undocumented,
+      marks.filter((m) => !m.documented).map((m) => m.option),
+    );
   }
 
   /**
-   * Plain click on the glyph. A decoration takes no click event, so this reads
+   * Plain click on the mark. A decoration takes no click event, so this reads
    * the caret instead: a mouse click lands a caret, and one that lands at or
-   * before the key of a dependency line is a click on the strip the glyph
+   * before the key of a dependency line is a click on the strip the mark
    * occupies. Every other click on the line — the name, the version, the
    * trailing comma — is left alone, and keyboard and programmatic moves are
    * ignored outright.

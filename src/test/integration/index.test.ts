@@ -546,7 +546,7 @@ suite('pacmon integration', () => {
           const doc = await vscode.workspace.openTextDocument(uri);
           const ed = await vscode.window.showTextDocument(doc, vscode.ViewColumn.One);
 
-          // Exactly where a click on the glyph lands. Arriving there
+          // Exactly where a click on the mark lands. Arriving there
           // programmatically (kind Command/undefined) must do nothing —
           // otherwise Home, arrow keys and every jump would open the note.
           const keyPos = doc.positionAt(doc.getText().indexOf('"express"'));

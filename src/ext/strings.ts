@@ -54,14 +54,6 @@ export const S = {
   // Clickable note affordances on package.json lines (pacmon.noteButtons)
   buttonAdd: 'Add note',
   buttonEdit: 'Edit note',
-  // Icon-only labels for the left-hand glyph, where every column pushes the
-  // package name further right. It is a decoration attachment, whose
-  // contentText is a plain string — no codicon ($(edit)) support — so these
-  // are glyphs.
-  // U+FE0E forces text presentation so the pencil never renders as emoji.
-  // Swap these if your editor font lacks the glyph and shows a box.
-  buttonIconAdd: '+',
-  buttonIconEdit: '✎︎',
   buttonTooltip: (name: string) => `Pacmon: write the dependency note for ${name}`,
   // Pacmon view (activity bar)
   viewTitle: 'Pacmon — Dependency Docs',
@@ -102,14 +94,6 @@ export const S = {
       inlayHint: 'Chip at end of line',
       lightbulb: 'Lightbulb on the cursor line',
     }) as Record<string, string>)[id] ?? id,
-  buttonIcon: (id: string): string =>
-    (({
-      iconLeft: 'pencil',
-      link: 'link',
-      codelens: 'list-flat',
-      inlayHint: 'symbol-string',
-      lightbulb: 'lightbulb',
-    }) as Record<string, string>)[id] ?? 'circle-outline',
   viewTargetsCount: (on: number, total: number) => `${on} of ${total}`,
   viewReset: 'Reset to defaults',
   viewOpenSettings: 'Open Pacmon settings',
@@ -124,7 +108,7 @@ export const S = {
   buttonHelp: (id: string): string =>
     (({
       iconLeft:
-        '`✎` when the dependency has a note, `+` when it does not. The mouse turns into a hand over it.',
+        'The Pacmon mark before the name — filled when the dependency has a note, hollow when it does not. The mouse turns into a hand over it.',
       link: 'The package name itself opens its note. Adds nothing to the file.',
       codelens: 'Unmissable — and it roughly doubles the apparent height of package.json.',
       inlayHint: 'Spelled out at the end of the line, where it competes with the note preview.',

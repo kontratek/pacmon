@@ -7,6 +7,20 @@
 
 ## Unreleased
 
+- **The mark replaces the pencil.** The glyph before a dependency name is now
+  the Pacmon mark itself: filled when the dependency has a note, hollow when it
+  does not. The state is carried by the shape rather than the colour, so it
+  survives colour blindness; colour is the second channel, and the two marks
+  are kept two stops apart in lightness on both editor themes (2.0:1 on Dark+,
+  2.1:1 on Light+). Drawn at 12 px from four baked SVGs — two states, two
+  themes — because an image attachment takes no `ThemeColor`.
+- The activity bar icon is the mark too, replacing the generic document glyph
+  that had nothing to do with the logo.
+- Each state is its own decoration type instead of a per-dependency
+  `renderOptions`. VS Code turns every distinct `renderOptions` object into its
+  own dynamic CSS rule; two fixed types mean two rules and no per-dependency
+  hashing, however long the dependency list.
+
 ## 0.1.1 — 2026-09-11
 
 - New icon: the mark now sits on a dark disc, so it holds its shape against a

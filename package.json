@@ -212,7 +212,7 @@
               "lightbulb"
             ],
             "enumDescriptions": [
-              "A single glyph just before the package name (✎ documented, + not yet), with the words in the hover. Plain click, and the mouse turns into a hand over it.",
+              "The Pacmon mark just before the package name — filled when the dependency has a note, hollow when it does not — with the words in the hover. Plain click, and the mouse turns into a hand over it.",
               "The package name itself opens its note on Ctrl+click. Adds nothing to the file.",
               "A clickable line above each dependency. Unmissable, and it roughly doubles the apparent height of package.json.",
               "The words spelled out at the end of the line, where they compete with the note preview. Needs Ctrl+click.",

@@ -1,5 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M5 3h8l5 5v13H5z"/>
-  <path d="M13 3v5h5"/>
-  <path d="M8.5 12h7M8.5 15.5h7M8.5 19h4"/>
+<!-- The activity bar icon: a variant of the mark where only the top bar is
+     filled and the lower two are outlined. VS Code paints this with the
+     activity bar's own foreground colour, so only the shape matters here.
+
+     The 8x8 grid is scaled by exactly 3 with no padding — the largest the mark
+     can be in a 24x24 slot, and every edge lands on a whole pixel: bars 18x6,
+     gaps 3. The outlines carry a 1.5 stroke, the same weight as VS Code's own
+     activity bar icons, which is why the two hollow bars read as line art next
+     to them. Stroke is centred on the path, so each hollow rect is inset by
+     0.75 to keep its outer edge on the grid.
+
+     For a smaller mark, inset the whole drawing: 2 units of padding each side
+     puts the ink back at 20x20. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+  <rect x="6" y="0" width="18" height="6"/>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="0.75" y="9.75" width="16.5" height="4.5"/>
+    <rect x="0.75" y="18.75" width="16.5" height="4.5"/>
+  </g>
 </svg>

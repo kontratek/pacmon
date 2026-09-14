@@ -1,6 +1,6 @@
 {
   "name": "pacmon",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Pacmon documents why each dependency exists, next to your package.json. Available today as a VS Code extension; this package is where the CLI will live.",
   "license": "Apache-2.0",
   "author": "Kontra Siber Savunma Teknoloji Ltd. Şti. (https://kontra.com.tr/)",

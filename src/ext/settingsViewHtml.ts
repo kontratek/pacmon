@@ -7,14 +7,27 @@ import { esc, nonce } from './webviewCommon';
 /**
  * A small preview of what each click target actually does to a package.json
  * line — the reason this view is a webview and not a tree. Rendered as markup
- * so the glyph, the underline and the line-above can each look like the real
+ * so the mark, the underline and the line-above can each look like the real
  * thing; `sample` never contains user data.
  */
+
+/**
+ * The documented state of the mark drawn in `markIcon.ts`, at the preview's
+ * own scale. The same three bars, and the fill follows the theme the way the
+ * editor's four baked images do.
+ */
+const MARK_SVG =
+  '<svg class="mark" viewBox="0 0 8 8" aria-hidden="true">' +
+  '<rect x="2" y="0" width="6" height="2"/>' +
+  '<rect x="0" y="3" width="6" height="2"/>' +
+  '<rect x="0" y="6" width="6" height="2"/>' +
+  '</svg>';
+
 function preview(id: NoteButton): string {
   const dep = `<span class="k">"express"</span><span class="p">: "^4.18.0",</span>`;
   switch (id) {
     case 'iconLeft':
-      return `<code class="pv"><span class="glyph">${esc(S.buttonIconEdit)}</span> ${dep}</code>`;
+      return `<code class="pv">${MARK_SVG}${dep}</code>`;
     case 'link':
       return `<code class="pv"><span class="k lnk">"express"</span><span class="p">: "^4.18.0",</span></code>`;
     case 'codelens':
@@ -122,7 +135,9 @@ export function renderHtml(): string {
   .pv .k { color: var(--vscode-symbolIcon-propertyForeground, var(--vscode-foreground)); }
   .pv .p { color: var(--vscode-descriptionForeground); }
   .pv .lnk { text-decoration: underline; color: var(--vscode-textLink-foreground); }
-  .pv .glyph { color: var(--vscode-textLink-foreground); }
+  .pv .mark { width: 10px; height: 10px; margin-right: .35em; fill: #00662f; }
+  body.vscode-dark .pv .mark { fill: #00ff66; }
+  body.vscode-high-contrast:not(.vscode-high-contrast-light) .pv .mark { fill: #00ff66; }
   .pv .lens { color: var(--vscode-textLink-foreground); font-size: 10.5px; }
   .pv .chip {
     color: var(--vscode-editorInlayHint-foreground, var(--vscode-descriptionForeground));
