@@ -2,7 +2,7 @@
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Docs",
   "description": "Dependency notes from .pacmon/DEPENDENCY-NOTES.md, right on your package.json. Document why each dependency exists — plain Markdown, stored in your own repository.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "kontra",
   "private": true,
   "license": "Apache-2.0",

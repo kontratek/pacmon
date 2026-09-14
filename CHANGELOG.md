@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-09-14
+
 - **A note being read now looks like a note, not like an empty box.** In the
   note panel a layer at rest is text on the page — no frame, no fill.
   Hovering fills it the way VS Code fills a list row; the framed, filled box
