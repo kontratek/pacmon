@@ -28,6 +28,17 @@ Internal metrics client — the only sanctioned way to emit product events (OBS-
 - owner: #observability
 - verified: 1.8.2
 
+## @tanstack/react-query
+
+Server data is cached here, not in state.
+
+```ts
+const { data } = useQuery({
+  queryKey: ['order', id],
+  queryFn: () => api.order(id),
+})
+```
+
 ## core-js
 
 Polyfills for the two customers still on the 2021 embedded browser (SUP-410).
@@ -40,6 +51,20 @@ Polyfills for the two customers still on the 2021 embedded browser (SUP-410).
 - log: 2026-02 removal proposed and declined; both customers still on the old browser (SUP-410)
 - note: the exact polyfill list the vendor requires is in docs/legacy-browsers.md
 - verified: 3.42.0
+
+## drizzle-kit
+
+Drizzle ORM's CLI — migrations are generated.
+
+Never hand-write a migration: change `schema.ts`, generate it, review the SQL,
+and commit both in one go.
+
+```sh
+drizzle-kit generate   # turn a schema change into a SQL migration
+drizzle-kit migrate    # apply pending migrations
+drizzle-kit push       # sync the schema straight to the dev database
+drizzle-kit studio     # browse the data in the browser
+```
 
 ## express
 
@@ -62,6 +87,16 @@ tracked in SEC-1301; until it lands, `^4` is intentional.
 - links: https://expressjs.com/en/guide/migrating-5.html
 - verified: 4.19.2
 
+## helmet
+
+Sets the security headers on every response.
+
+Mounted first in `src/server.ts`, before any route.
+
+```ts
+app.use(helmet())  // CSP, HSTS, X-Frame-Options, …
+```
+
 ## lodash
 
 Utility helpers. Only `debounce` and `groupBy` are used; prefer native methods
@@ -83,6 +118,27 @@ Kept so the next person who reaches for it finds this first.
 
 - status: removed 2026-06 — replaced by date-fns (PERF-12)
 - purpose: date formatting in reports (historical)
+
+## nanoid
+
+Short URL-safe ids — 21 chars, not 36.
+
+```ts
+import { nanoid } from 'nanoid'
+
+nanoid()  // 'V1StGXR8_Z5jdHi6B-myT'
+```
+
+## pino
+
+No console.log — every log goes through req.log.
+
+Every route handler logs through `req.log`, never the bare logger: it carries
+the request id, so one request's lines can be pulled out of the log later.
+
+```ts
+req.log.info({ orderId }, 'order created')
+```
 
 ## react
 
