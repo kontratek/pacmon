@@ -1,0 +1,1 @@
+**Pacmon does not accept pull requests yet.** See [CONTRIBUTING.md](https://github.com/kontratek/pacmon/blob/main/CONTRIBUTING.md). Bug reports and feature requests are welcome as [issues](https://github.com/kontratek/pacmon/issues). This pull request will be closed; thank you for the interest.

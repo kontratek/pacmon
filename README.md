@@ -1,11 +1,82 @@
-# Pacmon — Dependency Docs
+# Pacmon
 
-Document *why* each dependency exists, right where you read it.
+**`package.json` says what you depend on. Pacmon adds why.**
 
-Pacmon connects your `package.json` to a single notes file, `.pacmon/DEPENDENCIES.md`: hover a dependency to read its note, right-click to write one. Notes live in your repository, travel with git, and render on GitHub.
+Every dependency gets a short note: why it is here, what must not change, what to check before an upgrade. The note shows in `package.json` on hover, and you write it from there.
 
-- **Local-first** — your notes are plain Markdown inside your repository, not in a service. This release runs entirely inside the editor.
-- Works in VS Code Web, Remote-SSH/WSL, dev containers, and air-gapped environments.
-- Every note has a second layer where your AI coding agents keep their own notes.
+All notes live in one Markdown file, `.pacmon/DEPENDENCY-NOTES.md`, next to `package.json`. No database, no service, no account: one file that you read, diff and commit like any other. AI coding agents read the same file before they touch a package, and keep their own lines in it.
 
-Early preview. Source code and issue tracker: https://github.com/kontratek/pacmon
+![Pacmon in VS Code: a preview after each dependency in package.json, the note on hover, and a note written from the side panel](docs/media/demo.gif)
+
+## The notes file
+
+One Markdown file next to `package.json`, one `## section` per dependency. People write under the heading. Agents write under `### Agent notes`.
+
+```md
+## express
+
+HTTP API layer (SEC-1234).
+Do not upgrade to v5 — the auth middleware is incompatible.
+
+### Agent notes
+
+- purpose: HTTP framework; serves the public REST API and the webhook receiver
+- constraint: stay on ^4 — v5 changes router path matching and the session API
+- verify: `vitest src/api` and the login e2e (`pnpm e2e:auth`)
+- log: 2026-03 agent tried 5.0.1, 14 auth tests failed, reverted (PR #402)
+- verified: 4.19.2
+```
+
+The file renders on GitHub as it is. A complete example is in [`docs/example-repo`](docs/example-repo/).
+
+## Features
+
+- Hover a dependency in `package.json` to read its note.
+- The first line of the note shows at the end of the dependency line.
+- A mark before each package name: filled when it has a note, hollow when it does not.
+- Write a note from `package.json`: in a side panel, a peek editor, or an input box.
+- **Documentation Coverage** lists which dependencies have a note and which do not.
+- Problems in the notes file show as warnings, most with a one-click fix.
+
+## Getting started
+
+1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon). VSCodium, Cursor, Windsurf, code-server and other editors that use [Open VSX](https://open-vsx.org/extension/kontra/pacmon) install it from there.
+2. Open a `package.json`. A hollow mark appears before every dependency that has no note yet.
+3. Right-click a dependency and choose **Pacmon: Add/Edit Dependency Note**, or click the mark. Write one line.
+4. The note now shows on hover and at the end of the line. Pacmon created `.pacmon/DEPENDENCY-NOTES.md` and `.pacmon/AGENT-RULES.md` next to `package.json`; commit them together with it.
+
+## AI agents
+
+Every section has a second layer, `### Agent notes`, for AI coding agents. They write `- key: value` lines there: `purpose`, `constraint`, `verify`, `log`, `verified` and a few more. Agents never edit the text people wrote.
+
+Run **Pacmon: Set Up AI Instructions** once. It writes the rules and the field list to `.pacmon/AGENT-RULES.md`, and adds a three-line pointer to the instruction files your agents already read: `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/`, `.github/copilot-instructions.md`. From then on, an agent reads a package's section before it adds, upgrades or removes the package, and records what it did. Pacmon checks the agent lines: an unknown field or an empty value shows as a warning, with a fix.
+
+![An agent in the terminal fills the notes for react; the package.json line gains its preview and the panel shows the agent lines](docs/media/demo-ai.gif)
+
+Pacmon does not call any AI service. Agents use their own tools; Pacmon gives them the file and the rules.
+
+## Settings
+
+| Setting | Default | What it does |
+|---|---|---|
+| `pacmon.decorations` | `preview` | The hint at the end of a line that has a note: `preview` (the first line of the note), `badge` (a small marker), or `off`. |
+| `pacmon.inlineSource` | `human-first` | Which layer feeds the preview and leads the hover: `human-first`, `ai-first`, `human-only`, `ai-only`. |
+| `pacmon.noteEntry` | `panel` | How you write a note from `package.json`: `panel`, `peek`, `input`, `inputBeside`, or `comments` (experimental). |
+| `pacmon.noteButtons` | `["iconLeft", "link"]` | Clickable ways into a note: `iconLeft`, `link`, `codelens`, `inlayHint`, `lightbulb`. |
+| `pacmon.monorepo` | `nearest` | Which notes file a `package.json` uses: the nearest one walking up, or only the one at the workspace root (`rootOnly`). |
+
+The **Pacmon** view in the activity bar switches these without opening the settings editor.
+
+## Requirements
+
+VS Code 1.100 or newer. Nothing else: Pacmon reads and writes files in your workspace and makes no network requests. It works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
+
+## Format reference
+
+The notes format is `dependency-notes/1`. The reference is [`docs/format.md`](docs/format.md); the extension follows it.
+
+## Contributing and license
+
+Pacmon is an early preview and does not accept pull requests yet. Bug reports and feature requests are welcome as [issues](https://github.com/kontratek/pacmon/issues); see [CONTRIBUTING.md](CONTRIBUTING.md). Security problems: see [SECURITY.md](SECURITY.md).
+
+Apache License 2.0 — see [LICENSE](LICENSE). "Pacmon" and the logo are trademarks of Kontra; see [TRADEMARK.md](TRADEMARK.md).

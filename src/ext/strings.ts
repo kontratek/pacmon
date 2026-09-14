@@ -57,7 +57,7 @@ export const S = {
   buttonEdit: 'Edit note',
   buttonTooltip: (name: string) => `Pacmon: write the dependency note for ${name}`,
   // Pacmon view (activity bar)
-  viewTitle: 'Pacmon — Dependency Docs',
+  viewTitle: 'Pacmon — Dependency Notes',
   viewGroupTargets: 'Click targets',
   viewTargetsLede: 'How you open a dependency’s note from package.json. Right-click always works too.',
   viewGroupActions: 'Actions',

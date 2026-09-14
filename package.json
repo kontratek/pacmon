@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
-  "displayName": "Pacmon — Dependency Docs",
-  "description": "Dependency notes from .pacmon/DEPENDENCY-NOTES.md, right on your package.json. Document why each dependency exists — plain Markdown, stored in your own repository.",
+  "displayName": "Pacmon — Dependency Notes",
+  "description": "Why each dependency exists, as a note next to it in package.json. Plain Markdown in your repo; AI agents read and write it too.",
   "version": "0.2.0",
   "publisher": "kontra",
   "private": true,
@@ -145,7 +145,7 @@
       "pacmon": [
         {
           "id": "pacmon.settings",
-          "name": "Dependency Docs",
+          "name": "Dependency Notes",
           "type": "webview",
           "icon": "media/pacmon.svg"
         }

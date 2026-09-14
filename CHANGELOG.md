@@ -7,6 +7,12 @@
 
 ## Unreleased
 
+- **The extension says "Dependency Notes" everywhere now.** The display name,
+  the activity bar view and the README said "Dependency Docs" while the file,
+  the format and the title said notes. The README is rewritten around the notes
+  file and the agent layer, with two recordings, and names Open VSX next to the
+  Marketplace. `CONTRIBUTING.md` and `SECURITY.md` say how to report a bug or
+  a vulnerability; pull requests are not accepted yet.
 - **Fix: a setting in the Pacmon view could be set and stay unset.** The view
   shows each setting's effective value but wrote the user one, so a workspace
   value on top of it swallowed the click and the control snapped back with
