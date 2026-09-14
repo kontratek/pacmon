@@ -16,3 +16,22 @@ export const CHOICE_VALUES = {
 export function choiceValues(key: string): readonly string[] | undefined {
   return (CHOICE_VALUES as Record<string, readonly string[]>)[key];
 }
+
+/**
+ * Which settings target a write from the view must land in. The view renders
+ * the EFFECTIVE value of a setting, so it has to update the target that already
+ * defines it: a workspace value outranks a user one, and writing the user value
+ * underneath changes nothing the view can show — the control just snaps back,
+ * with nothing on screen to explain why. Not an exotic case: "Toggle Note
+ * Markers" writes a workspace value, and a repository may ship any of these in
+ * its own `.vscode/settings.json`.
+ *
+ * Folder values are not considered. Every Pacmon setting is `window`-scoped —
+ * what VS Code gives a property that declares no scope — and a window-scoped
+ * setting cannot be set per folder.
+ */
+export function writeScope(
+  inspected: { workspaceValue?: unknown } | undefined,
+): 'workspace' | 'global' {
+  return inspected?.workspaceValue === undefined ? 'global' : 'workspace';
+}

@@ -65,7 +65,7 @@ export const S = {
   viewOpenPackage: 'Open package.json',
   viewOpenPackageHelp: 'The manifest these notes describe.',
   viewSearch: 'Search dependencies…',
-  viewSearchHelp: 'Filter by name when the list below is long.',
+  viewSearchHelp: 'Every dependency in one list, documented or not — pick one to open its note.',
   viewGroupCoverage: 'Coverage',
   viewCoverageRatio: (documented: number, total: number) => `${documented} of ${total}`,
   viewCoverageEmpty: 'Open a package.json to see its dependencies here.',

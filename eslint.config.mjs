@@ -22,7 +22,7 @@ const nodeBuiltins = [
 ];
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'dist-test/**', 'node_modules/**', '.vscode-test/**', 'fixtures/**'] },
+  { ignores: ['dist/**', 'dist-test/**', 'node_modules/**', '.vscode-test/**', 'fixtures/**', 'tmp/**'] },
   ...tseslint.configs.recommended,
   {
     // Whole extension must stay web-compatible and offline:

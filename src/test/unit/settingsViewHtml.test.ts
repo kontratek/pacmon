@@ -63,6 +63,20 @@ describe('settings view html', () => {
     expect([...html.matchAll(/name="inlineSource"/g)]).toHaveLength(4);
   });
 
+  it('names every switch, and lets its words click it', () => {
+    const html = renderHtml();
+    for (const id of ALL_NOTE_BUTTONS) {
+      // The label around the track carries no text, so the name must be a
+      // label of its own — otherwise the switch has no accessible name.
+      expect(html, `switch ${id} needs an id`).toContain(`<input type="checkbox" id="btn-${id}"`);
+      expect(html, `switch ${id} needs its name as a label`).toContain(`<label class="name" for="btn-${id}">`);
+      expect(html, `switch ${id} needs its help as a description`).toContain(
+        `aria-describedby="btn-${id}-help"`,
+      );
+      expect(html, `switch ${id} needs the described element`).toContain(`id="btn-${id}-help"`);
+    }
+  });
+
   it('gives every action an inline icon, so nothing is loaded from disk', () => {
     const html = renderHtml();
     const buttons = [...html.matchAll(/<button[^>]*class="act"[\s\S]*?<\/button>/g)];

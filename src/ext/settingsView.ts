@@ -13,12 +13,15 @@ import {
 import { logError } from './log';
 import { defaultPackageJson } from './resolveNotesFile';
 import { resolveNotesFileFor } from './resolveNotesFile';
-import { choiceValues } from './settingChoices';
+import { choiceValues, writeScope } from './settingChoices';
 import { renderHtml } from './settingsViewHtml';
 import type { Store } from './state';
 import { S } from './strings';
 
 const VIEW_ID = 'pacmon.settings';
+
+/** The settings this view owns: what it writes, and what "Reset to Defaults" clears. */
+const VIEW_KEYS = ['noteButtons', 'noteEntry', 'decorations', 'inlineSource'] as const;
 
 interface Incoming {
   type: 'ready' | 'setButtons' | 'setChoice' | 'command';
@@ -137,10 +140,16 @@ export class SettingsView implements vscode.WebviewViewProvider, vscode.Disposab
     await vscode.window.showTextDocument(doc, { preserveFocus: true, preview: true });
   }
 
+  /** Where the value already lives, never blindly the user settings — see
+   *  `writeScope`. User settings otherwise, so a preference set here follows
+   *  you from project to project. */
   private async write(key: string, value: unknown): Promise<void> {
-    await vscode.workspace
-      .getConfiguration('pacmon')
-      .update(key, value, vscode.ConfigurationTarget.Global);
+    const cfg = vscode.workspace.getConfiguration('pacmon');
+    const target =
+      writeScope(cfg.inspect(key)) === 'workspace'
+        ? vscode.ConfigurationTarget.Workspace
+        : vscode.ConfigurationTarget.Global;
+    await cfg.update(key, value, target);
   }
 
   private async postState(): Promise<void> {
@@ -200,11 +209,19 @@ export class SettingsView implements vscode.WebviewViewProvider, vscode.Disposab
   }
 }
 
-/** View title action: drop every setting this view controls back to defaults. */
+/**
+ * View title action: drop every setting this view controls back to defaults —
+ * in BOTH targets. Clearing only the user value left whatever "Toggle Note
+ * Markers" had written to the workspace standing after a reset, which is the
+ * one thing a reset must not do.
+ */
 export async function resetView(): Promise<void> {
   const cfg = vscode.workspace.getConfiguration('pacmon');
-  for (const key of ['noteButtons', 'noteEntry', 'decorations', 'inlineSource']) {
+  // Writing workspace settings at all needs a folder open.
+  const inWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
+  for (const key of VIEW_KEYS) {
     await cfg.update(key, undefined, vscode.ConfigurationTarget.Global);
+    if (inWorkspace) await cfg.update(key, undefined, vscode.ConfigurationTarget.Workspace);
   }
 }
 

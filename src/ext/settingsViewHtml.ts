@@ -39,16 +39,23 @@ function preview(id: NoteButton): string {
   }
 }
 
+/**
+ * The switch and the words next to it are one control, so the words carry the
+ * `<label>`: the label around the track holds no text of its own, which left the
+ * checkbox with no accessible name at all and made the 30px track the only
+ * place you could click. The help line becomes its description.
+ */
 function toggleRow(id: NoteButton): string {
+  const box = `btn-${esc(id)}`;
   return `<div class="row">
       <label class="sw">
-        <input type="checkbox" data-button="${esc(id)}">
+        <input type="checkbox" id="${box}" data-button="${esc(id)}" aria-describedby="${box}-help">
         <span class="track"><span class="knob"></span></span>
       </label>
       <div class="body">
-        <div class="head"><span class="name">${esc(S.buttonLabel(id))}</span><span class="gesture">${esc(S.buttonGesture(id))}</span></div>
+        <div class="head"><label class="name" for="${box}">${esc(S.buttonLabel(id))}</label><span class="gesture">${esc(S.buttonGesture(id))}</span></div>
         ${preview(id)}
-        <p class="help">${esc(S.buttonHelp(id).replace(/`/g, ''))}</p>
+        <p class="help" id="${box}-help">${esc(S.buttonHelp(id).replace(/`/g, ''))}</p>
       </div>
     </div>`;
 }
@@ -117,7 +124,7 @@ export function renderHtml(): string {
   .row + .row { border-top: 1px solid var(--vscode-widget-border, rgba(128,128,128,.22)); }
   .body { min-width: 0; display: flex; flex-direction: column; gap: 5px; flex: 1; }
   .head { display: flex; align-items: baseline; gap: 8px; }
-  .name { font-weight: 600; }
+  .name { font-weight: 600; cursor: pointer; }
   .gesture {
     margin-left: auto; flex: none; font-size: 10.5px;
     padding: 1px 6px; border-radius: 9px; white-space: nowrap;

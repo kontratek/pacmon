@@ -60,8 +60,11 @@ import { S } from './strings';
  * rebound to a command, so it always opens a comment thread rather than the
  * note editor. It remains available as `pacmon.noteEntry: "comments"`.
  *
- * NOTE that everything except `lightbulb` marks dependencies with no note yet —
- * the one thing Pacmon otherwise never does. That is why these are switchable.
+ * NOTE that `iconLeft`, `codelens` and `inlayHint` mark dependencies with no
+ * note yet — the one thing Pacmon otherwise never does, and why these are
+ * switchable. `link` and `lightbulb` do not: a link is drawn over every
+ * dependency name alike and only its tooltip tells the two apart, and the bulb
+ * shows only on the line the cursor is on.
  */
 
 const SELECTOR: vscode.DocumentSelector = [

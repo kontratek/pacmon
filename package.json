@@ -224,7 +224,7 @@
             "iconLeft",
             "link"
           ],
-          "markdownDescription": "Clickable ways into a dependency's note from `package.json`. Toggle these in the **Pacmon** view in the activity bar. Set to `[]` to remove all of them — the right-click menu and the `Pacmon: Add/Edit Dependency Note` command always work. Note that everything except `lightbulb` marks dependencies that have no note yet, which is the one thing Pacmon otherwise never does."
+          "markdownDescription": "Clickable ways into a dependency's note from `package.json`. Toggle these in the **Pacmon** view in the activity bar. Set to `[]` to remove all of them — the right-click menu and the `Pacmon: Add/Edit Dependency Note` command always work. Note that `iconLeft`, `codelens` and `inlayHint` mark dependencies that have no note yet — the one thing Pacmon otherwise never does. `link` and `lightbulb` do not: a link is drawn over every dependency name alike and only its tooltip tells the two apart, and the bulb shows only on the line the cursor is on."
         },
         "pacmon.monorepo": {
           "type": "string",

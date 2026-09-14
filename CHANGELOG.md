@@ -7,6 +7,26 @@
 
 ## Unreleased
 
+- **Fix: a setting in the Pacmon view could be set and stay unset.** The view
+  shows each setting's effective value but wrote the user one, so a workspace
+  value on top of it swallowed the click and the control snapped back with
+  nothing to explain why — reachable through "Toggle Note Markers", which
+  writes the workspace on purpose, and through any repository that ships these
+  in its own `.vscode/settings.json`. Writes now land in the target that
+  already defines the value, user settings otherwise. "Reset to Defaults"
+  clears both, instead of leaving a workspace value standing after a reset.
+- Fix: every switch in the view now has a name. The label around the track held
+  no text, so a screen reader read an unnamed checkbox and the 30px track was
+  the only place you could click; the words beside it are the label now, and
+  the help line below is the description.
+- Fix: the "Search dependencies…" action said it filtered "the list below".
+  There is no list below — the view holds statistics, deliberately. It says
+  what the action opens instead.
+- Fix: `pacmon.noteButtons` claimed everything except `lightbulb` marks
+  dependencies that have no note yet. `link` does not: it is drawn over every
+  dependency name alike and only its tooltip tells the two apart — as the
+  option's own description already said.
+
 ## 0.2.0 — 2026-09-14
 
 - **A note being read now looks like a note, not like an empty box.** In the
