@@ -142,7 +142,7 @@ export function agentPreviewLine(agent: string): string {
  * The one-line preview shown at the end of a package.json line. Never parses
  * the human text beyond taking its first line.
  */
-export function notePreview(l: SectionLayers, source: InlineSource = 'human-first', maxLen = 48): string {
+export function notePreview(l: SectionLayers, source: InlineSource = 'human-first', maxLen = 90): string {
   const human = humanPreviewLine(l.human);
   const agent = agentPreviewLine(l.agent);
   let text: string;

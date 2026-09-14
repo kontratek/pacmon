@@ -164,8 +164,8 @@ describe('notePreview', () => {
   });
 
   it('truncates to exactly maxLen with an ellipsis and says "note" when empty', () => {
-    const long = notePreview({ human: 'x'.repeat(60), agent: '', generated: '' });
-    expect(long).toHaveLength(48);
+    const long = notePreview({ human: 'x'.repeat(120), agent: '', generated: '' });
+    expect(long).toHaveLength(90);
     expect(long.endsWith('…')).toBe(true);
     expect(notePreview({ human: '', agent: '', generated: '' })).toBe('note');
   });

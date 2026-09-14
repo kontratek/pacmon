@@ -26,6 +26,8 @@
   dependencies that have no note yet. `link` does not: it is drawn over every
   dependency name alike and only its tooltip tells the two apart — as the
   option's own description already said.
+- The preview at the end of a `package.json` line runs to 90 characters
+  instead of 48, so a first line of prose more often arrives whole.
 
 ## 0.2.0 — 2026-09-14
 
