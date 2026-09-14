@@ -1,0 +1,6 @@
+# Every checkout is LF, whatever core.autocrlf says on the machine doing it.
+# assets/AGENT-RULES.md ships as it stands and a unit test holds it to LF, so a
+# CRLF checkout — GitHub's Windows runner does that by default — fails CI.
+* text=auto eol=lf
+
+*.png binary
