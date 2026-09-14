@@ -13,6 +13,8 @@
   file and the agent layer, with two recordings, and names Open VSX next to the
   Marketplace. `CONTRIBUTING.md` and `SECURITY.md` say how to report a bug or
   a vulnerability; pull requests are not accepted yet.
+  The `npx pacmon` stub said "Dependency Docs" and pointed at the old
+  `.pacmon/DEPENDENCIES.md`; it says what the extension says now.
 - **Fix: a setting in the Pacmon view could be set and stay unset.** The view
   shows each setting's effective value but wrote the user one, so a workspace
   value on top of it swallowed the click and the control snapped back with
