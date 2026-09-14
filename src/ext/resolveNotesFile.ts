@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { AGENTS_REL_PATH, NOTES_REL_PATH } from '../core/template';
+import { AGENT_RULES_REL_PATH, NOTES_REL_PATH } from '../core/template';
 import { monorepoMode } from './config';
 
 const existsCache = new Map<string, boolean>();
@@ -37,10 +37,10 @@ export function packageJsonFor(notesUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(notesUri, '..', '..', 'package.json');
 }
 
-/** The one agent-instructions file of a workspace: `<root>/.pacmon/AGENTS.md`. */
-export function agentsMdUriFor(anyUri: vscode.Uri): vscode.Uri | undefined {
+/** The one agent-rules file of a workspace: `<root>/.pacmon/AGENT-RULES.md`. */
+export function agentRulesUriFor(anyUri: vscode.Uri): vscode.Uri | undefined {
   const folder = vscode.workspace.getWorkspaceFolder(anyUri) ?? vscode.workspace.workspaceFolders?.[0];
-  return folder ? vscode.Uri.joinPath(folder.uri, ...AGENTS_REL_PATH.split('/')) : undefined;
+  return folder ? vscode.Uri.joinPath(folder.uri, ...AGENT_RULES_REL_PATH.split('/')) : undefined;
 }
 
 /**

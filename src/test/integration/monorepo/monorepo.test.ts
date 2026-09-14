@@ -68,7 +68,7 @@ suite('pacmon monorepo', () => {
   suiteTeardown(async () => {
     await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
     try {
-      await vscode.workspace.fs.delete(at('.pacmon', 'AGENTS.md'));
+      await vscode.workspace.fs.delete(at('.pacmon', 'AGENT-RULES.md'));
     } catch {
       // not there
     }
@@ -127,9 +127,9 @@ suite('pacmon monorepo', () => {
       assert.ok(text.indexOf('## express') < text.indexOf('## react-fake'), 'sections stay sorted');
       assert.ok(!(await readText(rootNotes)).includes('react-fake'), 'the root notes must stay untouched');
 
-      const rules = await poll(async () => (await exists(at('.pacmon', 'AGENTS.md')) ? await readText(at('.pacmon', 'AGENTS.md')) : undefined));
-      assert.ok(rules.includes('### Agent notes'), 'AGENTS.md should be the generated rules');
-      assert.strictEqual(await exists(at('packages', 'app', '.pacmon', 'AGENTS.md')), false, 'AGENTS.md exists once, at the root');
+      const rules = await poll(async () => (await exists(at('.pacmon', 'AGENT-RULES.md')) ? await readText(at('.pacmon', 'AGENT-RULES.md')) : undefined));
+      assert.ok(rules.includes('### Agent notes'), 'AGENT-RULES.md should be the rules file');
+      assert.strictEqual(await exists(at('packages', 'app', '.pacmon', 'AGENT-RULES.md')), false, 'AGENT-RULES.md exists once, at the root');
     } finally {
       await vscode.workspace.fs.writeFile(appNotes, originalApp);
       await vscode.workspace.fs.writeFile(rootNotes, originalRoot);

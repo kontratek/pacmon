@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { agentsMdContent } from '../../core/agentsMd';
 import { findSection } from '../../core/parseNotes';
 import {
   composeSectionBody,
@@ -8,7 +7,8 @@ import {
   replaceSectionLayersInText,
 } from '../../core/serialize';
 import { newNotesFileContent } from '../../core/template';
-import { agentsMdUriFor, clearResolverCache, creationTargetFor, resolveNotesFileFor } from '../resolveNotesFile';
+import { agentRulesText } from '../agentRules';
+import { agentRulesUriFor, clearResolverCache, creationTargetFor, resolveNotesFileFor } from '../resolveNotesFile';
 import type { Store } from '../state';
 
 /** Write full text to the notes file. Through the open document only when it
@@ -32,15 +32,15 @@ export async function writeNotesText(notesUri: vscode.Uri, newText: string): Pro
 }
 
 /**
- * `.pacmon/AGENTS.md` at the workspace root: the rules agents read before they
- * write. Created alongside the first note; rewritten only when asked to
- * (`overwrite`), since the content is generated and never hand-edited.
+ * `.pacmon/AGENT-RULES.md` at the workspace root: the rules agents read before
+ * they write, a copy of the extension's own `assets/AGENT-RULES.md`. Created
+ * alongside the first note; rewritten only when asked to (`overwrite`).
  */
-export async function ensureAgentsMd(
+export async function ensureAgentRules(
   anchor: vscode.Uri,
   opts: { overwrite?: boolean } = {},
 ): Promise<vscode.Uri | undefined> {
-  const uri = agentsMdUriFor(anchor);
+  const uri = agentRulesUriFor(anchor);
   if (!uri) return undefined;
   if (!opts.overwrite) {
     try {
@@ -51,15 +51,15 @@ export async function ensureAgentsMd(
     }
   }
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
-  await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(agentsMdContent()));
+  await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(await agentRulesText()));
   return uri;
 }
 
 /** Every write into `.pacmon/` also makes sure the agent rules are there: a
- *  repository can arrive with a notes file but no AGENTS.md (written by hand,
+ *  repository can arrive with a notes file but no AGENT-RULES.md (written by hand,
  *  or cloned from a team that never ran the setup command). */
 async function settle(store: Store, notesUri: vscode.Uri): Promise<vscode.Uri> {
-  await ensureAgentsMd(notesUri);
+  await ensureAgentRules(notesUri);
   store.invalidate(notesUri);
   return notesUri;
 }

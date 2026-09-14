@@ -6,7 +6,7 @@ dist-test/
 *.vsix
 
 # Written by the extension during F5 and integration runs
-fixtures/**/.pacmon/AGENTS.md
+fixtures/**/.pacmon/AGENT-RULES.md
 
 # Format experiments and scratch — never part of the repository
 tmp/

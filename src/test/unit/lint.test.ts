@@ -4,7 +4,7 @@ import { parseNotes } from '../../core/parseNotes';
 import { insertSectionIntoText, replaceSectionBodyInText } from '../../core/serialize';
 
 const deps = ['express', '@scope/util', 'lodash'];
-const HEAD = ['---', 'format: deps-notes/1', '---', '', '# Dependencies', ''];
+const HEAD = ['---', 'format: pacmon/1', '---', '', '# Dependencies', ''];
 
 function of(text: string, kinds: readonly LintFinding['kind'][], names: readonly string[] = deps): LintFinding[] {
   return lintNotes(parseNotes(text), names).filter((f) => kinds.includes(f.kind));
@@ -34,16 +34,16 @@ describe('lintNotes — headings of dependencies', () => {
 describe('lintNotes — frontmatter and title', () => {
   it('reports missing frontmatter once, and an unknown format version', () => {
     expect(of('## express\nx', ['missingFrontmatter'])).toHaveLength(1);
-    expect(of('---\nformat: deps-notes/1\n---\n## express\nx', ['missingFrontmatter', 'unknownFormat'])).toEqual([]);
-    expect(of('---\nlang: en\nformat: deps-notes/2\n---\n# Dependencies\n', ['unknownFormat'])).toEqual([
-      { kind: 'unknownFormat', line: 2, version: 'deps-notes/2' },
+    expect(of('---\nformat: pacmon/1\n---\n## express\nx', ['missingFrontmatter', 'unknownFormat'])).toEqual([]);
+    expect(of('---\nlang: en\nformat: pacmon/2\n---\n# Dependencies\n', ['unknownFormat'])).toEqual([
+      { kind: 'unknownFormat', line: 2, version: 'pacmon/2' },
     ]);
   });
 
   it('wants exactly one title, worded "# Dependencies"', () => {
     expect(of(HEAD.join('\n'), ['missingTitle', 'wrongTitle', 'extraTitle'])).toEqual([]);
-    expect(of('---\nformat: deps-notes/1\n---\n\n## express\nx', ['missingTitle'])).toEqual([{ kind: 'missingTitle', line: 3 }]);
-    expect(of('---\nformat: deps-notes/1\n---\n\n# My Deps\n', ['wrongTitle'])).toEqual([{ kind: 'wrongTitle', line: 4, text: 'My Deps' }]);
+    expect(of('---\nformat: pacmon/1\n---\n\n## express\nx', ['missingTitle'])).toEqual([{ kind: 'missingTitle', line: 3 }]);
+    expect(of('---\nformat: pacmon/1\n---\n\n# My Deps\n', ['wrongTitle'])).toEqual([{ kind: 'wrongTitle', line: 4, text: 'My Deps' }]);
     expect(of([...HEAD, '## express', 'x', '', '# Second'].join('\n'), ['extraTitle'])).toEqual([{ kind: 'extraTitle', line: 9, text: 'Second' }]);
   });
 });

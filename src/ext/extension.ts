@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { AgentBlockLenses } from './agentBlockLenses';
+import { setExtensionRoot } from './agentRules';
 import { fixAgentNotes, registerFixProviders } from './codeActions';
 import { NoteComments } from './comments';
 import { NOTES_GLOB, isNotesFile, isPackageJson } from './config';
@@ -21,6 +22,7 @@ import { showCoverage } from './commands/coverage';
 import { normalizeNotesFile, openNotesFile, openPackageJson, toggleDecorations } from './commands/simple';
 
 export function activate(context: vscode.ExtensionContext): void {
+  setExtensionRoot(context.extensionUri);
   // activate() does no IO: providers are registered, state is built lazily
   // when a relevant editor first appears.
   logInfo(`Pacmon ${context.extension.packageJSON.version as string} activated (${vscode.env.appName})`);

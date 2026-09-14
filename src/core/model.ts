@@ -36,12 +36,10 @@ export interface NotesProblem {
 }
 
 export interface Frontmatter extends LineRange {
-  /** `format:` — the deps-notes format version this file was written for. */
+  /** `format:` — the format version this file was written for. */
   formatVersion?: string;
   /** `lang:` — language the values are written in (keys are always English). */
   lang?: string;
-  /** `agents:` — path to the agent instruction file, relative to the repo root. */
-  agents?: string;
 }
 
 export interface NotesFileModel {

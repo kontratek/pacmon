@@ -42,9 +42,9 @@ suite('pacmon integration', () => {
   });
 
   suiteTeardown(async () => {
-    // Every note write brings .pacmon/AGENTS.md along; keep the fixture clean.
+    // Every note write brings .pacmon/AGENT-RULES.md along; keep the fixture clean.
     try {
-      await vscode.workspace.fs.delete(fixtureUri('.pacmon', 'AGENTS.md'));
+      await vscode.workspace.fs.delete(fixtureUri('.pacmon', 'AGENT-RULES.md'));
     } catch {
       // not there
     }
@@ -628,11 +628,11 @@ suite('pacmon integration', () => {
     }
   });
 
-  test('the first note creates .pacmon/, the notes file and AGENTS.md', async function () {
+  test('the first note creates .pacmon/, the notes file and AGENT-RULES.md', async function () {
     this.timeout(30000);
     const dir = fixtureUri('.pacmon');
     const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
-    const agents = fixtureUri('.pacmon', 'AGENTS.md');
+    const agents = fixtureUri('.pacmon', 'AGENT-RULES.md');
     const original = await vscode.workspace.fs.readFile(notes);
     try {
       await vscode.commands.executeCommand('workbench.action.closeAllEditors');
@@ -653,7 +653,7 @@ suite('pacmon integration', () => {
         }
       });
       assert.ok(
-        text.startsWith('---\nformat: deps-notes/1\nlang: en\nagents: .pacmon/AGENTS.md\n---\n'),
+        text.startsWith('---\nformat: pacmon/1\nlang: en\n---\n'),
         `template missing, got: ${text.slice(0, 120)}`,
       );
       assert.ok(text.includes('## lodash\n\nfresh start'), 'section missing');
@@ -666,7 +666,7 @@ suite('pacmon integration', () => {
       });
       assert.ok(
         rules.includes('### Agent notes') && rules.includes('| `purpose:` |'),
-        'AGENTS.md should carry the rules and the field table',
+        'AGENT-RULES.md should carry the rules and the field table',
       );
     } finally {
       await vscode.workspace.fs.createDirectory(dir);
@@ -679,10 +679,10 @@ suite('pacmon integration', () => {
     }
   });
 
-  test('Set Up AI Instructions regenerates .pacmon/AGENTS.md and leaves a three-line pointer', async function () {
+  test('Set Up AI Instructions rewrites .pacmon/AGENT-RULES.md and leaves a three-line pointer', async function () {
     this.timeout(15000);
     const rootAgents = fixtureUri('AGENTS.md');
-    const rules = fixtureUri('.pacmon', 'AGENTS.md');
+    const rules = fixtureUri('.pacmon', 'AGENT-RULES.md');
     try {
       await vscode.commands.executeCommand('pacmon.setupAiInstructions', ['AGENTS.md']);
       const pointer = await poll(async () => {
@@ -692,12 +692,12 @@ suite('pacmon integration', () => {
           return undefined;
         }
       });
-      const m = /<!-- pacmon:deps-notes:start -->\n([\s\S]*?)<!-- pacmon:deps-notes:end -->/.exec(pointer);
+      const m = /<!-- pacmon:start -->\n([\s\S]*?)<!-- pacmon:end -->/.exec(pointer);
       assert.ok(m, `no marker block in AGENTS.md, got: ${pointer}`);
       assert.strictEqual(m[1]!.trim().split('\n').length, 3, 'the pointer is exactly three lines');
-      assert.ok(pointer.includes('.pacmon/AGENTS.md'), 'the pointer names the rules file');
+      assert.ok(pointer.includes('.pacmon/AGENT-RULES.md'), 'the pointer names the rules file');
       const generated = await readText(rules);
-      assert.ok(generated.includes('| `verified:` |'), '.pacmon/AGENTS.md should be the generated rules');
+      assert.ok(generated.includes('| `verified:` |'), '.pacmon/AGENT-RULES.md should be the rules file');
     } finally {
       for (const u of [rootAgents, rules]) {
         try {
@@ -712,7 +712,7 @@ suite('pacmon integration', () => {
   test('a human edit replaces only the human text — the agent block survives', async function () {
     this.timeout(15000);
     const notes = fixtureUri('.pacmon', 'DEPENDENCIES.md');
-    const agents = fixtureUri('.pacmon', 'AGENTS.md');
+    const agents = fixtureUri('.pacmon', 'AGENT-RULES.md');
     const original = await vscode.workspace.fs.readFile(notes);
     try {
       try {
@@ -747,7 +747,7 @@ suite('pacmon integration', () => {
           return undefined;
         }
       });
-      assert.ok(rules.includes('| `purpose:` |'), 'AGENTS.md should appear next to an existing notes file');
+      assert.ok(rules.includes('| `purpose:` |'), 'AGENT-RULES.md should appear next to an existing notes file');
     } finally {
       await vscode.workspace.fs.writeFile(notes, original);
       try {

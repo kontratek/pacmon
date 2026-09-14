@@ -2,6 +2,7 @@
 !dist/extension.js
 !dist/extension.web.js
 !media/**
+!assets/**
 !README.md
 !CHANGELOG.md
 !LICENSE

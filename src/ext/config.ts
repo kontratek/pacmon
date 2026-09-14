@@ -3,7 +3,7 @@ import { INLINE_SOURCES, type InlineSource } from '../core/layers';
 import { NOTES_DIR, NOTES_FILE_NAME, NOTES_REL_PATH } from '../core/template';
 import { DEFAULT_NOTE_BUTTONS, type NoteButton } from './noteButtonIds';
 
-export { AGENTS_REL_PATH, NOTES_REL_PATH } from '../core/template';
+export { AGENT_RULES_REL_PATH, NOTES_REL_PATH } from '../core/template';
 
 /** Where the notes live, wherever a package.json sits. The layout is part of
  *  the format, so it is not a setting. */

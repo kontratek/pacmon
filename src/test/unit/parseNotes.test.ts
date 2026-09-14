@@ -3,9 +3,8 @@ import { findSection, parseNotes, sectionBody } from '../../core/parseNotes';
 
 const sample = [
   '---',
-  'format: deps-notes/1',
+  'format: pacmon/1',
   'lang: en',
-  'agents: .pacmon/AGENTS.md',
   '---',
   '',
   '<!-- header -->',
@@ -32,19 +31,18 @@ const sample = [
 describe('parseNotes', () => {
   it('parses frontmatter keys, comment, title, intro and sections', () => {
     const m = parseNotes(sample);
-    expect(m.frontmatter?.formatVersion).toBe('deps-notes/1');
+    expect(m.frontmatter?.formatVersion).toBe('pacmon/1');
     expect(m.frontmatter?.lang).toBe('en');
-    expect(m.frontmatter?.agents).toBe('.pacmon/AGENTS.md');
     expect(m.aiComment).toBeDefined();
-    expect(m.titleLine).toBe(8);
-    expect(m.intro).toEqual({ startLine: 9, endLine: 11 });
+    expect(m.titleLine).toBe(7);
+    expect(m.intro).toEqual({ startLine: 8, endLine: 10 });
     expect(m.sections.map((s) => s.name)).toEqual(['express', '@scope/util']);
     expect(m.problems).toEqual([]);
   });
 
   it('keeps unknown frontmatter keys as lines and ignores empty values', () => {
-    const m = parseNotes('---\nformat: deps-notes/1\nextra: kept\nlang:\n---\n## a\nx');
-    expect(m.frontmatter?.formatVersion).toBe('deps-notes/1');
+    const m = parseNotes('---\nformat: pacmon/1\nextra: kept\nlang:\n---\n## a\nx');
+    expect(m.frontmatter?.formatVersion).toBe('pacmon/1');
     expect(m.frontmatter?.lang).toBeUndefined();
     expect(m.lines[2]).toBe('extra: kept');
   });
@@ -52,7 +50,7 @@ describe('parseNotes', () => {
   it('marks the agent-notes boundary and keeps the whole body available', () => {
     const m = parseNotes(sample);
     const express = findSection(m, 'express')!;
-    expect(express.agentHeadingLine).toBe(17);
+    expect(express.agentHeadingLine).toBe(16);
     expect(express.generatedHeadingLine).toBeUndefined();
     expect(sectionBody(m, express)).toBe(
       'HTTP API layer.\nDo not upgrade to v5.\n\n### Agent notes\n\n- purpose: HTTP framework\n- constraint: stay on ^4',

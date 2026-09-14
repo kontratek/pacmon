@@ -1,4 +1,4 @@
-import { AGENT_FIELDS, EXPOSURE_VALUES, RUNTIME_VALUES } from './agentsMd';
+import { AGENT_FIELDS, EXPOSURE_VALUES, RUNTIME_VALUES } from './vocabulary';
 import { AGENT_FIELD_RE, layerRanges } from './layers';
 import type { NoteSection, NotesFileModel } from './model';
 import { normalizeName } from './match';

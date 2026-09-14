@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { upsertAiInstructions } from '../../core/template';
-import { AGENTS_REL_PATH } from '../config';
+import { AGENT_RULES_REL_PATH } from '../config';
 import type { Store } from '../state';
 import { S } from '../strings';
-import { ensureAgentsMd } from './writeNote';
+import { ensureAgentRules } from './writeNote';
 
 const TARGETS = ['AGENTS.md', 'CLAUDE.md', '.cursor/rules/dependency-notes.md', '.github/copilot-instructions.md'];
 
@@ -12,10 +12,11 @@ interface TargetItem extends vscode.QuickPickItem {
 }
 
 /**
- * Two writes: `.pacmon/AGENTS.md` is regenerated (the rules and the field list,
- * owned by Pacmon), and the instruction files agents already read get a short
- * pointer to it between markers. `targetsArg` names those files without the
- * picker (tests, scripts); only the known ones are accepted.
+ * Two writes: `.pacmon/AGENT-RULES.md` is rewritten from the extension's copy
+ * (the rules and the field list, owned by Pacmon), and the instruction files
+ * agents already read get a short pointer to it between markers. `targetsArg`
+ * names those files without the picker (tests, scripts); only the known ones
+ * are accepted.
  */
 export async function setupAiInstructions(store: Store, targetsArg?: readonly string[]): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -42,8 +43,8 @@ export async function setupAiInstructions(store: Store, targetsArg?: readonly st
     targets = picked.map((p) => p.rel);
   }
 
-  await ensureAgentsMd(folder.uri, { overwrite: true });
-  const written: string[] = [AGENTS_REL_PATH];
+  await ensureAgentRules(folder.uri, { overwrite: true });
+  const written: string[] = [AGENT_RULES_REL_PATH];
   for (const rel of targets) {
     const parts = rel.split('/');
     const uri = vscode.Uri.joinPath(folder.uri, ...parts);

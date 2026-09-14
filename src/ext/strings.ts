@@ -1,4 +1,4 @@
-import { FORMAT_VERSION } from '../core/template';
+import { AGENT_RULES_REL_PATH, FORMAT_VERSION } from '../core/template';
 
 /** Centralized user-facing strings (EN). l10n-ready: swap this module later. */
 export const S = {
@@ -42,7 +42,7 @@ export const S = {
     'Why is this package here, and what must the next person know? Plain text — the first line shows next to the dependency.',
   panelAgentNotes: 'Agent notes',
   panelAgentHelp:
-    'Written by AI agents as "- key: value" lines (rules in .pacmon/AGENTS.md). Edit if you must; agents revise these as they work.',
+    `Written by AI agents as "- key: value" lines (rules in ${AGENT_RULES_REL_PATH}). Edit if you must; agents revise these as they work.`,
   panelAgentPlaceholder: '- purpose: …',
   panelOpenFile: 'Open notes file',
   panelSaving: 'Saving…',
@@ -76,7 +76,7 @@ export const S = {
   viewAiSetup: 'Set up AI instructions',
   viewOpenNotesHelp: 'The notes file for the package.json you are in.',
   viewFormatHelp: 'Sort sections and canonicalize headings. Prose untouched.',
-  viewAiSetupHelp: 'Generate .pacmon/AGENTS.md — the rules agents follow — and point AGENTS.md, CLAUDE.md and friends at it.',
+  viewAiSetupHelp: `Write ${AGENT_RULES_REL_PATH} — the rules agents follow — and point AGENTS.md, CLAUDE.md and friends at it.`,
   viewOtherEntry: (value: string) => `Currently set to "${value}" in your settings.`,
   viewNoteEntry: 'Note editor',
   viewMarkers: 'Note markers',
@@ -131,7 +131,7 @@ export const S = {
     }) as Record<string, string>)[`${key}:${value}`] ?? '',
   wrongHeadingLevel: (name: string) => `"${name}" is a dependency — write "## ${name}" so tools find this note.`,
   missingSpaceAfterHashes: (name: string) => `Missing space: write "## ${name}".`,
-  unknownAgentKey: (key: string) => `Unknown field "${key}:" — keep it as "note:" or remove it. Fields: .pacmon/AGENTS.md`,
+  unknownAgentKey: (key: string) => `Unknown field "${key}:" — keep it as "note:" or remove it. Fields: ${AGENT_RULES_REL_PATH}`,
   unknownAgentKeySuggest: (key: string, suggestion: string) => `Unknown field "${key}:" — did you mean "${suggestion}:"?`,
   emptyAgentValue: (key: string) => `"${key}:" is empty — remove the line.`,
   badAgentValue: (key: string, expected: string) => `"${key}:" expects ${expected}.`,

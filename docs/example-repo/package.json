@@ -1,0 +1,17 @@
+{
+  "name": "acme-web",
+  "version": "4.2.0",
+  "private": true,
+  "dependencies": {
+    "@acme/telemetry": "^1.8.2",
+    "core-js": "^3.42.0",
+    "express": "^4.19.2",
+    "lodash": "^4.17.21",
+    "react": "^19.1.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
