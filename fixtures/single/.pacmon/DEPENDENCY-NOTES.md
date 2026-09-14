@@ -186,12 +186,3 @@ Runtime validation at every trust boundary (HTTP bodies, env, config files).
 - exposure: untrusted-input
 - verified: 3.25.0
 
-## helmet
-
-Sets the security headers on every response.
-
-Mounted first in `src/server.ts`, before any route.
-
-```ts
-app.use(helmet())  // CSP, HSTS, X-Frame-Options, …
-```

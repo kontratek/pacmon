@@ -79,7 +79,8 @@ suite('pacmon integration', () => {
   test('hover on an undocumented dependency stays silent', async () => {
     const pkg = fixtureUri('package.json');
     const doc = await vscode.workspace.openTextDocument(pkg);
-    const offset = doc.getText().indexOf('"@scope/util"');
+    // helmet is in package.json and deliberately has no section in the fixture.
+    const offset = doc.getText().indexOf('"helmet"');
     const pos = doc.positionAt(offset + 2);
     const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
       'vscode.executeHoverProvider',
@@ -102,17 +103,23 @@ suite('pacmon integration', () => {
     const doc = await vscode.workspace.openTextDocument(notes);
     const editor = await vscode.window.showTextDocument(doc);
     // Force one real diagnostic so we know the refresh has run.
-    const line = doc.getText().split(/\r?\n/).findIndex((l) => l.startsWith('- verified: 4.18.0'));
+    const line = doc.getText().split(/\r?\n/).findIndex((l) => l.startsWith('- verified: 4.19.2'));
     assert.ok(line > 0, 'fixture changed: no express agent block');
-    await editor.edit((b) => b.insert(new vscode.Position(line, 0), '- dafdsf: fdsaf\n'));
+    await editor.edit((b) => {
+      b.insert(new vscode.Position(line, 0), '- dafdsf: fdsaf\n');
+      // A section that matches no dependency. The fixture has none of its own:
+      // it is the demo repository now, and moment — the one section not in
+      // package.json — is marked removed, which is the other case here.
+      b.insert(doc.lineAt(doc.lineCount - 1).range.end, '\n## ghost-package\n\nAn orphan, on purpose.\n');
+    });
     try {
       const mine = await poll(() => {
         const d = vscode.languages.getDiagnostics(notes).filter((x) => x.source === 'pacmon');
         return d.some((x) => x.code === 'unknown-agent-key') ? d : undefined;
       });
-      // ghost-package (a real orphan) and old-package (marked removed) are markers, not problems.
+      // ghost-package (a real orphan) and moment (marked removed) are markers, not problems.
       assert.deepStrictEqual(
-        mine.filter((d) => d.message.includes('ghost-package') || d.message.includes('old-package')).map((d) => d.message),
+        mine.filter((d) => d.message.includes('ghost-package') || d.message.includes('moment')).map((d) => d.message),
         [],
       );
       for (const d of mine) {
@@ -130,7 +137,7 @@ suite('pacmon integration', () => {
     const editor = await vscode.window.showTextDocument(doc);
     const lines = doc.getText().split(/\r?\n/);
     const humanLine = lines.findIndex((l) => l.startsWith('Do not upgrade to v5'));
-    const verifiedLine = lines.findIndex((l) => l.startsWith('- verified: 4.18.0'));
+    const verifiedLine = lines.findIndex((l) => l.startsWith('- verified: 4.19.2'));
     assert.ok(humanLine > 0 && verifiedLine > humanLine, 'fixture changed');
     await editor.edit((b) => {
       b.insert(new vscode.Position(humanLine, 0), '### Known quirks\n');
@@ -176,7 +183,7 @@ suite('pacmon integration', () => {
     const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const doc = await vscode.workspace.openTextDocument(notes);
     const editor = await vscode.window.showTextDocument(doc);
-    const line = doc.getText().split(/\r?\n/).findIndex((l) => l.startsWith('- verified: 4.18.0'));
+    const line = doc.getText().split(/\r?\n/).findIndex((l) => l.startsWith('- verified: 4.19.2'));
     assert.ok(line > 0, 'fixture changed: no express agent block');
     await editor.edit((b) =>
       b.insert(new vscode.Position(line, 0), '- dafdsf: fdsaf\n- contraint: stay on ^4\n'),
@@ -238,7 +245,9 @@ suite('pacmon integration', () => {
       const lens = (lenses ?? []).find((l) => l.command?.command === 'pacmon.fixAgentNotes');
       assert.ok(lens?.command, `no fix lens among: ${(lenses ?? []).map((l) => l.command?.title ?? '?').join(', ')}`);
       const fileLines = doc.getText().split(/\r?\n/);
-      const headingLine = fileLines.findIndex((l) => l === '### Agent notes');
+      // The block we edited, not the first one in the file: the fixture is a
+      // whole repository now, and most of its sections carry an agent block.
+      const headingLine = fileLines.lastIndexOf('### Agent notes', line);
       const blockEnd = fileLines.findIndex((l, i) => i > headingLine && l.startsWith('## '));
       assert.strictEqual(lens.range.start.line, headingLine, 'lens sits on the block heading');
       // The count is whatever the block holds right now — at least our two.
@@ -281,12 +290,18 @@ suite('pacmon integration', () => {
       const pdoc = await vscode.workspace.openTextDocument(pkg);
       await vscode.window.showTextDocument(pdoc);
 
-      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'vitest', 'why: unit test runner');
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'helmet', 'why: security headers');
 
       const text = new TextDecoder().decode(await vscode.workspace.fs.readFile(notes));
-      assert.ok(text.includes('## vitest'), 'section missing on disk');
-      assert.ok(text.includes('why: unit test runner'), 'body missing on disk');
-      assert.ok(text.indexOf('## vitest') > text.indexOf('## lodash'), 'vitest should sort after lodash');
+      assert.ok(text.includes('## helmet'), 'section missing on disk');
+      assert.ok(text.includes('why: security headers'), 'body missing on disk');
+      // helmet has no section in the fixture, so this writes a new one: it must
+      // land in order, between the two sections it belongs between.
+      assert.ok(
+        text.indexOf('## express') < text.indexOf('## helmet') &&
+          text.indexOf('## helmet') < text.indexOf('## lodash'),
+        'a new section should sort between express and lodash',
+      );
       assert.strictEqual(
         vscode.window.activeTextEditor?.document.uri.toString(),
         pkg.toString(),

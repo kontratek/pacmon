@@ -36,6 +36,13 @@
   option's own description already said.
 - The preview at the end of a `package.json` line runs to 90 characters
   instead of 48, so a first line of prose more often arrives whole.
+- The integration suite reads the demo fixture again. It still looked for a
+  package and a version the fixture stopped carrying, and hung two
+  assertions on the first agent block in the file rather than the one under
+  test. `helmet` is the one dependency the fixture leaves undocumented,
+  which is what the marks, the coverage view and two of these tests need;
+  its section had been written into the fixture while recording, and out of
+  order at that.
 
 ## 0.2.0 — 2026-09-14
 
