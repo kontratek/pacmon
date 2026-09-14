@@ -7,6 +7,18 @@
 
 ## Unreleased
 
+- **A note being read now looks like a note, not like an empty box.** In the
+  note panel a layer at rest is text on the page — no frame, no fill.
+  Hovering fills it the way VS Code fills a list row; the framed, filled box
+  appears only while you are writing in it. The two are otherwise one box:
+  the same floor however little the note says, and their text at the same x,
+  so clicking into a layer draws the frame around the words without moving
+  anything. Each layer carries a caption now — "Your
+  note", "Agent notes" — since the frame is no longer there to name it, and
+  "Your note" carries a small pen: the fill, the frame and the caret all wait
+  for the mouse, so the pen is the only cue that says the text can be written
+  in before you reach for it. It is drawn inline, because a webview under
+  default-src 'none' cannot load the codicon font.
 - **The mark replaces the pencil.** The glyph before a dependency name is now
   the Pacmon mark itself: filled when the dependency has a note, hollow when it
   does not. The state is carried by the shape rather than the colour, so it

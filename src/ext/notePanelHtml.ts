@@ -23,6 +23,11 @@ export function renderHtml(): string {
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body {
+    /* One height for both boxes of a layer: see the .view comment below.
+       Nine lines of the UI font, resolved here rather than as an em on each
+       box — the editor has a font size of its own, and 9em would come out
+       taller on the textarea than on the view it replaces. */
+    --note-min: calc(var(--vscode-font-size, 13px) * 9);
     margin: 0; padding: 12px 14px 18px;
     display: flex; flex-direction: column; gap: 10px;
     font-family: var(--vscode-font-family);
@@ -59,15 +64,38 @@ export function renderHtml(): string {
     outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px;
   }
 
-  /* A layer is either its rendered view or its editor, never both. Both are
-     the same box — same size at rest, so switching modes does not jump. */
+  /* Both layers get a quiet label over the text; the human one also gets the
+     pen, which is the one cue that does not wait for the mouse — the fill,
+     the frame and the caret all arrive too late to say the text can be
+     written in. The agent block needs none: its own summary line says who
+     writes there, and it is not where people are invited to type. */
+  .caption, summary {
+    font-size: .9em; font-weight: 600; color: var(--vscode-descriptionForeground);
+  }
+  .caption {
+    display: flex; align-items: center; gap: 6px; width: fit-content;
+    margin-bottom: 3px; cursor: pointer; user-select: none;
+  }
+  .pen { flex: none; opacity: .5; transition: opacity .12s ease; }
+  .layer:hover .pen, .layer:focus-within .pen { opacity: 1; }
+
+  /* A layer is either its rendered view or its editor, never both. At rest it
+     is text on the page — no frame, no fill; the frame belongs to writing.
+     The two boxes are otherwise one box: the same --note-min floor however
+     little the note says, and their text at the same x, so clicking into a
+     layer draws a frame around the words without moving anything. The
+     negative margin is what lets that frame sit outside the text column. */
   .view {
-    padding: 8px 9px; min-height: 9em; line-height: 1.5;
-    border: 1px solid var(--vscode-input-border, transparent); border-radius: 2px;
-    background: var(--vscode-input-background);
+    margin: 0 -9px; padding: 6px 8px; min-height: var(--note-min); line-height: 1.5;
+    border: 1px solid transparent; border-radius: 3px;
     cursor: text; overflow-wrap: anywhere;
   }
-  .view:hover, .view:focus-visible { border-color: var(--vscode-focusBorder); outline: none; }
+  .view:hover { background: var(--vscode-list-hoverBackground); }
+  .view:focus-visible {
+    outline: none;
+    background: var(--vscode-list-hoverBackground);
+    border-color: var(--vscode-focusBorder);
+  }
   .view.empty { color: var(--vscode-input-placeholderForeground); font-style: italic; }
   .view > :first-child { margin-top: 0; }
   .view > :last-child { margin-bottom: 0; }
@@ -89,9 +117,10 @@ export function renderHtml(): string {
   }
   .view img { display: none; }
   textarea {
-    display: block; width: 100%; min-height: 9em; max-height: 40vh;
+    display: block; width: calc(100% + 18px); margin: 0 -9px;
+    min-height: var(--note-min); max-height: 40vh;
     resize: none; overflow-y: auto;
-    padding: 8px 9px;
+    padding: 6px 8px;
     font-family: var(--vscode-editor-font-family);
     font-size: var(--vscode-editor-font-size);
     line-height: 1.5;
@@ -107,7 +136,6 @@ export function renderHtml(): string {
   summary {
     display: flex; align-items: center; gap: 7px;
     cursor: pointer; user-select: none; list-style: none;
-    font-size: .9em; font-weight: 600; color: var(--vscode-descriptionForeground);
   }
   summary::-webkit-details-marker { display: none; }
   summary::before {
@@ -152,16 +180,17 @@ export function renderHtml(): string {
   </header>
 
   <section class="layer">
-    <div class="view" id="humanView" tabindex="0" role="button"></div>
-    <textarea id="human" spellcheck="false" placeholder="${esc(S.panelPlaceholder)}" hidden></textarea>
+    <div class="caption"><span id="humanCaption">${esc(S.panelHumanNotes)}</span><svg class="pen" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false"><path fill="currentColor" d="M2 14l1.4-4.2 7.2-7.2a2 2 0 0 1 2.8 2.8l-7.2 7.2L2 14z"/></svg></div>
+    <div class="view" id="humanView" tabindex="0" role="button" aria-labelledby="humanCaption"></div>
+    <textarea id="human" spellcheck="false" aria-labelledby="humanCaption" placeholder="${esc(S.panelPlaceholder)}" hidden></textarea>
   </section>
 
   <details id="agentBox">
-    <summary>${esc(S.panelAgentNotes)}<span class="count" id="agentCount" hidden></span></summary>
+    <summary><span id="agentCaption">${esc(S.panelAgentNotes)}</span><span class="count" id="agentCount" hidden></span></summary>
     <p class="help">${esc(S.panelAgentHelp)}</p>
     <section class="layer" id="agentLayer">
-      <div class="view" id="agentView" tabindex="0" role="button"></div>
-      <textarea id="agent" spellcheck="false" placeholder="${esc(S.panelAgentPlaceholder)}" hidden></textarea>
+      <div class="view" id="agentView" tabindex="0" role="button" aria-labelledby="agentCaption"></div>
+      <textarea id="agent" spellcheck="false" aria-labelledby="agentCaption" placeholder="${esc(S.panelAgentPlaceholder)}" hidden></textarea>
     </section>
     <div class="problems" id="agentProblems" hidden>
       <span id="problemsText"></span>
@@ -317,6 +346,7 @@ export function renderHtml(): string {
   });
   window.addEventListener('pagehide', save);
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+  el('humanCaption').parentElement.addEventListener('click', () => edit('human'));
   el('openFile').addEventListener('click', () => vscode.postMessage({ type: 'openFile' }));
   fixBtn.addEventListener('click', () => post('fixAgent'));
 

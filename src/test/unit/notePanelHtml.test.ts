@@ -8,6 +8,14 @@ function scriptOf(html: string): string {
   return m![1]!;
 }
 
+/** The declarations of one CSS rule in the panel's <style> block. */
+function ruleOf(html: string, selector: string): string {
+  const at = html.indexOf(`\n  ${selector} {`);
+  expect(at, `panel css should have a "${selector}" rule`).toBeGreaterThan(-1);
+  const open = html.indexOf('{', at);
+  return html.slice(open + 1, html.indexOf('}', open));
+}
+
 describe('note panel html', () => {
   it('is offline by construction: locked-down CSP, no external references', () => {
     const html = renderHtml();
@@ -74,6 +82,35 @@ describe('note panel html', () => {
     expect(script).toContain("post('fixAgent')");
     expect(script).toMatch(/\{ type, key \}/);
     expect(script).toContain("m.type === 'problems'");
+  });
+
+  it('reads as text at rest — the frame and the fill belong to writing', () => {
+    const html = renderHtml();
+    // What this guards: a note being read looked like an empty input box.
+    const view = ruleOf(html, '.view');
+    expect(view).not.toContain('background:');
+    expect(view).toContain('border: 1px solid transparent');
+    // Still plainly live: hover fills it, keyboard focus draws the frame.
+    expect(ruleOf(html, '.view:hover')).toContain('background:');
+    expect(ruleOf(html, '.view:focus-visible')).toContain('focusBorder');
+    // Writing is the framed, filled box — the one place chrome is earned.
+    const box = ruleOf(html, 'textarea');
+    expect(box).toContain('input-background');
+    expect(box).toContain('focusBorder');
+    // Read and write are the same box: one floor, so neither mode is taller.
+    expect(ruleOf(html, 'body')).toContain('--note-min:');
+    expect(view).toContain('min-height: var(--note-min)');
+    expect(box).toContain('min-height: var(--note-min)');
+    // Each layer keeps a caption, since the frame no longer names it.
+    expect(html).toContain('id="humanCaption"');
+    expect(html).toContain('id="agentCaption"');
+    expect(html).toContain('aria-labelledby="humanCaption"');
+    expect(html).toContain('aria-labelledby="agentCaption"');
+    // One pen, on the human caption: the one cue that does not wait for the
+    // mouse. Drawn, not loaded — default-src 'none' puts codicons out of reach.
+    expect([...html.matchAll(/class="pen"/g)]).toHaveLength(1);
+    expect(html).toMatch(/<svg class="pen"[^>]*aria-hidden="true"/);
+    expect(ruleOf(html, '.pen')).toContain('opacity:');
   });
 
   it('never puts rendered markup into the page without the sanitizer', () => {

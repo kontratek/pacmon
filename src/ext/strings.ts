@@ -40,6 +40,7 @@ export const S = {
   panelTitle: (name: string) => (name ? `Note — ${name}` : 'Dependency Note'),
   panelPlaceholder:
     'Why is this package here, and what must the next person know? Plain text — the first line shows next to the dependency.',
+  panelHumanNotes: 'Your note',
   panelAgentNotes: 'Agent notes',
   panelAgentHelp:
     `Written by AI agents as "- key: value" lines (rules in ${AGENT_RULES_REL_PATH}). Edit if you must; agents revise these as they work.`,
