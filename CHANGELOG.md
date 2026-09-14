@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-09-14
+
 - **The extension says "Dependency Notes" everywhere now.** The display name,
   the activity bar view and the README said "Dependency Docs" while the file,
   the format and the title said notes. The README is rewritten around the notes
