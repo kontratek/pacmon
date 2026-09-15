@@ -9,6 +9,7 @@ import com.intellij.psi.util.PsiTreeUtil
 
 data class DependencyRef(
     val name: String,
+    val section: String,
     val property: JsonProperty,
 )
 
@@ -32,7 +33,7 @@ object DependencyPsi {
         val sectionProperty = sectionObject.parent as? JsonProperty ?: return null
         if (sectionProperty.name !in dependencySections) return null
         if (!isPackageJson(property.containingFile)) return null
-        return DependencyRef(property.name, property)
+        return DependencyRef(property.name, sectionProperty.name, property)
     }
 
     fun all(file: PsiFile): List<DependencyRef> {
@@ -41,7 +42,7 @@ object DependencyPsi {
         return root.propertyList.flatMap { section ->
             if (section.name !in dependencySections) return@flatMap emptyList()
             val value = section.value as? JsonObject ?: return@flatMap emptyList()
-            value.propertyList.map { DependencyRef(it.name, it) }
+            value.propertyList.map { DependencyRef(it.name, section.name, it) }
         }
     }
 

@@ -114,8 +114,8 @@ object NotesCore {
         return if (value.length > maxLength) value.take(maxLength - 1) + "…" else value
     }
 
-    fun newNotesFile(name: String, human: String): String {
-        val body = human.trim()
+    fun newNotesFile(name: String, human: String, agent: String = ""): String {
+        val body = composeLayers(human, agent)
         return buildString {
             append("---\nformat: dependency-notes/1\nlang: en\n---\n\n")
             append("<!-- Each \"## name\" below is a package from package.json. The text right under the\n")
@@ -142,14 +142,29 @@ object NotesCore {
         return splice(model, section.headingLine + 1, humanEnd, region)
     }
 
-    private fun insertSection(text: String, model: NotesFileModel, name: String, human: String): String {
+    private fun composeLayers(human: String, agent: String): String = buildString {
+        val humanText = human.trim()
+        val agentText = agent.trim()
+        if (humanText.isNotEmpty()) append(humanText)
+        if (agentText.isNotEmpty()) {
+            if (isNotEmpty()) append("\n\n")
+            append(AGENT_NOTES_HEADING).append("\n\n").append(agentText)
+        }
+    }
+
+    private fun cleanLines(value: String): List<String> {
+        val cleaned = value.trim()
+        return if (cleaned.isEmpty()) emptyList() else cleaned.split(Regex("\\r?\\n"))
+    }
+
+    private fun insertSection(text: String, model: NotesFileModel, name: String, bodyValue: String): String {
         val normalizedNames = model.sections.map { normalizeName(it.name) }
         val sorted = normalizedNames.zipWithNext().all { (left, right) -> left <= right }
         val key = normalizeName(name)
         val before = if (sorted) model.sections.firstOrNull { normalizeName(it.name) > key }?.headingLine else null
         val snippet = buildString {
             append("## ").append(name.trim()).append(model.eol).append(model.eol)
-            if (human.isNotBlank()) append(human.trim().replace(Regex("\\r?\\n"), model.eol)).append(model.eol)
+            if (bodyValue.isNotBlank()) append(bodyValue.trim().replace(Regex("\\r?\\n"), model.eol)).append(model.eol)
         }
         if (before == null) {
             val base = text.removeSuffix("\r\n").removeSuffix("\n")
@@ -158,14 +173,35 @@ object NotesCore {
         val prefix = model.lines.take(before).joinToString(model.eol) + if (before > 0) model.eol else ""
         val suffix = model.lines.drop(before).joinToString(model.eol)
         val separator = if (prefix.endsWith(model.eol + model.eol)) "" else model.eol
-        return prefix + separator + snippet + suffix
+        return (if (model.hadBom) "﻿" else "") + prefix + separator + snippet + suffix
+    }
+
+    /** Replaces the two editable layers while preserving the generated tail verbatim. */
+    fun upsertNoteLayers(text: String, name: String, human: String, agent: String): String {
+        val model = parse(text)
+        val section = findSection(model, name)
+        if (section == null) return insertSection(text, model, name, composeLayers(human, agent))
+
+        val editableEnd = section.generatedHeadingLine ?: section.bodyEnd
+        val region = mutableListOf("")
+        val humanLines = cleanLines(human)
+        val agentLines = cleanLines(agent)
+        if (humanLines.isNotEmpty()) region.addAll(humanLines)
+        if (agentLines.isNotEmpty()) {
+            if (region.lastOrNull()?.isNotEmpty() == true) region.add("")
+            region.add(AGENT_NOTES_HEADING)
+            region.add("")
+            region.addAll(agentLines)
+        }
+        if (editableEnd < section.bodyEnd && region.lastOrNull()?.isNotEmpty() == true) region.add("")
+        return splice(model, section.headingLine + 1, editableEnd, region)
     }
 
     private fun splice(model: NotesFileModel, from: Int, to: Int, region: List<String>): String {
         val rebuilt = model.lines.take(from) + region + model.lines.drop(to)
         var output = rebuilt.joinToString(model.eol)
         if (!output.endsWith(model.eol)) output += model.eol
-        return output
+        return (if (model.hadBom) "﻿" else "") + output
     }
 
     private fun slice(lines: List<String>, startValue: Int?, endValue: Int?): String {

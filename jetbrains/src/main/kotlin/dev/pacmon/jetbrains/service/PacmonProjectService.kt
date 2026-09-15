@@ -12,6 +12,7 @@ import com.intellij.openapi.components.StoragePathMacros
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.VfsUtilCore
@@ -31,6 +32,8 @@ class PacmonProjectService(private val project: Project) :
     data class Settings(
         var monorepoMode: String = "nearest",
         var inlineSource: String = "human-first",
+        var showIcons: Boolean = true,
+        var showPreviews: Boolean = true,
     )
 
     data class Note(
@@ -45,8 +48,15 @@ class PacmonProjectService(private val project: Project) :
         project.messageBus.connect(this).subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
             override fun after(events: List<VFileEvent>) {
                 if (events.none { isRelevantPath(it.path) }) return
+                val changedPacmonFiles = events.map { it.path.replace('\\', '/') }
+                    .filter { it.endsWith("/package.json") || it.endsWith("/${NotesCore.NOTES_RELATIVE_PATH}") }
+                    .toSet()
                 ApplicationManager.getApplication().invokeLater {
-                    if (!project.isDisposed) DaemonCodeAnalyzer.getInstance(project).restart()
+                    if (project.isDisposed) return@invokeLater
+                    DaemonCodeAnalyzer.getInstance(project).restart()
+                    if (changedPacmonFiles.isNotEmpty()) {
+                        project.messageBus.syncPublisher(PacmonNotesListener.TOPIC).notesChanged(changedPacmonFiles)
+                    }
                 }
             }
         })
@@ -70,6 +80,10 @@ class PacmonProjectService(private val project: Project) :
         "ai-only" -> InlineSource.AI_ONLY
         else -> InlineSource.HUMAN_FIRST
     }
+
+    fun iconsEnabled(): Boolean = settings.showIcons
+
+    fun previewsEnabled(): Boolean = settings.showPreviews
 
     fun noteFor(packageJson: VirtualFile, dependency: String): Note? {
         val notesFile = resolveNotesFile(packageJson) ?: return null
@@ -99,25 +113,30 @@ class PacmonProjectService(private val project: Project) :
 
     fun creationTargetDirectory(packageJson: VirtualFile): VirtualFile = packageJson.parent
 
-    fun saveHumanNote(packageJson: VirtualFile, dependency: String, human: String): VirtualFile {
+    fun saveNoteLayers(packageJson: VirtualFile, dependency: String, human: String, agent: String): VirtualFile {
         var result: VirtualFile? = null
         WriteCommandAction.runWriteCommandAction(project, "Update dependency note", null, {
             val existing = resolveNotesFile(packageJson)
             val notesFile = existing ?: createNotesFile(creationTargetDirectory(packageJson))
             val current = if (existing == null) "" else textOf(notesFile)
             val updated = if (existing == null || current.isBlank()) {
-                NotesCore.newNotesFile(dependency, human)
+                NotesCore.newNotesFile(dependency, human, agent)
             } else {
-                NotesCore.upsertHumanNote(current, dependency, human)
+                NotesCore.upsertNoteLayers(current, dependency, human, agent)
             }
             val document = FileDocumentManager.getInstance().getDocument(notesFile)
                 ?: error("Could not open the dependency notes file.")
-            document.setText(updated)
+            // IntelliJ documents always use LF internally. FileDocumentManager
+            // restores the file's detected separator (for example CRLF) when
+            // saving it back to disk.
+            document.setText(StringUtil.convertLineSeparators(updated))
             FileDocumentManager.getInstance().saveDocument(document)
+            ensureAgentRules()
             result = notesFile
         })
-        DaemonCodeAnalyzer.getInstance(project).restart()
-        return checkNotNull(result)
+        val saved = checkNotNull(result)
+        notifyNotesChanged(saved.path)
+        return saved
     }
 
     fun open(file: VirtualFile) {
@@ -129,6 +148,31 @@ class PacmonProjectService(private val project: Project) :
             ?: packageDirectory.createChildDirectory(this, NotesCore.NOTES_DIRECTORY)
         return notesDirectory.findChild(NotesCore.NOTES_FILE_NAME)
             ?: notesDirectory.createChildData(this, NotesCore.NOTES_FILE_NAME)
+    }
+
+    private fun ensureAgentRules() {
+        val root = project.basePath
+            ?.replace('\\', '/')
+            ?.let { LocalFileSystem.getInstance().findFileByPath(it) }
+            ?: return
+        val notesDirectory = root.findChild(NotesCore.NOTES_DIRECTORY)
+            ?: root.createChildDirectory(this, NotesCore.NOTES_DIRECTORY)
+        if (notesDirectory.findChild("AGENT-RULES.md") != null) return
+        val rules = javaClass.getResourceAsStream("/pacmon/AGENT-RULES.md")
+            ?.bufferedReader(Charsets.UTF_8)
+            ?.use { it.readText() }
+            ?: error("Bundled AGENT-RULES.md is missing.")
+        val file = notesDirectory.createChildData(this, "AGENT-RULES.md")
+        val document = FileDocumentManager.getInstance().getDocument(file)
+            ?: error("Could not create AGENT-RULES.md.")
+        document.setText(rules.replace("\r\n", "\n"))
+        FileDocumentManager.getInstance().saveDocument(document)
+    }
+
+    private fun notifyNotesChanged(path: String) {
+        DaemonCodeAnalyzer.getInstance(project).restart()
+        project.messageBus.syncPublisher(PacmonNotesListener.TOPIC)
+            .notesChanged(setOf(path.replace('\\', '/')))
     }
 
     private fun notesIn(directory: VirtualFile): VirtualFile? =

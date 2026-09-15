@@ -92,4 +92,30 @@ class NotesCoreTest {
         assertTrue(created.startsWith("---\nformat: dependency-notes/1\nlang: en\n---"))
         assertTrue(created.contains("\n## vue\n\nFrontend framework\n"))
     }
+
+    @Test
+    fun `updates human and agent layers and preserves generated content`() {
+        val original = "## alpha\n\nold\n\n### Agent notes\n\n- purpose: old\n\n### Generated\n- installed: 1\n"
+        val updated = NotesCore.upsertNoteLayers(original, "alpha", "new human", "- purpose: new\n- runtime: server")
+        assertEquals(
+            "## alpha\n\nnew human\n\n### Agent notes\n\n- purpose: new\n- runtime: server\n\n### Generated\n- installed: 1\n",
+            updated,
+        )
+    }
+
+    @Test
+    fun `two layer update preserves bom and crlf`() {
+        val original = "\uFEFF## alpha\r\n\r\nold\r\n\r\n### Generated\r\n- installed: 1\r\n"
+        val updated = NotesCore.upsertNoteLayers(original, "alpha", "human", "- purpose: p")
+        assertEquals(
+            "\uFEFF## alpha\r\n\r\nhuman\r\n\r\n### Agent notes\r\n\r\n- purpose: p\r\n\r\n### Generated\r\n- installed: 1\r\n",
+            updated,
+        )
+    }
+
+    @Test
+    fun `creates a canonical file with both editable layers`() {
+        val created = NotesCore.newNotesFile("vue", "Frontend", "- purpose: UI\n- runtime: client")
+        assertTrue(created.contains("## vue\n\nFrontend\n\n### Agent notes\n\n- purpose: UI\n- runtime: client\n"))
+    }
 }

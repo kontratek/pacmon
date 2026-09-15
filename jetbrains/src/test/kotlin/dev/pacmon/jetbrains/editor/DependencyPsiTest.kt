@@ -44,4 +44,10 @@ class DependencyPsiTest : BasePlatformTestCase() {
         val file = myFixture.configureByText("config.json", """{ "dependencies": { "vue": "^3" } }""")
         assertEmpty(DependencyPsi.all(file))
     }
+
+    fun testUsesDifferentIconsForDocumentedAndUndocumentedDependencies() {
+        assertSame(PacmonIcons.Documented, PacmonIcons.forNote(true))
+        assertSame(PacmonIcons.Undocumented, PacmonIcons.forNote(false))
+        assertNotSame(PacmonIcons.Documented, PacmonIcons.Undocumented)
+    }
 }

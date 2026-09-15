@@ -17,12 +17,20 @@
             id="dev.pacmon.jetbrains.settings"
             displayName="Pacmon"
             instance="dev.pacmon.jetbrains.settings.PacmonConfigurable"/>
-        <codeInsight.lineMarkerProvider
+        <codeInsight.inlayProvider
             language="JSON"
-            implementationClass="dev.pacmon.jetbrains.editor.PacmonLineMarkerProvider"/>
+            id="PacmonDependencyIcons"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
+        <editor.linePainter
+            implementation="dev.pacmon.jetbrains.editor.PacmonLinePainter"/>
         <lang.documentationProvider
             language="JSON"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>
+        <toolWindow
+            id="Pacmon"
+            anchor="right"
+            icon="/icons/pacmon.svg"
+            factoryClass="dev.pacmon.jetbrains.ui.PacmonToolWindowFactory"/>
     </extensions>
 
     <actions>

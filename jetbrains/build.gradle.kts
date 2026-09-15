@@ -15,6 +15,7 @@ dependencies {
         bundledModule("com.intellij.modules.json")
         testFramework(TestFrameworkType.Platform)
     }
+    implementation("org.commonmark:commonmark:0.24.0")
     testImplementation("junit:junit:4.13.2")
 }
 
@@ -40,4 +41,10 @@ intellijPlatform {
 
 tasks.test {
     useJUnit()
+}
+
+tasks.processResources {
+    from("../assets/AGENT-RULES.md") {
+        into("pacmon")
+    }
 }
