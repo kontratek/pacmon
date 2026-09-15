@@ -4,13 +4,26 @@ object NotesCore {
     const val NOTES_DIRECTORY = ".pacmon"
     const val NOTES_FILE_NAME = "DEPENDENCY-NOTES.md"
     const val NOTES_RELATIVE_PATH = "$NOTES_DIRECTORY/$NOTES_FILE_NAME"
+    const val AGENT_RULES_FILE_NAME = "AGENT-RULES.md"
+    const val AGENT_RULES_RELATIVE_PATH = "$NOTES_DIRECTORY/$AGENT_RULES_FILE_NAME"
     const val AGENT_NOTES_HEADING = "### Agent notes"
     const val GENERATED_HEADING = "### Generated"
+    const val FORMAT_VERSION = "dependency-notes/1"
+    const val DEFAULT_TITLE = "# Dependency Notes"
+    internal const val TITLE_TEXT = "Dependency Notes"
 
     private val heading = Regex("^##(?!#)\\s+(.+?)\\s*$")
     private val subheading = Regex("^###(?!#)\\s+(.+?)\\s*$")
     private val fence = Regex("^\\s{0,3}(`{3,}|~{3,})")
     private val agentField = Regex("^\\s*[-*]\\s+([a-z][a-z0-9_-]*)\\s*:\\s*(.*)$", RegexOption.IGNORE_CASE)
+    private val frontmatterKv = Regex("^([A-Za-z][\\w-]*):\\s*(.*?)\\s*$")
+    private val titlePattern = Regex("^#(?!#)\\s+")
+
+    val AI_FORMAT_COMMENT_LINES = listOf(
+        "<!-- Each \"## name\" below is a package from package.json. The text right under the",
+        "  heading is written by people. \"$AGENT_NOTES_HEADING\" and everything below it is written",
+        "  by AI agents — rules in $AGENT_RULES_RELATIVE_PATH. -->",
+    )
 
     fun normalizeName(raw: String): String {
         var value = raw.trim()
@@ -29,33 +42,109 @@ object NotesCore {
         if (hadBom) text = text.substring(1)
         val eol = if (text.contains("\r\n")) "\r\n" else "\n"
         val lines = text.split(Regex("\\r\\n|\\n"))
-        val sections = mutableListOf<NoteSection>()
-        var current: NoteSection? = null
-        var inFence = false
 
-        lines.forEachIndexed { lineNumber, line ->
+        var i = 0
+
+        // --- Frontmatter (only if the file starts with ---) ---
+        var frontmatter: Frontmatter? = null
+        if (lines.getOrNull(0) == "---") {
+            for (j in 1 until lines.size) {
+                if (lines[j] == "---") {
+                    var formatVersion: String? = null
+                    var lang: String? = null
+                    for (k in 1 until j) {
+                        val kv = frontmatterKv.matchEntire(lines[k]) ?: continue
+                        val value = kv.groupValues[2]
+                        if (value.isEmpty()) continue
+                        when (kv.groupValues[1]) {
+                            "format" -> formatVersion = value
+                            "lang" -> lang = value
+                        }
+                    }
+                    frontmatter = Frontmatter(0, j, formatVersion, lang)
+                    i = j + 1
+                    break
+                }
+            }
+        }
+
+        fun skipBlanks() {
+            while (i < lines.size && lines[i].isBlank()) i++
+        }
+
+        // --- Leading AI/format comment (first HTML comment before any content) ---
+        skipBlanks()
+        var aiComment: LineRange? = null
+        if (i < lines.size && lines[i].trimStart().startsWith("<!--")) {
+            val start = i
+            while (i < lines.size && !lines[i].contains("-->")) i++
+            if (i < lines.size) {
+                aiComment = LineRange(start, i)
+                i++
+            } else {
+                i = start
+            }
+        }
+
+        // --- Title (# Heading) ---
+        skipBlanks()
+        var titleLine: Int? = null
+        if (i < lines.size && titlePattern.containsMatchIn(lines[i])) {
+            titleLine = i
+            i++
+        }
+
+        // --- Intro + sections (with fenced-code awareness) ---
+        val introStart = i
+        var firstHeading = -1
+        var inFence = false
+        var current: NoteSection? = null
+        val sections = mutableListOf<NoteSection>()
+
+        while (i < lines.size) {
+            val line = lines[i]
             if (fence.containsMatchIn(line)) {
                 inFence = !inFence
-                return@forEachIndexed
+                i++
+                continue
             }
-            if (inFence) return@forEachIndexed
+            if (inFence) {
+                i++
+                continue
+            }
 
             if (current != null) {
                 val sub = subheading.matchEntire(line)?.groupValues?.get(1)?.trim()?.lowercase()
-                if (sub == "agent notes" && current?.agentHeadingLine == null && current?.generatedHeadingLine == null) {
-                    current?.agentHeadingLine = lineNumber
-                    return@forEachIndexed
+                if (sub == "agent notes") {
+                    if (current.agentHeadingLine == null && current.generatedHeadingLine == null) {
+                        current.agentHeadingLine = i
+                    }
+                    i++
+                    continue
                 }
-                if (sub == "generated" && current?.generatedHeadingLine == null) {
-                    current?.generatedHeadingLine = lineNumber
-                    return@forEachIndexed
+                if (sub == "generated") {
+                    if (current.generatedHeadingLine == null) current.generatedHeadingLine = i
+                    i++
+                    continue
                 }
             }
 
-            val name = heading.matchEntire(line)?.groupValues?.get(1) ?: return@forEachIndexed
-            current?.bodyEnd = lineNumber
-            current = NoteSection(name, lineNumber, lineNumber + 1, lines.size)
-            sections.add(current!!)
+            val name = heading.matchEntire(line)?.groupValues?.get(1)
+            if (name == null) {
+                i++
+                continue
+            }
+            if (firstHeading == -1) firstHeading = i
+            current?.bodyEnd = i
+            current = NoteSection(name, i, i + 1, lines.size)
+            sections.add(current)
+            i++
+        }
+
+        val intro = when {
+            firstHeading > introStart -> LineRange(introStart, firstHeading - 1)
+            firstHeading == -1 && introStart < lines.size -> LineRange(introStart, lines.size - 1)
+            else -> null
         }
 
         val firstByName = mutableMapOf<String, NoteSection>()
@@ -67,7 +156,7 @@ object NotesCore {
             else problems.add(NotesProblem(section.name, section.headingLine, first.headingLine))
         }
 
-        return NotesFileModel(eol, hadBom, lines, sections, problems)
+        return NotesFileModel(eol, hadBom, lines, frontmatter, aiComment, titleLine, intro, sections, problems)
     }
 
     fun findSection(model: NotesFileModel, name: String): NoteSection? {
@@ -142,6 +231,27 @@ object NotesCore {
         return splice(model, section.headingLine + 1, humanEnd, region)
     }
 
+    /** Replaces the two editable layers while preserving the generated tail verbatim. */
+    fun upsertNoteLayers(text: String, name: String, human: String, agent: String): String {
+        val model = parse(text)
+        val section = findSection(model, name)
+        if (section == null) return insertSection(text, model, name, composeLayers(human, agent))
+
+        val editableEnd = section.generatedHeadingLine ?: section.bodyEnd
+        val region = mutableListOf("")
+        val humanLines = cleanLines(human)
+        val agentLines = cleanLines(agent)
+        if (humanLines.isNotEmpty()) region.addAll(humanLines)
+        if (agentLines.isNotEmpty()) {
+            if (region.lastOrNull()?.isNotEmpty() == true) region.add("")
+            region.add(AGENT_NOTES_HEADING)
+            region.add("")
+            region.addAll(agentLines)
+        }
+        if (editableEnd < section.bodyEnd && region.lastOrNull()?.isNotEmpty() == true) region.add("")
+        return splice(model, section.headingLine + 1, editableEnd, region)
+    }
+
     private fun composeLayers(human: String, agent: String): String = buildString {
         val humanText = human.trim()
         val agentText = agent.trim()
@@ -173,35 +283,14 @@ object NotesCore {
         val prefix = model.lines.take(before).joinToString(model.eol) + if (before > 0) model.eol else ""
         val suffix = model.lines.drop(before).joinToString(model.eol)
         val separator = if (prefix.endsWith(model.eol + model.eol)) "" else model.eol
-        return (if (model.hadBom) "﻿" else "") + prefix + separator + snippet + suffix
-    }
-
-    /** Replaces the two editable layers while preserving the generated tail verbatim. */
-    fun upsertNoteLayers(text: String, name: String, human: String, agent: String): String {
-        val model = parse(text)
-        val section = findSection(model, name)
-        if (section == null) return insertSection(text, model, name, composeLayers(human, agent))
-
-        val editableEnd = section.generatedHeadingLine ?: section.bodyEnd
-        val region = mutableListOf("")
-        val humanLines = cleanLines(human)
-        val agentLines = cleanLines(agent)
-        if (humanLines.isNotEmpty()) region.addAll(humanLines)
-        if (agentLines.isNotEmpty()) {
-            if (region.lastOrNull()?.isNotEmpty() == true) region.add("")
-            region.add(AGENT_NOTES_HEADING)
-            region.add("")
-            region.addAll(agentLines)
-        }
-        if (editableEnd < section.bodyEnd && region.lastOrNull()?.isNotEmpty() == true) region.add("")
-        return splice(model, section.headingLine + 1, editableEnd, region)
+        return (if (model.hadBom) "\uFEFF" else "") + prefix + separator + snippet + suffix
     }
 
     private fun splice(model: NotesFileModel, from: Int, to: Int, region: List<String>): String {
         val rebuilt = model.lines.take(from) + region + model.lines.drop(to)
         var output = rebuilt.joinToString(model.eol)
         if (!output.endsWith(model.eol)) output += model.eol
-        return (if (model.hadBom) "﻿" else "") + output
+        return (if (model.hadBom) "\uFEFF" else "") + output
     }
 
     private fun slice(lines: List<String>, startValue: Int?, endValue: Int?): String {
@@ -211,5 +300,65 @@ object NotesCore {
         while (start < end && lines[start].isBlank()) start++
         while (end > start && lines[end - 1].isBlank()) end--
         return lines.subList(start, end).joinToString("\n")
+    }
+
+    /**
+     * Canonical form: frontmatter (format keys guaranteed), the format-owned
+     * header comment, title, intro (if present), sections sorted by name with
+     * canonical `## name` headings, one blank line between blocks, a single
+     * trailing newline. Section bodies are kept verbatim (outer blank lines
+     * trimmed). Duplicate sections are kept, in their relative order.
+     */
+    fun serialize(model: NotesFileModel): String {
+        val out = mutableListOf<String>()
+        out.addAll(frontmatterLines(model))
+        out.add("")
+        out.addAll(AI_FORMAT_COMMENT_LINES)
+        out.add("")
+        out.add(DEFAULT_TITLE)
+
+        if (model.intro != null) {
+            val intro = trimmedLines(model.lines, model.intro.startLine, model.intro.endLine + 1)
+            if (intro.isNotEmpty()) {
+                out.add("")
+                out.addAll(intro)
+            }
+        }
+
+        val sorted = model.sections
+            .sortedWith(compareBy<NoteSection> { normalizeName(it.name) }.thenBy { it.headingLine })
+        for (section in sorted) {
+            out.add("")
+            out.add("## ${section.name.trim()}")
+            val body = trimmedLines(model.lines, section.bodyStart, section.bodyEnd)
+            if (body.isNotEmpty()) {
+                out.add("")
+                out.addAll(body)
+            }
+        }
+
+        return (if (model.hadBom) "﻿" else "") + out.joinToString(model.eol) + model.eol
+    }
+
+    /** Parse + serialize convenience: rewrites [text] into canonical form. */
+    fun normalizeText(text: String): String = serialize(parse(text))
+
+    private fun frontmatterLines(model: NotesFileModel): List<String> {
+        val frontmatter = model.frontmatter ?: return listOf("---", "format: $FORMAT_VERSION", "lang: en", "---")
+        val inner = model.lines.subList(frontmatter.startLine + 1, frontmatter.endLine)
+        val present = inner.mapNotNull { Regex("^([A-Za-z][\\w-]*):").find(it)?.groupValues?.get(1) }.toSet()
+        val missing = buildList {
+            if ("format" !in present) add("format: $FORMAT_VERSION")
+            if ("lang" !in present) add("lang: en")
+        }
+        return listOf("---") + inner + missing + listOf("---")
+    }
+
+    private fun trimmedLines(lines: List<String>, startValue: Int, endValue: Int): List<String> {
+        var start = startValue
+        var end = endValue
+        while (start < end && lines[start].isBlank()) start++
+        while (end > start && lines[end - 1].isBlank()) end--
+        return lines.subList(start, end)
     }
 }

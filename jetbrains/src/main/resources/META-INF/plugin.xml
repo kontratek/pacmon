@@ -23,6 +23,8 @@
             implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
         <editor.linePainter
             implementation="dev.pacmon.jetbrains.editor.PacmonLinePainter"/>
+        <editorFactoryListener
+            implementation="dev.pacmon.jetbrains.editor.PacmonNotesAnnotator"/>
         <lang.documentationProvider
             language="JSON"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>

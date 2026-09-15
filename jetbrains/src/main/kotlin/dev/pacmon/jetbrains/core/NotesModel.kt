@@ -15,12 +15,36 @@ data class NotesProblem(
     val firstLine: Int,
 )
 
+/** Inclusive-inclusive, 0-based, like the TypeScript core's `LineRange`. */
+data class LineRange(
+    val startLine: Int,
+    val endLine: Int,
+)
+
+data class Frontmatter(
+    val startLine: Int,
+    val endLine: Int,
+    val formatVersion: String? = null,
+    val lang: String? = null,
+)
+
 data class NotesFileModel(
     val eol: String,
     val hadBom: Boolean,
     val lines: List<String>,
+    val frontmatter: Frontmatter? = null,
+    val aiComment: LineRange? = null,
+    val titleLine: Int? = null,
+    /** Free text between the header block and the first section; may be empty. */
+    val intro: LineRange? = null,
     val sections: List<NoteSection>,
     val problems: List<NotesProblem>,
+)
+
+/** Columns [start, end) within a finding's line: the key, or the value at fault. */
+data class Span(
+    val start: Int,
+    val end: Int,
 )
 
 data class SectionLayers(
