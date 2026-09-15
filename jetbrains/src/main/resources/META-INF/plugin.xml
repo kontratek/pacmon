@@ -1,0 +1,76 @@
+<idea-plugin>
+    <id>dev.pacmon.jetbrains</id>
+    <name>Pacmon - Dependency Notes</name>
+    <vendor url="https://pacmon.dev">Kontra</vendor>
+
+    <description><![CDATA[
+        <p>Shows why each dependency exists directly in <code>package.json</code>.</p>
+        <p>Notes stay in <code>.pacmon/DEPENDENCY-NOTES.md</code> and travel with the repository.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.json</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <projectConfigurable
+            parentId="tools"
+            id="dev.pacmon.jetbrains.settings"
+            displayName="Pacmon"
+            instance="dev.pacmon.jetbrains.settings.PacmonConfigurable"/>
+        <codeInsight.inlayProvider
+            language="JSON"
+            id="PacmonDependencyIcons"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
+        <editor.linePainter
+            implementation="dev.pacmon.jetbrains.editor.PacmonLinePainter"/>
+        <editorFactoryListener
+            implementation="dev.pacmon.jetbrains.editor.PacmonNotesAnnotator"/>
+        <lang.documentationProvider
+            language="JSON"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>
+        <toolWindow
+            id="Pacmon"
+            anchor="right"
+            icon="/icons/pacmon.svg"
+            factoryClass="dev.pacmon.jetbrains.ui.PacmonToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <action
+            id="Pacmon.AddOrEditNote"
+            class="dev.pacmon.jetbrains.action.AddOrEditNoteAction"
+            text="Add/Edit Dependency Note"
+            description="Add or edit the Pacmon note for this dependency"
+            icon="/icons/pacmon.svg">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
+        <action
+            id="Pacmon.OpenNotesFile"
+            class="dev.pacmon.jetbrains.action.OpenNotesFileAction"
+            text="Open DEPENDENCY-NOTES.md"
+            description="Open the Pacmon dependency notes file">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action
+            id="Pacmon.ShowCoverage"
+            class="dev.pacmon.jetbrains.action.ShowCoverageAction"
+            text="Documentation Coverage"
+            description="Show dependency note coverage">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action
+            id="Pacmon.SetupAiInstructions"
+            class="dev.pacmon.jetbrains.action.SetupAiInstructionsAction"
+            text="Set Up AI Instructions"
+            description="Write .pacmon/AGENT-RULES.md and point AGENTS.md, CLAUDE.md and similar files to it">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action
+            id="Pacmon.NormalizeNotesFile"
+            class="dev.pacmon.jetbrains.action.NormalizeNotesFileAction"
+            text="Format DEPENDENCY-NOTES.md"
+            description="Rewrite the dependency notes file into canonical form">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

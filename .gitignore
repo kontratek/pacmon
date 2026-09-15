@@ -4,6 +4,12 @@ dist-test/
 .vscode-test/
 .vscode-test-web/
 *.vsix
+jetbrains/.gradle/
+jetbrains/.intellijPlatform/
+jetbrains/.kotlin/
+jetbrains/build/
+jetbrains/.idea/
+jetbrains/out/
 
 # Written by the extension during F5 and integration runs
 fixtures/**/.pacmon/AGENT-RULES.md
