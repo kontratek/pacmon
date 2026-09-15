@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.3.1 — 2026-09-15
+
 - The README shows the notes file being written by hand. The two recordings
   showed the note panel and an agent, and neither showed the file, which left
   the README's own claim — every note in one Markdown file you edit like any
