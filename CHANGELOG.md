@@ -12,7 +12,7 @@
 - **The extension says "Dependency Notes" everywhere now.** The display name,
   the activity bar view and the README said "Dependency Docs" while the file,
   the format and the title said notes. The README is rewritten around the notes
-  file and the agent layer, with two recordings, and names Open VSX next to the
+  file and the agent layer, with three recordings, and names Open VSX next to
   Marketplace. `CONTRIBUTING.md` and `SECURITY.md` say how to report a bug or
   a vulnerability; pull requests are not accepted yet.
   The `npx pacmon` stub said "Dependency Docs" and pointed at the old
