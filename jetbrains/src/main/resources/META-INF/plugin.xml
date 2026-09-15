@@ -58,5 +58,19 @@
             description="Show dependency note coverage">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
+        <action
+            id="Pacmon.SetupAiInstructions"
+            class="dev.pacmon.jetbrains.action.SetupAiInstructionsAction"
+            text="Set Up AI Instructions"
+            description="Write .pacmon/AGENT-RULES.md and point AGENTS.md, CLAUDE.md and similar files to it">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action
+            id="Pacmon.NormalizeNotesFile"
+            class="dev.pacmon.jetbrains.action.NormalizeNotesFileAction"
+            text="Format DEPENDENCY-NOTES.md"
+            description="Rewrite the dependency notes file into canonical form">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>

@@ -19,6 +19,7 @@ import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import dev.pacmon.jetbrains.core.AiInstructions
 import dev.pacmon.jetbrains.core.InlineSource
 import dev.pacmon.jetbrains.core.NotesCore
 import dev.pacmon.jetbrains.core.NotesFileModel
@@ -96,10 +97,7 @@ class PacmonProjectService(private val project: Project) :
     }
 
     fun resolveNotesFile(packageJson: VirtualFile): VirtualFile? {
-        val root = project.basePath
-            ?.replace('\\', '/')
-            ?.let { LocalFileSystem.getInstance().findFileByPath(it) }
-            ?: return null
+        val root = projectRoot() ?: return null
         if (settings.monorepoMode == "rootOnly") return notesIn(root)
         var directory: VirtualFile? = packageJson.parent
         repeat(64) {
@@ -143,6 +141,37 @@ class PacmonProjectService(private val project: Project) :
         FileEditorManager.getInstance(project).openFile(file, true)
     }
 
+    /**
+     * Two writes: `.pacmon/AGENT-RULES.md` is rewritten from the plugin's own
+     * copy (the rules and the field list, owned by Pacmon), and each of
+     * [targets] (relative to the project root, e.g. `AGENTS.md`) gets the
+     * three-line pointer to it, inserted or updated between markers. Returns
+     * every path actually written, `AGENT-RULES.md` first.
+     */
+    fun setUpAiInstructions(targets: List<String>): List<String> {
+        val root = projectRoot() ?: return emptyList()
+        val written = mutableListOf<String>()
+        WriteCommandAction.runWriteCommandAction(project, "Set Up AI Instructions", null, {
+            ensureAgentRules(overwrite = true)
+            written.add(NotesCore.AGENT_RULES_RELATIVE_PATH)
+            for (relative in targets) {
+                val parts = relative.split('/')
+                var directory = root
+                for (part in parts.dropLast(1)) {
+                    directory = directory.findChild(part) ?: directory.createChildDirectory(this, part)
+                }
+                val fileName = parts.last()
+                val file = directory.findChild(fileName) ?: directory.createChildData(this, fileName)
+                val document = FileDocumentManager.getInstance().getDocument(file)
+                    ?: error("Could not open $relative.")
+                document.setText(StringUtil.convertLineSeparators(AiInstructions.upsert(document.text)))
+                FileDocumentManager.getInstance().saveDocument(document)
+                written.add(relative)
+            }
+        })
+        return written
+    }
+
     private fun createNotesFile(packageDirectory: VirtualFile): VirtualFile {
         val notesDirectory = packageDirectory.findChild(NotesCore.NOTES_DIRECTORY)
             ?: packageDirectory.createChildDirectory(this, NotesCore.NOTES_DIRECTORY)
@@ -150,19 +179,21 @@ class PacmonProjectService(private val project: Project) :
             ?: notesDirectory.createChildData(this, NotesCore.NOTES_FILE_NAME)
     }
 
-    private fun ensureAgentRules() {
-        val root = project.basePath
-            ?.replace('\\', '/')
-            ?.let { LocalFileSystem.getInstance().findFileByPath(it) }
-            ?: return
+    private fun projectRoot(): VirtualFile? = project.basePath
+        ?.replace('\\', '/')
+        ?.let { LocalFileSystem.getInstance().findFileByPath(it) }
+
+    private fun ensureAgentRules(overwrite: Boolean = false) {
+        val root = projectRoot() ?: return
         val notesDirectory = root.findChild(NotesCore.NOTES_DIRECTORY)
             ?: root.createChildDirectory(this, NotesCore.NOTES_DIRECTORY)
-        if (notesDirectory.findChild("AGENT-RULES.md") != null) return
+        val existing = notesDirectory.findChild(NotesCore.AGENT_RULES_FILE_NAME)
+        if (existing != null && !overwrite) return
         val rules = javaClass.getResourceAsStream("/pacmon/AGENT-RULES.md")
             ?.bufferedReader(Charsets.UTF_8)
             ?.use { it.readText() }
             ?: error("Bundled AGENT-RULES.md is missing.")
-        val file = notesDirectory.createChildData(this, "AGENT-RULES.md")
+        val file = existing ?: notesDirectory.createChildData(this, NotesCore.AGENT_RULES_FILE_NAME)
         val document = FileDocumentManager.getInstance().getDocument(file)
             ?: error("Could not create AGENT-RULES.md.")
         document.setText(rules.replace("\r\n", "\n"))
