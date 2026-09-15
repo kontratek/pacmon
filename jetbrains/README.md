@@ -7,7 +7,7 @@ The JetBrains counterpart of the [VS Code extension](../README.md): the same `.p
 - A **Pacmon** tool window (right stripe) with two views: a dashboard (documentation coverage, click-target and note-marker settings) and a per-dependency editor with separate human and agent layers.
 - Small inlay icons before each dependency name in `package.json` — filled when it has a note, hollow when it doesn't — plus an end-of-line preview and a quick-doc hover.
 - Live `docs/format.md` warnings, underlined with a hover message, wherever `DEPENDENCY-NOTES.md` is open.
-- Three Tools-menu commands: **Add/Edit Dependency Note**, **Documentation Coverage**, **Set Up AI Instructions**, **Format DEPENDENCY-NOTES.md**, **Open DEPENDENCY-NOTES.md**.
+- Four Tools-menu commands — **Open DEPENDENCY-NOTES.md**, **Documentation Coverage**, **Set Up AI Instructions**, **Format DEPENDENCY-NOTES.md** — and **Add/Edit Dependency Note** in the editor's context menu.
 
 ## Requirements
 
@@ -82,11 +82,16 @@ Per the repository's `CLAUDE.md`: when `docs/format.md` changes, update `src/cor
 
 ## Publishing to the JetBrains Marketplace
 
-1. **Create (or sign in to) a vendor account.** Go to [plugins.jetbrains.com](https://plugins.jetbrains.com), sign in with a JetBrains Account, then **My Products → Vendors** (or `plugins.jetbrains.com/vendor/new`) to register a vendor profile if you haven't already — this is the account/organization page a published plugin belongs to.
-2. **Build the zip:** `./gradlew buildPlugin` → `build/distributions/pacmon-jetbrains-<version>.zip`.
-3. **First release — upload by hand:** on the Marketplace site, **Upload plugin**, pick the zip, choose the vendor, fill in the listing (description, license — this repo's `CLA-v1.md`/`LICENSE`, tags). JetBrains reviews new plugins before they go public; expect it to sit "pending approval" for a bit.
-4. **Later releases:**
-   - By hand: the plugin's Marketplace page → **Upload new version** → the new zip. Simplest, no extra setup.
-   - From the CLI (optional, once you want CI to publish): generate a **Permanent Token** under your JetBrains Marketplace account settings, then either export it as `./gradlew publishPlugin` picks up via the `PUBLISH_TOKEN` environment variable, or add a `publishing { token.set(...) }` block to `intellijPlatform { }` in `build.gradle.kts` (not present yet — this repo currently only builds the zip, it doesn't publish from Gradle). Never commit the token; keep it in CI secrets or a local, gitignored properties file.
-5. **Versioning:** bump `version` in `build.gradle.kts` before each release; the Marketplace rejects a re-upload of a version number it already has. `sinceBuild`/`untilBuild` under `pluginConfiguration.ideaVersion` control which IDE versions can install a given release — update `sinceBuild` when you start depending on a newer platform API.
-6. Once published, `pluginVerification { ides { recommended() } }` (already in `build.gradle.kts`) is worth running before each release — `./gradlew verifyPlugin` — since one plugin.xml serves every JetBrains product that bundles `com.intellij.modules.json`, not IntelliJ IDEA alone.
+The plugin is published under the **Kontra** vendor profile, [plugins.jetbrains.com/vendor/kontra](https://plugins.jetbrains.com/vendor/kontra); sign in with a JetBrains Account that belongs to it. The `<vendor>` name in `plugin.xml` is that profile's name and must stay in step with it.
+
+**What the listing is made of.** The name, the description, the change notes and the logo come out of the zip: `<name>`, `<description>` and `<change-notes>` in `src/main/resources/META-INF/plugin.xml`, and `META-INF/pluginIcon.svg` next to it (40×40 SVG, the mark on the dark disc as in `media/icon.png`). None of them can be edited on the site — a change ships as a new version. The license (Apache License 2.0, the repository's `LICENSE`), the source code link (required for an open-source plugin: https://github.com/kontratek/pacmon), the tags and any screenshots are entered on the site and can be changed there at any time.
+
+Every release, in this order:
+
+1. **Raise the version.** `version` in `build.gradle.kts` follows the VS Code extension's version in `package.json`. The Release workflow at the repository root does not touch it, so raise it by hand; the Marketplace refuses a version number it already has. Write the release's `<change-notes>` in the same edit — the listing's "What's New" is that element.
+2. **Verify:** `./gradlew verifyPlugin`. It runs the IntelliJ Plugin Verifier against the build target and the newest release of every later IDE branch (`pluginVerification.ides` in `build.gradle.kts`; since `until-build` is left open, that is every IDE the listing claims). The approval guidelines require this before each upload, and the Marketplace runs it again after, across every product. Each extra IDE is 1.2 GB to download and 3.5 GB unpacked under `~/.gradle`, once; on a laptop short of disk, `./gradlew verifyPlugin -Ppacmon.verify=current` checks the build target alone and downloads nothing. The report lands in `build/reports/pluginVerifier/`; a *compatibility problem* has to be fixed before uploading, a deprecated-API warning is advice. CI runs the full task in the `jetbrains-verify` job.
+3. **Build:** `./gradlew buildPlugin` → `build/distributions/pacmon-jetbrains-<version>.zip`. CI's `pacmon-jetbrains` artifact is the same zip.
+4. **Upload.** First release: on the Marketplace site, **Upload plugin**, pick the zip, choose the vendor, choose the license and tags, add the source code link. Later releases: the plugin's Marketplace page → **Upload new version** → the new zip. JetBrains reviews every new plugin and every update by hand, normally within two business days, and mails the vendor when the status changes.
+5. **Later, from Gradle** (optional): generate a Permanent Token in your Marketplace account settings, export it as `PUBLISH_TOKEN`, and `./gradlew publishPlugin` uploads the zip; a `publishing { }` block under `intellijPlatform { }` in `build.gradle.kts` sets the channel. Never commit the token; keep it in CI secrets or a local, gitignored properties file.
+
+`sinceBuild` under `pluginConfiguration.ideaVersion` controls the oldest IDE that can install a release — raise it when you start depending on a newer platform API. `until-build` is deliberately not set: one plugin.xml serves every JetBrains product that bundles `com.intellij.modules.json`, on every version from `sinceBuild` on, which is why step 2 matters.

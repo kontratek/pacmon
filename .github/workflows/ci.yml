@@ -57,6 +57,30 @@ jobs:
           name: pacmon-jetbrains
           path: jetbrains/build/distributions/*.zip
 
+  # The IntelliJ Plugin Verifier, against the build target and the newest
+  # release of every later IDE branch (pluginVerification.ides in
+  # jetbrains/build.gradle.kts). The Marketplace approval guidelines ask for
+  # this before each upload, and the Marketplace runs it again after. It
+  # downloads each of those IDEs, so it is its own job and nothing waits for
+  # it; the run still goes red on a compatibility problem. The full report is
+  # the artifact.
+  jetbrains-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - working-directory: jetbrains
+        run: ./gradlew verifyPlugin
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pacmon-jetbrains-verifier
+          path: jetbrains/build/reports/pluginVerifier
+
   package:
     runs-on: ubuntu-latest
     needs: [test, integration, jetbrains]

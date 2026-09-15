@@ -1,12 +1,56 @@
 <idea-plugin>
     <id>dev.pacmon.jetbrains</id>
-    <name>Pacmon - Dependency Notes</name>
-    <vendor url="https://pacmon.dev">Kontra</vendor>
+    <name>Pacmon</name>
+    <vendor email="info@pacmon.dev" url="https://pacmon.dev">Kontra</vendor>
 
+    <!-- The Marketplace listing is built from this file: the name, the description,
+         the change notes and META-INF/pluginIcon.svg. None of them can be edited on
+         the site; a change ships as a new version. -->
     <description><![CDATA[
-        <p>Shows why each dependency exists directly in <code>package.json</code>.</p>
-        <p>Notes stay in <code>.pacmon/DEPENDENCY-NOTES.md</code> and travel with the repository.</p>
+        <p><b>package.json says what you depend on. Pacmon adds why.</b></p>
+        <p>Every dependency gets a short note: why it is here, what must not change,
+        what to check before an upgrade. The note shows in <code>package.json</code>
+        as quick documentation, and you write it from there.</p>
+        <p>All notes live in one Markdown file, <code>.pacmon/DEPENDENCY-NOTES.md</code>,
+        next to <code>package.json</code>. No database, no service, no account: one
+        file that you read, diff and commit like any other. AI coding agents read the
+        same file before they touch a package, and keep their own lines in it.</p>
+        <ul>
+            <li>A mark before each package name in <code>package.json</code>: filled
+            when it has a note, hollow when it does not. The first line of the note
+            shows at the end of the line; the whole note shows as quick documentation.</li>
+            <li>Write a note from <code>package.json</code> in the Pacmon tool window,
+            with a layer for people and a layer for agents.</li>
+            <li><b>Documentation Coverage</b> lists which dependencies have a note and
+            which do not.</li>
+            <li>Problems in the notes file are underlined as you write, and
+            <b>Format DEPENDENCY-NOTES.md</b> rewrites the file into canonical form.</li>
+            <li><b>Set Up AI Instructions</b> writes the rules for AI coding agents to
+            <code>.pacmon/AGENT-RULES.md</code> and points <code>AGENTS.md</code>,
+            <code>CLAUDE.md</code> and similar files to it.</li>
+        </ul>
+        <p>Pacmon reads and writes files in your project and makes no network
+        requests; it does not call any AI service. The
+        <a href="https://marketplace.visualstudio.com/items?itemName=kontra.pacmon">VS Code
+        extension</a> reads the same file, and the format is documented in
+        <a href="https://github.com/kontratek/pacmon/blob/main/docs/format.md">docs/format.md</a>.</p>
     ]]></description>
+
+    <change-notes><![CDATA[
+        <h3>0.3.1</h3>
+        <p>The first release of Pacmon for JetBrains IDEs. It reads and writes the same
+        <code>.pacmon/DEPENDENCY-NOTES.md</code> as the VS Code extension.</p>
+        <ul>
+            <li>Marks, end-of-line previews and quick documentation for the dependencies
+            in <code>package.json</code>.</li>
+            <li>The Pacmon tool window: documentation coverage, settings, and a note
+            editor with a layer for people and a layer for agents.</li>
+            <li>Live format warnings in <code>DEPENDENCY-NOTES.md</code>, and
+            <b>Format DEPENDENCY-NOTES.md</b> to rewrite it into canonical form.</li>
+            <li><b>Set Up AI Instructions</b>, <b>Documentation Coverage</b> and
+            <b>Open DEPENDENCY-NOTES.md</b> in the Tools menu.</li>
+        </ul>
+    ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.json</depends>

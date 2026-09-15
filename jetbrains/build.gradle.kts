@@ -1,4 +1,6 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.models.ProductRelease
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,7 +9,7 @@ plugins {
 }
 
 group = "dev.pacmon"
-version = "0.3.0"
+version = "0.3.1"
 
 dependencies {
     intellijPlatform {
@@ -34,7 +36,21 @@ intellijPlatform {
     }
     pluginVerification {
         ides {
-            recommended()
+            // The build target is always verified. Without the property below, so is the
+            // newest release of every IDE branch after it, IntelliJ IDEA Community only:
+            // one plugin.xml serves every product, and the Marketplace verifies the full
+            // matrix after an upload. recommended() would add every EAP branch as well,
+            // and each IDE is 1.2 GB to download and 3.5 GB unpacked, so a laptop short
+            // of disk runs `./gradlew verifyPlugin -Ppacmon.verify=current`. Raise
+            // sinceBuild here together with ideaVersion.sinceBuild above.
+            current()
+            if (providers.gradleProperty("pacmon.verify").orNull != "current") {
+                select {
+                    types = listOf(IntelliJPlatformType.IntellijIdeaCommunity)
+                    channels = listOf(ProductRelease.Channel.RELEASE)
+                    sinceBuild = "253"
+                }
+            }
         }
     }
 }
