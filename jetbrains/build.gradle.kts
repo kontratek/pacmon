@@ -31,9 +31,12 @@ version = pluginVersion
 
 // The listing shows this version's CHANGELOG section as its change notes, rendered
 // to HTML. Between releases no such section exists yet, so a local build carries
-// whatever is under "Unreleased" and still describes what is landing.
-val changeNotesHtml = providers.fileContents(layout.projectDirectory.file("../CHANGELOG.md")).asText.map { changelog ->
-    val lines = changelog.lines()
+// whatever is under "Unreleased" and still describes what is landing. Rendered
+// here, at configuration time, into a plain String: a provider mapped in this
+// script would carry a reference to the script, which the configuration cache
+// cannot store. The file read is still tracked as a build input.
+val changeNotesHtml: String = run {
+    val lines = providers.fileContents(layout.projectDirectory.file("../CHANGELOG.md")).asText.get().lines()
     fun section(isHeading: (String) -> Boolean): String? {
         val start = lines.indexOfFirst(isHeading)
         if (start < 0) return null
