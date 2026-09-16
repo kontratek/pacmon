@@ -9,21 +9,34 @@ import com.intellij.codeInsight.hints.InlayHintsSink
 import com.intellij.codeInsight.hints.InlayPresentationFactory
 import com.intellij.codeInsight.hints.NoSettings
 import com.intellij.codeInsight.hints.SettingsKey
+import com.intellij.codeInsight.hints.presentation.InlayPresentation
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import dev.pacmon.jetbrains.action.NoteEditor
 import dev.pacmon.jetbrains.service.PacmonProjectService
+import dev.pacmon.jetbrains.settings.NoteButtons
 import java.awt.Cursor
 import java.awt.Point
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
 
+/**
+ * Three of the five click targets the Pacmon tool window offers, all of them
+ * inlays: the mark before the package name (`iconLeft`), the clickable line
+ * above the dependency (`codelens`) and the words at the end of the line
+ * (`inlayHint`). The other two are not inlays — `link` is a go-to-declaration
+ * target in [PacmonNoteDeclarationHandler] and `lightbulb` an intention in
+ * [PacmonAddNoteIntention].
+ *
+ * Each one is drawn only while its box is ticked, and the provider steps aside
+ * entirely when none of the three is.
+ */
 class PacmonInlayHintsProvider : InlayHintsProvider<NoSettings> {
     override val key = SettingsKey<NoSettings>("pacmon.dependency.icons")
 
-    override val name: String = "Pacmon dependency note icons"
+    override val name: String = "Pacmon dependency notes"
 
     override val previewText: String = """{ "dependencies": { "vue": "^3" } }"""
 
@@ -42,35 +55,70 @@ class PacmonInlayHintsProvider : InlayHintsProvider<NoSettings> {
         if (!DependencyPsi.isPackageJson(file)) return null
         val packageJson = file.virtualFile ?: return null
         val notes = file.project.getService(PacmonProjectService::class.java)
-        if (!notes.iconsEnabled()) return null
+        val icon = notes.noteButtonEnabled(NoteButtons.ICON_LEFT)
+        val lens = notes.noteButtonEnabled(NoteButtons.CODE_LENS)
+        val chip = notes.noteButtonEnabled(NoteButtons.INLAY_HINT)
+        if (!icon && !lens && !chip) return null
 
         return object : FactoryInlayHintsCollector(editor) {
             override fun collect(element: PsiElement, editor: Editor, sink: InlayHintsSink): Boolean {
                 val dependency = DependencyPsi.fromElement(element) ?: return true
                 if (element != dependency.property.nameElement.firstChild) return true
 
-                val note = notes.noteFor(packageJson, dependency.name)
-                val icon = factory.smallScaledIcon(PacmonIcons.forNote(note != null))
-                val clickable = factory.withCursorOnHover(
+                val documented = notes.noteFor(packageJson, dependency.name) != null
+                val words = if (documented) "Edit note" else "Add note"
+                val open = { NoteEditor.open(file.project, dependency, editor) }
+                val nameStart = dependency.property.nameElement.textRange.startOffset
+
+                if (icon) {
+                    sink.addInlineElement(
+                        nameStart,
+                        false,
+                        clickable(factory.smallScaledIcon(PacmonIcons.forNote(documented)), open),
+                        false,
+                    )
+                }
+                if (lens) {
+                    val document = editor.document
+                    val column = nameStart - document.getLineStartOffset(document.getLineNumber(nameStart))
+                    sink.addBlockElement(
+                        nameStart,
+                        true,
+                        true,
+                        BLOCK_PRIORITY,
+                        factory.seq(
+                            factory.textSpacePlaceholder(column, true),
+                            clickable(factory.smallText(words), open),
+                        ),
+                    )
+                }
+                if (chip) {
+                    sink.addInlineElement(
+                        dependency.property.textRange.endOffset,
+                        true,
+                        clickable(factory.roundWithBackground(factory.smallText(words)), open),
+                        true,
+                    )
+                }
+                return true
+            }
+
+            /** A hand cursor and a plain click — no modifier, unlike VS Code's inlay hints. */
+            private fun clickable(presentation: InlayPresentation, onClick: () -> Unit): InlayPresentation =
+                factory.withCursorOnHover(
                     factory.mouseHandling(
-                        icon,
+                        presentation,
                         object : InlayPresentationFactory.ClickListener {
-                            override fun onClick(event: MouseEvent, translated: Point) {
-                                NoteEditor.open(file.project, dependency)
-                            }
+                            override fun onClick(event: MouseEvent, translated: Point) = onClick()
                         },
                         null,
                     ),
                     Cursor.getPredefinedCursor(Cursor.HAND_CURSOR),
                 )
-                sink.addInlineElement(
-                    dependency.property.nameElement.textRange.startOffset,
-                    false,
-                    clickable,
-                    false,
-                )
-                return true
-            }
         }
+    }
+
+    private companion object {
+        const val BLOCK_PRIORITY = 0
     }
 }

@@ -1,0 +1,130 @@
+package dev.pacmon.jetbrains.action
+
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.WindowManager
+import dev.pacmon.jetbrains.core.NotesCore
+import dev.pacmon.jetbrains.service.PacmonProjectService
+import dev.pacmon.jetbrains.settings.Decorations
+
+/**
+ * What the Pacmon actions actually do, with no `AnActionEvent` in sight — the
+ * Tools menu invokes these and so do the buttons in the tool window's Actions
+ * section, which have no action event to hand. The VS Code extension reaches
+ * the same five commands from its view the same way.
+ *
+ * Every one of them takes the package.json to work from, because the caller
+ * usually knows better than the active editor does: the tool window keeps
+ * showing the last package.json you looked at even after you switch away from
+ * it.
+ */
+object PacmonCommands {
+    fun openNotesFile(project: Project, packageJson: VirtualFile? = null) {
+        val notesFile = findNotesFile(project, packageJson)
+        if (notesFile == null) {
+            Messages.showInfoMessage(
+                project,
+                "No ${NotesCore.NOTES_FILE_NAME} found. Use \"Add/Edit Dependency Note\" to create one.",
+                "Pacmon",
+            )
+            return
+        }
+        service(project).open(notesFile)
+    }
+
+    /** The mirror of [openNotesFile]: the manifest the notes describe. */
+    fun openPackageJson(project: Project, packageJson: VirtualFile? = null) {
+        val file = packageJson?.takeIf { it.isValid } ?: defaultPackageJson(project)
+        if (file == null) {
+            Messages.showInfoMessage(project, "No package.json found in this project.", "Pacmon")
+            return
+        }
+        service(project).open(file)
+    }
+
+    fun formatNotesFile(project: Project, packageJson: VirtualFile? = null) {
+        val statusBar = WindowManager.getInstance().getStatusBar(project)
+        val notesFile = findNotesFile(project, packageJson)
+        if (notesFile == null) {
+            statusBar?.info =
+                "Pacmon: no ${NotesCore.NOTES_FILE_NAME} found. Use \"Add/Edit Dependency Note\" to create one."
+            return
+        }
+
+        var changed = false
+        WriteCommandAction.runWriteCommandAction(project, "Format DEPENDENCY-NOTES.md", null, {
+            val document = FileDocumentManager.getInstance().getDocument(notesFile) ?: return@runWriteCommandAction
+            val canonical = NotesCore.normalizeText(document.text)
+            if (canonical != document.text) {
+                document.setText(canonical)
+                FileDocumentManager.getInstance().saveDocument(document)
+                changed = true
+            }
+        })
+        statusBar?.info = if (changed) {
+            "Pacmon: ${NotesCore.NOTES_FILE_NAME} formatted."
+        } else {
+            "Pacmon: ${NotesCore.NOTES_FILE_NAME} is already in canonical form."
+        }
+        service(project).open(notesFile)
+    }
+
+    fun setUpAiInstructions(project: Project) {
+        val dialog = AiInstructionsTargetsDialog(project)
+        if (!dialog.showAndGet()) return
+        val written = service(project).setUpAiInstructions(dialog.selectedTargets())
+        WindowManager.getInstance().getStatusBar(project)?.info =
+            "Pacmon: AI instructions written to ${written.joinToString(", ")}."
+    }
+
+    /**
+     * The end-of-line hint off and back on again, without a trip to the
+     * settings — the counterpart of VS Code's "Toggle Note Markers". Coming
+     * back on means `preview`, the default, since `badge` is a deliberate
+     * choice nobody arrives at by toggling.
+     */
+    fun toggleDecorations(project: Project) {
+        val notes = service(project)
+        val on = notes.decorations() == Decorations.OFF
+        notes.state.decorations = if (on) Decorations.PREVIEW else Decorations.OFF
+        notes.settingsChanged()
+        WindowManager.getInstance().getStatusBar(project)?.info =
+            if (on) "Pacmon: note markers on." else "Pacmon: note markers off."
+    }
+
+    /**
+     * The notes file in play: the one open in the editor, else the one for the
+     * given (or active) package.json, else the project root's.
+     */
+    fun findNotesFile(project: Project, packageJson: VirtualFile? = null): VirtualFile? {
+        val notes = service(project)
+        val selected = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
+        if (selected?.name == NotesCore.NOTES_FILE_NAME) return selected
+
+        val manifest = packageJson?.takeIf { it.isValid }
+            ?: selected?.takeIf { it.name == "package.json" }
+            ?: defaultPackageJson(project)
+        if (manifest != null) notes.resolveNotesFile(manifest)?.let { return it }
+
+        return projectRoot(project)
+            ?.findChild(NotesCore.NOTES_DIRECTORY)
+            ?.findChild(NotesCore.NOTES_FILE_NAME)
+    }
+
+    /** The package.json in the editor, else the one at the project root. */
+    fun defaultPackageJson(project: Project): VirtualFile? =
+        FileEditorManager.getInstance(project).selectedFiles.firstOrNull { it.name == "package.json" }
+            ?: projectRoot(project)?.findChild("package.json")
+
+    fun projectRoot(project: Project): VirtualFile? = project.basePath
+        ?.replace('\\', '/')
+        ?.let { LocalFileSystem.getInstance().findFileByPath(it) }
+
+    private fun service(project: Project): PacmonProjectService =
+        project.getService(PacmonProjectService::class.java)
+}

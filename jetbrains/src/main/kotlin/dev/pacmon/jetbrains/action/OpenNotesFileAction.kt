@@ -3,27 +3,22 @@ package dev.pacmon.jetbrains.action
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.ui.Messages
-import dev.pacmon.jetbrains.editor.DependencyPsi
-import dev.pacmon.jetbrains.service.PacmonProjectService
 
+/**
+ * Opens the notes file for the package.json in play. Enabled wherever you are
+ * in the project, not only inside `package.json`: the VS Code command falls
+ * back to the active editor, then to the workspace's own manifest, and this
+ * one does the same through [PacmonCommands.findNotesFile].
+ */
 class OpenNotesFileAction : AnAction() {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(event: AnActionEvent) {
-        event.presentation.isEnabled = DependencyPsi.isPackageJson(event.getData(CommonDataKeys.PSI_FILE))
+        event.presentation.isEnabledAndVisible = event.project != null
     }
 
     override fun actionPerformed(event: AnActionEvent) {
         val project = event.project ?: return
-        val packageJson = event.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
-        val service = project.getService(PacmonProjectService::class.java)
-        val notesFile = service.resolveNotesFile(packageJson)
-        if (notesFile == null) {
-            Messages.showInfoMessage(project, "No dependency notes file exists for this package.json.", "Pacmon")
-        } else {
-            service.open(notesFile)
-        }
+        PacmonCommands.openNotesFile(project)
     }
 }

@@ -16,11 +16,14 @@
         file that you read, diff and commit like any other. AI coding agents read the
         same file before they touch a package, and keep their own lines in it.</p>
         <ul>
-            <li>A mark before each package name in <code>package.json</code>: filled
-            when it has a note, hollow when it does not. The first line of the note
-            shows at the end of the line; the whole note shows as quick documentation.</li>
-            <li>Write a note from <code>package.json</code> in the Pacmon tool window,
-            with a layer for people and a layer for agents.</li>
+            <li>Five ways into a note from <code>package.json</code>, each one you turn
+            on or off: a mark before the package name — filled when it has a note,
+            hollow when it does not — Ctrl+click on the name itself, a clickable line
+            above the dependency, the words at the end of the line, and a lightbulb on
+            the caret line. The first line of the note shows at the end of the line;
+            the whole note shows as quick documentation.</li>
+            <li>Write a note from <code>package.json</code> in the Pacmon tool window or
+            in a popup over the line, with a layer for people and a layer for agents.</li>
             <li><b>Documentation Coverage</b> lists which dependencies have a note and
             which do not.</li>
             <li>Problems in the notes file are underlined as you write, and
@@ -42,13 +45,17 @@
         <code>.pacmon/DEPENDENCY-NOTES.md</code> as the VS Code extension.</p>
         <ul>
             <li>Marks, end-of-line previews and quick documentation for the dependencies
-            in <code>package.json</code>.</li>
-            <li>The Pacmon tool window: documentation coverage, settings, and a note
-            editor with a layer for people and a layer for agents.</li>
+            in <code>package.json</code>, with the same five click targets, the same
+            three marker styles and the same four inline note sources the VS Code
+            extension offers.</li>
+            <li>The Pacmon tool window: documentation coverage, every setting with the
+            actions beside them, and a note editor with a layer for people and a layer
+            for agents — in the tool window or in a popup over the dependency line.</li>
             <li>Live format warnings in <code>DEPENDENCY-NOTES.md</code>, and
             <b>Format DEPENDENCY-NOTES.md</b> to rewrite it into canonical form.</li>
-            <li><b>Set Up AI Instructions</b>, <b>Documentation Coverage</b> and
-            <b>Open DEPENDENCY-NOTES.md</b> in the Tools menu.</li>
+            <li><b>Set Up AI Instructions</b>, <b>Documentation Coverage</b>,
+            <b>Open DEPENDENCY-NOTES.md</b>, <b>Open package.json</b> and
+            <b>Toggle Note Markers</b> in the Tools menu.</li>
         </ul>
     ]]></change-notes>
 
@@ -70,6 +77,15 @@
             implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
         <editor.linePainter
             implementation="dev.pacmon.jetbrains.editor.PacmonLinePainter"/>
+        <!-- The "link" click target: Ctrl+click a package name to open its note. -->
+        <gotoDeclarationHandler
+            implementation="dev.pacmon.jetbrains.editor.PacmonNoteDeclarationHandler"/>
+        <!-- The "lightbulb" click target: nothing drawn until the caret is on the line. -->
+        <intentionAction>
+            <language>JSON</language>
+            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
+            <category>Pacmon</category>
+        </intentionAction>
         <annotator
             language="TEXT"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonNotesAnnotator"/>
@@ -100,10 +116,24 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
         <action
+            id="Pacmon.OpenPackageJson"
+            class="dev.pacmon.jetbrains.action.OpenPackageJsonAction"
+            text="Open package.json"
+            description="Open the package.json these dependency notes describe">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action
             id="Pacmon.ShowCoverage"
             class="dev.pacmon.jetbrains.action.ShowCoverageAction"
             text="Documentation Coverage"
-            description="Show dependency note coverage">
+            description="Every dependency in one list, documented or not">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action
+            id="Pacmon.ToggleNoteMarkers"
+            class="dev.pacmon.jetbrains.action.ToggleNoteMarkersAction"
+            text="Toggle Note Markers"
+            description="Turn the end-of-line note hint off and back on">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
         <action

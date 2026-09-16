@@ -22,6 +22,27 @@
   "Pacmon"; `jetbrains/README.md` says how it is built, verified and
   published.
 
+- **The JetBrains plugin offers everything the VS Code view does.** The tool
+  window had coverage, one checkbox for the mark and one for the end-of-line
+  preview; the extension's view has six sections, and the plugin now has the
+  same six under the same names. All five click targets are there —
+  `iconLeft`, `link` (Ctrl+click the package name, a go-to-declaration
+  target), `codelens` (a clickable line above the dependency), `inlayHint`
+  (the words at the end of the line) and `lightbulb` (an intention on the
+  caret line) — each one drawn only while its box is ticked. Note markers
+  became the three-way choice they are in VS Code (`preview`, `badge`,
+  `off`), the inline note source moved out of the Settings dialog and into
+  the tool window beside the rest, and the note editor can open as a popup
+  over the dependency line (`peek`) instead of in the tool window (`panel`).
+  The Actions section reaches the same five commands the view does, including
+  **Documentation Coverage**, which is now the searchable list of every
+  dependency it is in VS Code rather than a second way to show the tool
+  window. **Open package.json** and **Toggle Note Markers** join the Tools
+  menu, **Open DEPENDENCY-NOTES.md** works from anywhere in the project
+  rather than only from inside `package.json`, and a Reset link puts the
+  whole view back to its defaults. The Settings page under Tools → Pacmon
+  lists the same settings for anyone who looks there first.
+
 ## 0.3.1 — 2026-09-15
 
 - The README shows the notes file being written by hand. The two recordings

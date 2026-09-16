@@ -11,6 +11,10 @@ import dev.pacmon.jetbrains.editor.DependencyPsi
 import dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider
 import dev.pacmon.jetbrains.editor.PacmonLinePainter
 import dev.pacmon.jetbrains.service.PacmonProjectService
+import dev.pacmon.jetbrains.settings.Decorations
+import dev.pacmon.jetbrains.settings.InlineSources
+import dev.pacmon.jetbrains.settings.NoteButtons
+import dev.pacmon.jetbrains.settings.NoteEntries
 import java.awt.Font
 
 class PacmonUiTest : BasePlatformTestCase() {
@@ -122,6 +126,40 @@ class PacmonUiTest : BasePlatformTestCase() {
         myFixture.configureByText("README.txt", "project")
         dashboard.refresh()
         assertEquals(coverage.packagePath, dashboard.coverageForTest().packagePath)
+    }
+
+    fun testDashboardWritesEveryChoiceAndResetsThemAllTogether() {
+        myFixture.configureByText("package.json", """{ "dependencies": { "vue": "^3" } }""")
+        val service = project.getService(PacmonProjectService::class.java)
+        val dashboard = PacmonDashboardPanel(project)
+        dashboard.refresh()
+
+        // Ticked out of order; the stored list is canonical all the same, so it
+        // reads identically however the boxes were reached.
+        dashboard.setNoteButtonForTest(NoteButtons.LIGHTBULB, true)
+        dashboard.setNoteButtonForTest(NoteButtons.LINK, false)
+        dashboard.setNoteButtonForTest(NoteButtons.CODE_LENS, true)
+        assertEquals(
+            listOf(NoteButtons.ICON_LEFT, NoteButtons.CODE_LENS, NoteButtons.LIGHTBULB),
+            service.noteButtons(),
+        )
+
+        dashboard.selectChoiceForTest("noteEntry", NoteEntries.PEEK)
+        dashboard.selectChoiceForTest("decorations", Decorations.BADGE)
+        dashboard.selectChoiceForTest("inlineSource", InlineSources.AI_ONLY)
+        assertEquals(NoteEntries.PEEK, service.noteEntry())
+        assertEquals(Decorations.BADGE, service.decorations())
+        assertEquals(InlineSources.AI_ONLY, service.state.inlineSource)
+
+        // One radio per group: picking "badge" must have let go of "preview".
+        dashboard.selectChoiceForTest("decorations", Decorations.OFF)
+        assertEquals(Decorations.OFF, service.decorations())
+
+        dashboard.resetForTest()
+        assertEquals(NoteButtons.DEFAULT, service.noteButtons())
+        assertEquals(NoteEntries.PANEL, service.noteEntry())
+        assertEquals(Decorations.PREVIEW, service.decorations())
+        assertEquals(InlineSources.HUMAN_FIRST, service.state.inlineSource)
     }
 
     fun testPanelAutosavesBothLayersAndCreatesAgentRules() {

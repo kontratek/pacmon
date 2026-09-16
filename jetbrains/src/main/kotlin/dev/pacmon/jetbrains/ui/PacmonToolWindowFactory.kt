@@ -11,5 +11,6 @@ class PacmonToolWindowFactory : ToolWindowFactory, DumbAware {
         val panel = PacmonToolWindowRootPanel(project)
         project.getService(PacmonToolWindowService::class.java).attach(panel)
         toolWindow.contentManager.addContent(ContentFactory.getInstance().createContent(panel, "", false))
+        toolWindow.setTitleActions(listOf(ShowDashboardAction(project)))
     }
 }
