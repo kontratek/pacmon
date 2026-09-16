@@ -57,6 +57,11 @@ is empty, and every test runs against the tree that actually ships.
   Nothing was published. Press the button again.
 - **A mistake is found after publishing.** A version number is spent the moment a
   registry accepts it. It ships as the next patch version; nothing is re-published.
+- **A registry did not get the version** — it joined after the release, or its
+  step never ran. Actions → Release → Run workflow → `none`. The run publishes
+  the version already in `package.json` to whichever registry lacks it, skips
+  the ones that have it, commits nothing, and refuses a version that was never
+  released.
 - **JetBrains has not listed the version yet.** That is the review, not a
   failure: the run ends when the upload is accepted, and the Marketplace lists
   the version once a person at JetBrains has approved it, normally within two

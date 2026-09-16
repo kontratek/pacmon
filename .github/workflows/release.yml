@@ -9,10 +9,12 @@ name: Release
 # review. Both files go on the GitHub Release.
 #
 # A version number is spent the moment a registry accepts it, so nothing here is
-# retried blindly. Both publish steps skip a version the registry already has,
+# retried blindly. Every publish step skips a version the registry already has,
 # and the version commit is skipped when its tag is already on the remote — so
 # "Re-run failed jobs" is the recovery path after an expired token, and it
-# cannot raise the version a second time.
+# cannot raise the version a second time. Run workflow with "none" publishes the
+# version already in package.json to whichever registry still lacks it and
+# commits nothing: the path for a registry that joined after a release.
 #
 # Tokens are the VSCE_PAT, OVSX_PAT and JETBRAINS_TOKEN repository secrets. See
 # docs/releasing.md.
@@ -21,10 +23,10 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: 'Which part of the version to raise'
+        description: 'Which part of the version to raise. "none" publishes the version already in package.json to any registry that does not have it yet, and commits nothing.'
         required: true
         type: choice
-        options: [patch, minor, major]
+        options: [patch, minor, major, none]
         default: patch
   # Escape hatch: a hand-pushed tag releases the version already in
   # package.json, whose CHANGELOG section must already exist.
@@ -79,7 +81,7 @@ jobs:
           BUMP: ${{ inputs.bump }}
         run: |
           set -euo pipefail
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ "$BUMP" != "none" ]; then
             # The notes are written under "## Unreleased" as work lands; the
             # release names that section.
             grep -q '^## Unreleased$' CHANGELOG.md || {
@@ -93,9 +95,15 @@ jobs:
             # A fresh, empty "Unreleased" is left above it for the next round.
             sed -i "0,/^## Unreleased$/s//## Unreleased\n\n## $version — $(date -u +%Y-%m-%d)/" CHANGELOG.md
           else
+            # A tag pushed by hand, or "none" from the button: the version already
+            # in package.json goes out again, to whichever registry still lacks it.
             version=$(node -p "require('./package.json').version")
-            if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
               echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
+              exit 1
+            fi
+            if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && ! git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null 2>&1; then
+              echo "::error::v$version has not been released, so there is nothing to publish again; pick patch, minor or major."
               exit 1
             fi
           fi
@@ -142,7 +150,7 @@ jobs:
       # can hand it to anyone. A push with the built-in token starts no further
       # workflow run, so main does not re-run CI for this commit.
       - name: Push the version commit and its tag
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.bump != 'none'
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
