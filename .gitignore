@@ -4,6 +4,12 @@ dist-test/
 .vscode-test/
 .vscode-test-web/
 *.vsix
+jetbrains/.gradle/
+jetbrains/.intellijPlatform/
+jetbrains/.kotlin/
+jetbrains/build/
+jetbrains/.idea/
+jetbrains/out/
 
 # JetBrains plugin build artifacts
 jetbrains/.gradle/

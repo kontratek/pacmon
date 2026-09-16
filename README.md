@@ -29,6 +29,13 @@ Do not upgrade to v5 — the auth middleware is incompatible.
 
 The file renders on GitHub as it is. A complete example is in [`docs/example-repo`](docs/example-repo/).
 
+The file is the only place a note lives. Open it and write a section by hand,
+and `package.json` shows it at once: the mark before the package name fills in,
+and the first line of the note appears at the end of the line. Nothing is
+generated, and nothing is cached anywhere else.
+
+![helmet has no note; a section for it is written by hand in the notes file; the helmet line in package.json then carries the note](docs/media/notes-file.gif)
+
 ## Features
 
 - Hover a dependency in `package.json` to read its note.

@@ -7,6 +7,32 @@
 
 ## Unreleased
 
+- **Pacmon comes to JetBrains IDEs.** The `jetbrains/` module is a plugin
+  for IntelliJ IDEA, WebStorm, PyCharm, PhpStorm and the rest of the family:
+  the same `.pacmon/DEPENDENCY-NOTES.md`, read and written the same way. A
+  mark before each dependency in `package.json`, the first line of the note
+  at the end of the line and the whole note as quick documentation; a Pacmon
+  tool window with documentation coverage, the settings and a note editor
+  with a layer for people and a layer for agents; the format warnings
+  underlined live in the notes file, with **Format DEPENDENCY-NOTES.md** to
+  rewrite it into canonical form; **Set Up AI Instructions** and the rest in
+  the Tools menu. The rules are a hand-written port of `src/core`, kept in
+  step by hand. The plugin carries the extension's version number, its logo
+  is the mark on the dark disc, and the Marketplace listing is named plainly
+  "Pacmon"; `jetbrains/README.md` says how it is built, verified and
+  published.
+
+## 0.3.1 — 2026-09-15
+
+- The README shows the notes file being written by hand. The two recordings
+  showed the note panel and an agent, and neither showed the file, which left
+  the README's own claim — every note in one Markdown file you edit like any
+  other — with nothing behind it. The third recording is the loop: `helmet`
+  has no note, a section for it is written by hand in the notes file, and the
+  `helmet` line in `package.json` comes back carrying it. The paragraph above
+  it says the same in words: the file is the only place a note lives, and
+  nothing is generated or cached anywhere else.
+
 ## 0.3.0 — 2026-09-14
 
 - **The extension says "Dependency Notes" everywhere now.** The display name,
