@@ -54,6 +54,9 @@
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.json</depends>
+    <!-- Only to annotate DEPENDENCY-NOTES.md when the Markdown plugin claims
+         .md files; without it they are plain text and the TEXT annotator runs. -->
+    <depends optional="true" config-file="pacmon-markdown.xml">org.intellij.plugins.markdown</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <projectConfigurable
@@ -67,8 +70,9 @@
             implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
         <editor.linePainter
             implementation="dev.pacmon.jetbrains.editor.PacmonLinePainter"/>
-        <editorFactoryListener
-            implementation="dev.pacmon.jetbrains.editor.PacmonNotesAnnotator"/>
+        <annotator
+            language="TEXT"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonNotesAnnotator"/>
         <lang.documentationProvider
             language="JSON"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>

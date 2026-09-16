@@ -18,6 +18,7 @@ object NotesLint {
     private val anyHeading = Regex("^(#{1,6})(?!#)\\s+(.+?)\\s*$")
     private val noSpaceH2 = Regex("^##(?=[^#\\s])(.+?)\\s*$")
     private val fence = Regex("^\\s{0,3}(`{3,}|~{3,})")
+    private val removedStatus = Regex("^removed\\b", RegexOption.IGNORE_CASE)
 
     fun lint(model: NotesFileModel, depNames: Collection<String>): List<LintFinding> {
         val findings = mutableListOf<LintFinding>()
@@ -131,7 +132,7 @@ object NotesLint {
                     findings.add(LintFinding.EmptyAgentValue(i, key, keySpan))
                     continue
                 }
-                if (key == "status" && value.startsWith("removed", ignoreCase = true) &&
+                if (key == "status" && removedStatus.containsMatchIn(value) &&
                     NotesCore.normalizeName(section.name) in deps
                 ) {
                     findings.add(LintFinding.RemovedButPresent(i, section.name, valueSpan))

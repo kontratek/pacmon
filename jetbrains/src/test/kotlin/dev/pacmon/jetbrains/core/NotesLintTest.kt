@@ -192,6 +192,13 @@ class NotesLintTest {
     }
 
     @Test
+    fun `reads status removed as a word, so a value that merely starts with it is a bad value`() {
+        val findings = agentFindings("- status: removedish")
+        assertEquals(1, findings.size)
+        assertTrue(findings[0].toString(), findings[0] is LintFinding.BadAgentValue)
+    }
+
+    @Test
     fun `never looks at the human text nor fenced code inside the block`() {
         assertTrue(agentFindings("```\n- weird: thing\n```").isEmpty())
         val plain = NotesCore.parse("## express\n\n- weird: thing\n")
