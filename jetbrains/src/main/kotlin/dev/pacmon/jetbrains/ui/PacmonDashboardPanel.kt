@@ -14,19 +14,43 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.ui.JBColor
+import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBRadioButton
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.ui.JBUI
+import dev.pacmon.jetbrains.action.PacmonCommands
+import dev.pacmon.jetbrains.core.NotesCore
 import dev.pacmon.jetbrains.editor.DependencyPsi
 import dev.pacmon.jetbrains.service.PacmonProjectService
+import dev.pacmon.jetbrains.settings.Decorations
+import dev.pacmon.jetbrains.settings.InlineSources
+import dev.pacmon.jetbrains.settings.NoteButtons
+import dev.pacmon.jetbrains.settings.NoteEntries
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.Rectangle
+import javax.swing.ButtonGroup
+import javax.swing.JComponent
+import javax.swing.JEditorPane
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JProgressBar
+import javax.swing.Scrollable
 import kotlin.math.roundToInt
 
+/**
+ * The Pacmon tool window's front page: the same six sections the VS Code
+ * extension's activity-bar view has, in the same order and with the same
+ * words — coverage, the click targets, the note editor, the note markers, the
+ * inline note source, and the actions.
+ *
+ * Everything here writes straight through to [PacmonProjectService]; the
+ * Settings page under Tools → Pacmon is the same settings again, for anyone
+ * who looks there first.
+ */
 class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()) {
     internal data class CoverageSnapshot(
         val ratio: String,
@@ -50,8 +74,13 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
     private lateinit var packageLabel: JLabel
     private lateinit var coverageStatusLabel: JLabel
     private lateinit var targetsCountLabel: JLabel
-    private lateinit var iconToggle: JBCheckBox
-    private lateinit var previewToggle: JBCheckBox
+    private lateinit var markersLede: JEditorPane
+    private lateinit var openNotesLink: ActionLink
+
+    private val buttonToggles = LinkedHashMap<String, JBCheckBox>()
+    private val noteEntryRadios = LinkedHashMap<String, JBRadioButton>()
+    private val decorationRadios = LinkedHashMap<String, JBRadioButton>()
+    private val inlineSourceRadios = LinkedHashMap<String, JBRadioButton>()
 
     private var lastPackageJson: VirtualFile? = null
     private var loading = false
@@ -62,66 +91,111 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
                 .bold()
                 .applyToComponent { font = font.deriveFont(font.size2D + 2f) }
                 .resizableColumn()
+            link("Reset") { resetToDefaults() }
+                .applyToComponent { toolTipText = "Reset everything in this view to its default" }
             link("Settings") { ShowSettingsUtil.getInstance().showSettingsDialog(project, "Pacmon") }
         }
 
-        row {
-            label("COVERAGE").bold().resizableColumn()
-            coverageCountLabel = label("").applyToComponent { foreground = mutedColor }.component
-        }
-        row {
-            packageLabel = label("").applyToComponent { foreground = mutedColor }.component
-        }
-        row {
-            cell(coverageBar).align(AlignX.FILL)
-        }
-        row {
-            coverageStatusLabel = label("").applyToComponent { foreground = mutedColor }.component
-        }
-
-        row {
-            label("CLICK TARGETS").bold().resizableColumn()
-            targetsCountLabel = label("").applyToComponent { foreground = mutedColor }.component
-        }
-        row {
-            comment("How you open a dependency's note from package.json. Right-click always works too.")
-        }
-        row {
-            iconToggle = checkBox("Icon before the package name")
-                .comment("Filled when a note exists, hollow when it does not.")
-                .component
+        group("COVERAGE") {
+            row {
+                packageLabel = muted("").resizableColumn().component
+                coverageCountLabel = muted("").align(AlignX.RIGHT).component
+            }
+            row {
+                cell(coverageBar).align(AlignX.FILL)
+            }
+            row {
+                coverageStatusLabel = muted("").component
+            }
         }
 
-        row {
-            label("NOTE MARKERS").bold()
+        group("CLICK TARGETS") {
+            row {
+                comment("How you open a dependency's note from package.json. Right-click always works too.")
+                    .resizableColumn()
+                targetsCountLabel = muted("").align(AlignX.RIGHT).component
+            }
+            for (id in NoteButtons.ALL) {
+                row {
+                    val box = checkBox(NoteButtons.label(id)).resizableColumn().component
+                    box.addActionListener { if (!loading) writeNoteButtons() }
+                    buttonToggles[id] = box
+                    muted(NoteButtons.gesture(id)).align(AlignX.RIGHT)
+                }
+                indent {
+                    row { cell(NoteExamples.forClickTarget(id)).align(AlignX.FILL) }
+                    row { comment(NoteButtons.help(id)) }
+                }
+            }
         }
-        row {
-            comment("End-of-line hint on dependencies that already have a note.")
+
+        group("NOTE EDITOR") {
+            row { comment("Where a note is written when you open one from package.json.") }
+            radioGroup(NoteEntries.ALL, noteEntryRadios, NoteEntries::help) { value ->
+                service.state.noteEntry = value
+            }
         }
-        row {
-            previewToggle = checkBox("Note preview at end of line")
-                .comment("Shows the selected note text after the dependency line.")
-                .component
+
+        group("NOTE MARKERS") {
+            row {
+                markersLede = comment("End-of-line hint on dependencies that already have a note.").component
+            }
+            radioGroup(Decorations.ALL, decorationRadios, Decorations::help, NoteExamples::forMarker) { value ->
+                service.state.decorations = value
+            }
+        }
+
+        group("INLINE NOTE SOURCE") {
+            row {
+                comment(
+                    "Which layer of a note shows next to the dependency and leads its quick documentation. " +
+                        "Every note has two: what people write under the heading, and the \"Agent notes\" " +
+                        "block AI agents fill in. The documentation always shows both.",
+                )
+            }
+            radioGroup(InlineSources.ALL, inlineSourceRadios, InlineSources::help) { value ->
+                service.state.inlineSource = value
+            }
+        }
+
+        group("ACTIONS") {
+            row {
+                openNotesLink = link("Open ${NotesCore.NOTES_FILE_NAME}") {
+                    PacmonCommands.openNotesFile(project, lastPackageJson)
+                }.comment("The notes file for the package.json you are in.").component
+            }
+            row {
+                link("Open package.json") { PacmonCommands.openPackageJson(project, lastPackageJson) }
+                    .comment("The manifest these notes describe.")
+            }
+            row {
+                link("Search dependencies…") { DependencyPicker.show(project, lastPackageJson) }
+                    .comment("Every dependency in one list, documented or not — pick one to open its note.")
+            }
+            row {
+                link("Format notes file") { PacmonCommands.formatNotesFile(project, lastPackageJson) }
+                    .comment("Sort sections and canonicalize headings. Prose untouched.")
+            }
+            row {
+                link("Set up AI instructions") { PacmonCommands.setUpAiInstructions(project) }
+                    .comment(
+                        "Write ${NotesCore.AGENT_RULES_RELATIVE_PATH} — the rules agents follow — and point " +
+                            "AGENTS.md, CLAUDE.md and friends at it.",
+                    )
+            }
         }
     }
 
     init {
-        border = JBUI.Borders.empty(8, 12)
-        add(content, BorderLayout.CENTER)
-
-        iconToggle.addActionListener {
-            if (!loading) {
-                service.state.showIcons = iconToggle.isSelected
-                targetsCountLabel.text = if (iconToggle.isSelected) "1 of 1" else "0 of 1"
-                service.settingsChanged()
-            }
-        }
-        previewToggle.addActionListener {
-            if (!loading) {
-                service.state.showPreviews = previewToggle.isSelected
-                service.settingsChanged()
-            }
-        }
+        border = JBUI.Borders.empty()
+        content.border = JBUI.Borders.empty(8, 12)
+        add(
+            JBScrollPane(WidthTrackingWrapper(content)).apply {
+                border = JBUI.Borders.empty()
+                horizontalScrollBarPolicy = JBScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+            },
+            BorderLayout.CENTER,
+        )
 
         project.messageBus.connect(project).subscribe(
             FileEditorManagerListener.FILE_EDITOR_MANAGER,
@@ -141,14 +215,18 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
 
     fun refresh() {
         loading = true
-        iconToggle.isSelected = service.state.showIcons
-        previewToggle.isSelected = service.state.showPreviews
-        targetsCountLabel.text = if (iconToggle.isSelected) "1 of 1" else "0 of 1"
+        for ((id, box) in buttonToggles) box.isSelected = service.noteButtonEnabled(id)
+        noteEntryRadios[service.noteEntry()]?.isSelected = true
+        decorationRadios[service.decorations()]?.isSelected = true
+        inlineSourceRadios[service.state.inlineSource]?.isSelected = true
         loading = false
+        refreshTargetsCount()
 
         val selected = FileEditorManager.getInstance(project).selectedFiles.firstOrNull { it.name == "package.json" }
         if (selected != null) lastPackageJson = selected
         val packageJson = selected ?: lastPackageJson?.takeIf { it.isValid } ?: rootPackageJson()
+        markersLede.text = markersHelp(packageJson)
+        openNotesLink.text = "Open ${notesFileLabel(packageJson)}"
         if (packageJson == null) {
             showCoverage("", "", 0, "Open a package.json to see its dependencies here.", false)
             return
@@ -182,6 +260,53 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         coverageBar.isVisible,
     )
 
+    internal fun setNoteButtonForTest(id: String, on: Boolean) {
+        buttonToggles.getValue(id).isSelected = on
+        writeNoteButtons()
+    }
+
+    internal fun selectChoiceForTest(group: String, value: String) {
+        val radios = when (group) {
+            "noteEntry" -> noteEntryRadios
+            "decorations" -> decorationRadios
+            else -> inlineSourceRadios
+        }
+        radios.getValue(value).doClick()
+    }
+
+    internal fun resetForTest() = resetToDefaults()
+
+    private fun resetToDefaults() {
+        service.resetViewSettings()
+        service.settingsChanged()
+        refresh()
+    }
+
+    /**
+     * The checkboxes are not exclusive, so the whole set is written at once and
+     * the service puts them back in canonical order — the same thing the VS
+     * Code view does with `pacmon.noteButtons`.
+     */
+    private fun writeNoteButtons() {
+        service.setNoteButtons(buttonToggles.filterValues { it.isSelected }.keys)
+        refreshTargetsCount()
+        service.settingsChanged()
+    }
+
+    private fun refreshTargetsCount() {
+        targetsCountLabel.text = "${service.noteButtons().size} of ${NoteButtons.ALL.size}"
+    }
+
+    private fun markersHelp(packageJson: VirtualFile?): String =
+        "End-of-line hint on dependencies that already have a note in ${notesFileLabel(packageJson)}."
+
+    /** The notes file this package.json resolves to, shown the way you would
+     *  type it — or the bare file name when there is no notes file yet. */
+    private fun notesFileLabel(packageJson: VirtualFile?): String {
+        val notesFile = packageJson?.takeIf { it.isValid }?.let(service::resolveNotesFile)
+        return if (notesFile == null) NotesCore.NOTES_FILE_NAME else relativePath(notesFile)
+    }
+
     private fun showCoverage(ratio: String, file: String, percent: Int, status: String, showBar: Boolean) {
         coverageCountLabel.text = ratio
         packageLabel.text = file
@@ -201,5 +326,74 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
     private fun relativePath(file: VirtualFile): String {
         val root = project.basePath?.replace('\\', '/')?.trimEnd('/') ?: return file.name
         return file.path.replace('\\', '/').removePrefix("$root/")
+    }
+
+    private fun com.intellij.ui.dsl.builder.Row.muted(text: String) =
+        label(text).applyToComponent { foreground = mutedColor }
+
+    /**
+     * One exclusive group of choices with its help line under each — the Swing
+     * shape of the VS Code view's radio rows. Writing goes through [apply];
+     * every group refreshes the editor afterwards, since each of them changes
+     * what package.json looks like.
+     */
+    private fun com.intellij.ui.dsl.builder.Panel.radioGroup(
+        values: List<String>,
+        into: MutableMap<String, JBRadioButton>,
+        help: (String) -> String,
+        example: ((String) -> JComponent)? = null,
+        apply: (String) -> Unit,
+    ) {
+        // The DSL refuses a radio button outside a `buttonsGroup`, and a group
+        // only keeps them exclusive once it is bound to a property. These are
+        // written straight through to the service instead, so the exclusivity
+        // comes from a plain ButtonGroup of our own.
+        val group = ButtonGroup()
+        buttonsGroup(indent = false) {
+            for (value in values) {
+                row {
+                    val button = radioButton(value).component
+                    button.addActionListener {
+                        if (!loading && button.isSelected) {
+                            apply(value)
+                            service.settingsChanged()
+                            markersLede.text = markersHelp(lastPackageJson)
+                        }
+                    }
+                    into[value] = button
+                }
+                indent {
+                    example?.let { build -> row { cell(build(value)).align(AlignX.FILL) } }
+                    row { comment(help(value)) }
+                }
+            }
+        }
+        for (button in values.mapNotNull(into::get)) group.add(button)
+    }
+
+    /**
+     * Six sections are taller than a tool window, so the page scrolls — but it
+     * must never scroll sideways: the help lines wrap to the width they are
+     * given, and a viewport that lets the content keep its own preferred width
+     * would clip the right-hand edge instead, with the horizontal scrollbar
+     * turned off.
+     */
+    private class WidthTrackingWrapper(view: JComponent) : JPanel(BorderLayout()), Scrollable {
+        init {
+            isOpaque = false
+            add(view, BorderLayout.CENTER)
+        }
+
+        override fun getPreferredScrollableViewportSize(): Dimension = preferredSize
+
+        override fun getScrollableUnitIncrement(visible: Rectangle, orientation: Int, direction: Int): Int =
+            JBUI.scale(16)
+
+        override fun getScrollableBlockIncrement(visible: Rectangle, orientation: Int, direction: Int): Int =
+            JBUI.scale(64)
+
+        override fun getScrollableTracksViewportWidth(): Boolean = true
+
+        override fun getScrollableTracksViewportHeight(): Boolean = false
     }
 }

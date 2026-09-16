@@ -11,9 +11,21 @@ import dev.pacmon.jetbrains.editor.DependencyPsi
 import dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider
 import dev.pacmon.jetbrains.editor.PacmonLinePainter
 import dev.pacmon.jetbrains.service.PacmonProjectService
+import dev.pacmon.jetbrains.settings.Decorations
+import dev.pacmon.jetbrains.settings.InlineSources
+import dev.pacmon.jetbrains.settings.NoteButtons
+import dev.pacmon.jetbrains.settings.NoteEntries
 import java.awt.Font
 
 class PacmonUiTest : BasePlatformTestCase() {
+    // The light project — and with it the settings service — is shared between
+    // test classes, so every class that writes a setting starts from defaults
+    // rather than from whatever the class before it left behind.
+    override fun setUp() {
+        super.setUp()
+        project.getService(PacmonProjectService::class.java).resetViewSettings()
+    }
+
     private class RecordingSink : InlayHintsSink {
         var inlineOffset: Int? = null
 
@@ -122,6 +134,54 @@ class PacmonUiTest : BasePlatformTestCase() {
         myFixture.configureByText("README.txt", "project")
         dashboard.refresh()
         assertEquals(coverage.packagePath, dashboard.coverageForTest().packagePath)
+    }
+
+    fun testDashboardWritesEveryChoiceAndResetsThemAllTogether() {
+        myFixture.configureByText("package.json", """{ "dependencies": { "vue": "^3" } }""")
+        val service = project.getService(PacmonProjectService::class.java)
+        val dashboard = PacmonDashboardPanel(project)
+        dashboard.refresh()
+
+        // Ticked out of order; the stored list is canonical all the same, so it
+        // reads identically however the boxes were reached.
+        dashboard.setNoteButtonForTest(NoteButtons.LIGHTBULB, true)
+        dashboard.setNoteButtonForTest(NoteButtons.LINK, false)
+        dashboard.setNoteButtonForTest(NoteButtons.CODE_LENS, true)
+        assertEquals(
+            listOf(NoteButtons.ICON_LEFT, NoteButtons.CODE_LENS, NoteButtons.LIGHTBULB),
+            service.noteButtons(),
+        )
+
+        dashboard.selectChoiceForTest("noteEntry", NoteEntries.PEEK)
+        dashboard.selectChoiceForTest("decorations", Decorations.BADGE)
+        dashboard.selectChoiceForTest("inlineSource", InlineSources.AI_ONLY)
+        assertEquals(NoteEntries.PEEK, service.noteEntry())
+        assertEquals(Decorations.BADGE, service.decorations())
+        assertEquals(InlineSources.AI_ONLY, service.state.inlineSource)
+
+        // One radio per group: picking "badge" must have let go of "preview".
+        dashboard.selectChoiceForTest("decorations", Decorations.OFF)
+        assertEquals(Decorations.OFF, service.decorations())
+
+        dashboard.resetForTest()
+        assertEquals(NoteButtons.DEFAULT, service.noteButtons())
+        assertEquals(NoteEntries.PANEL, service.noteEntry())
+        assertEquals(Decorations.PREVIEW, service.decorations())
+        assertEquals(InlineSources.HUMAN_FIRST, service.state.inlineSource)
+    }
+
+    fun testEveryChoiceThatShowsASampleCanBuildOne() {
+        // The samples are built once, while the panel is, so a choice that
+        // cannot draw itself takes the whole tool window down with it.
+        for (id in NoteButtons.ALL) {
+            assertNotNull("No sample for the $id click target", NoteExamples.forClickTarget(id))
+        }
+        for (value in Decorations.ALL) {
+            assertNotNull("No sample for the $value note marker", NoteExamples.forMarker(value))
+        }
+        // "off" draws the dependency line and nothing after it — the absence is
+        // the point, so it must still produce a sample rather than nothing.
+        assertNotNull(NoteExamples.forMarker(Decorations.OFF))
     }
 
     fun testPanelAutosavesBothLayersAndCreatesAgentRules() {

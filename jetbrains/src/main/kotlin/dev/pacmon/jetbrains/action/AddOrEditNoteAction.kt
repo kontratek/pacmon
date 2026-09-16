@@ -21,6 +21,6 @@ class AddOrEditNoteAction : AnAction() {
         val file = event.getData(CommonDataKeys.PSI_FILE) ?: return
         val editor = event.getData(CommonDataKeys.EDITOR) ?: return
         val dependency = DependencyPsi.atOffset(file, editor.caretModel.offset) ?: return
-        NoteEditor.open(project, dependency)
+        NoteEditor.open(project, dependency, editor)
     }
 }

@@ -8,6 +8,11 @@ package dev.pacmon.jetbrains.core
 sealed class LintFinding(val line: Int) {
     abstract fun message(): String
 
+    private companion object {
+        /** The Tools-menu action that rewrites the file, named as the user sees it. */
+        const val FORMAT_ACTION = "Format ${NotesCore.NOTES_FILE_NAME}"
+    }
+
     class DuplicateSection(line: Int, val name: String, val firstLine: Int) : LintFinding(line) {
         override fun message(): String =
             "\"$name\" is already defined at line ${firstLine + 1} — only the first section is read."
@@ -22,7 +27,7 @@ sealed class LintFinding(val line: Int) {
     }
 
     class MissingFrontmatter(line: Int) : LintFinding(line) {
-        override fun message(): String = "No frontmatter — normalize the file to add it."
+        override fun message(): String = "No frontmatter — \"$FORMAT_ACTION\" adds it."
     }
 
     class UnknownFormat(line: Int, val version: String) : LintFinding(line) {
@@ -30,7 +35,8 @@ sealed class LintFinding(val line: Int) {
     }
 
     class MissingTitle(line: Int) : LintFinding(line) {
-        override fun message(): String = "No \"${NotesCore.DEFAULT_TITLE}\" title — normalize the file to add it."
+        override fun message(): String =
+            "No \"${NotesCore.DEFAULT_TITLE}\" title — \"$FORMAT_ACTION\" adds it."
     }
 
     class WrongTitle(line: Int, val text: String) : LintFinding(line) {

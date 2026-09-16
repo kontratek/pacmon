@@ -10,6 +10,7 @@ jetbrains/.kotlin/
 jetbrains/build/
 jetbrains/.idea/
 jetbrains/out/
+jetbrains/README.md
 
 # JetBrains plugin build artifacts
 jetbrains/.gradle/

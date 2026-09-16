@@ -1,0 +1,10 @@
+<idea-plugin>
+    <!-- Loaded only when org.intellij.plugins.markdown is present: then .md is
+         Markdown, not plain text, and the format warnings need this annotator
+         to reach DEPENDENCY-NOTES.md. -->
+    <extensions defaultExtensionNs="com.intellij">
+        <annotator
+            language="Markdown"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonNotesAnnotator"/>
+    </extensions>
+</idea-plugin>

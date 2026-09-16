@@ -10,6 +10,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.ui.JBColor
 import dev.pacmon.jetbrains.core.NotesCore
 import dev.pacmon.jetbrains.service.PacmonProjectService
+import dev.pacmon.jetbrains.settings.Decorations
 import java.awt.Font
 
 class PacmonLinePainter : EditorLinePainter() {
@@ -27,14 +28,23 @@ class PacmonLinePainter : EditorLinePainter() {
             } ?: return@compute emptyList()
 
             val service = project.getService(PacmonProjectService::class.java)
-            if (!service.previewsEnabled()) return@compute emptyList()
+            val decorations = service.decorations()
+            if (decorations == Decorations.OFF) return@compute emptyList()
             val note = service.noteFor(file, dependency.name) ?: return@compute emptyList()
-            val preview = NotesCore.preview(note.layers, service.inlineSource())
+            // "badge" says a note exists and nothing more, for people who want
+            // the hint without the prose. The word carries it rather than the
+            // marker alone, which on its own reads as a stray character \u2014 the
+            // VS Code extension writes the same "\u25AA note".
+            val text = if (decorations == Decorations.BADGE) {
+                "   \u25AA note"
+            } else {
+                "   \u25AA ${NotesCore.preview(note.layers, service.inlineSource())}"
+            }
             val color = JBColor.namedColor(
                 "Label.disabledForeground",
                 JBColor(0x6F737A, 0xA0A0A0),
             )
-            listOf(LineExtensionInfo("   \u25AA $preview", color, null, null, Font.ITALIC))
+            listOf(LineExtensionInfo(text, color, null, null, Font.ITALIC))
         }
     }
 }

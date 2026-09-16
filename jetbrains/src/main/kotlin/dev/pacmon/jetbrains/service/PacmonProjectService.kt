@@ -9,6 +9,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.StoragePathMacros
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
@@ -19,22 +20,36 @@ import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import com.intellij.psi.PsiManager
 import dev.pacmon.jetbrains.core.AiInstructions
 import dev.pacmon.jetbrains.core.InlineSource
 import dev.pacmon.jetbrains.core.NotesCore
 import dev.pacmon.jetbrains.core.NotesFileModel
 import dev.pacmon.jetbrains.core.SectionLayers
+import dev.pacmon.jetbrains.settings.Decorations
+import dev.pacmon.jetbrains.settings.InlineSources
+import dev.pacmon.jetbrains.settings.MonorepoModes
+import dev.pacmon.jetbrains.settings.NoteButtons
+import dev.pacmon.jetbrains.settings.NoteEntries
 
 @Service(Service.Level.PROJECT)
 @State(name = "PacmonSettings", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
 class PacmonProjectService(private val project: Project) :
     com.intellij.openapi.components.PersistentStateComponent<PacmonProjectService.Settings>,
     Disposable {
+    /**
+     * The same five settings the VS Code extension contributes under `pacmon.*`,
+     * with the same names and the same defaults — see `package.json` there and
+     * `dev.pacmon.jetbrains.settings.PacmonOptions` for the values each accepts.
+     * `noteButtons` is a list because the click targets are not exclusive: any
+     * combination of them may be on at once, including none.
+     */
     data class Settings(
-        var monorepoMode: String = "nearest",
-        var inlineSource: String = "human-first",
-        var showIcons: Boolean = true,
-        var showPreviews: Boolean = true,
+        var monorepoMode: String = MonorepoModes.NEAREST,
+        var inlineSource: String = InlineSources.HUMAN_FIRST,
+        var noteEntry: String = NoteEntries.PANEL,
+        var decorations: String = Decorations.PREVIEW,
+        var noteButtons: MutableList<String> = NoteButtons.DEFAULT.toMutableList(),
     )
 
     data class Note(
@@ -54,7 +69,7 @@ class PacmonProjectService(private val project: Project) :
                     .toSet()
                 ApplicationManager.getApplication().invokeLater {
                     if (project.isDisposed) return@invokeLater
-                    DaemonCodeAnalyzer.getInstance(project).restart()
+                    refreshOpenEditors()
                     if (changedPacmonFiles.isNotEmpty()) {
                         project.messageBus.syncPublisher(PacmonNotesListener.TOPIC).notesChanged(changedPacmonFiles)
                     }
@@ -71,20 +86,71 @@ class PacmonProjectService(private val project: Project) :
 
     override fun dispose() = Unit
 
+    /**
+     * Every setting in the tool window changes what `package.json` looks like,
+     * so the open editors have to be told — and restarting the daemon on its
+     * own does not tell them.
+     *
+     * The inlay pass stamps the project's PSI modification count onto each
+     * editor as it collects hints, and skips the editor entirely on the next
+     * pass while that count still matches. Nothing about ticking a click
+     * target moves it, so the marks stayed exactly as they were until the file
+     * was edited, or closed and reopened. Dropping the PSI caches moves the
+     * count, which is what makes the pass run again. It is a heavier hammer
+     * than the job wants, but the alternative is the internal API the platform
+     * uses for its own inlay settings, and this happens once per click in a
+     * settings panel, never in a loop.
+     */
     fun settingsChanged() {
+        PsiManager.getInstance(project).dropPsiCaches()
+        refreshOpenEditors()
+    }
+
+    /**
+     * The daemon for everything it produces, and a repaint for the end-of-line
+     * markers, which [dev.pacmon.jetbrains.editor.PacmonLinePainter] draws
+     * straight onto the editor rather than through a pass — nothing the daemon
+     * does would bring them back.
+     */
+    private fun refreshOpenEditors() {
         DaemonCodeAnalyzer.getInstance(project).restart()
+        for (editor in EditorFactory.getInstance().allEditors) {
+            if (editor.project == project) editor.contentComponent.repaint()
+        }
     }
 
     fun inlineSource(): InlineSource = when (settings.inlineSource) {
-        "ai-first" -> InlineSource.AI_FIRST
-        "human-only" -> InlineSource.HUMAN_ONLY
-        "ai-only" -> InlineSource.AI_ONLY
+        InlineSources.AI_FIRST -> InlineSource.AI_FIRST
+        InlineSources.HUMAN_ONLY -> InlineSource.HUMAN_ONLY
+        InlineSources.AI_ONLY -> InlineSource.AI_ONLY
         else -> InlineSource.HUMAN_FIRST
     }
 
-    fun iconsEnabled(): Boolean = settings.showIcons
+    /** Whether one of the five click targets is on. Unknown ids are off. */
+    fun noteButtonEnabled(id: String): Boolean = id in settings.noteButtons
 
-    fun previewsEnabled(): Boolean = settings.showPreviews
+    fun noteButtons(): List<String> = NoteButtons.ALL.filter(::noteButtonEnabled)
+
+    /**
+     * Writes the click targets in the canonical order, so the stored value reads
+     * the same however the boxes were ticked, and unknown ids never survive.
+     */
+    fun setNoteButtons(ids: Collection<String>) {
+        settings.noteButtons = NoteButtons.ALL.filter { it in ids }.toMutableList()
+    }
+
+    fun decorations(): String = settings.decorations
+
+    fun noteEntry(): String = settings.noteEntry
+
+    /** Everything the tool window controls, back to the shipped defaults. */
+    fun resetViewSettings() {
+        val defaults = Settings()
+        settings.inlineSource = defaults.inlineSource
+        settings.noteEntry = defaults.noteEntry
+        settings.decorations = defaults.decorations
+        settings.noteButtons = defaults.noteButtons
+    }
 
     fun noteFor(packageJson: VirtualFile, dependency: String): Note? {
         val notesFile = resolveNotesFile(packageJson) ?: return null
@@ -98,7 +164,7 @@ class PacmonProjectService(private val project: Project) :
 
     fun resolveNotesFile(packageJson: VirtualFile): VirtualFile? {
         val root = projectRoot() ?: return null
-        if (settings.monorepoMode == "rootOnly") return notesIn(root)
+        if (settings.monorepoMode == MonorepoModes.ROOT_ONLY) return notesIn(root)
         var directory: VirtualFile? = packageJson.parent
         repeat(64) {
             val current = directory ?: return null
@@ -200,8 +266,14 @@ class PacmonProjectService(private val project: Project) :
         FileDocumentManager.getInstance().saveDocument(document)
     }
 
+    /**
+     * A saved note moves the PSI modification count by itself — the notes file
+     * was just written — so this path only has to ask for the refresh, not
+     * force one. It runs on every autosave, which is roughly every keystroke,
+     * so it must stay cheap.
+     */
     private fun notifyNotesChanged(path: String) {
-        DaemonCodeAnalyzer.getInstance(project).restart()
+        refreshOpenEditors()
         project.messageBus.syncPublisher(PacmonNotesListener.TOPIC)
             .notesChanged(setOf(path.replace('\\', '/')))
     }
