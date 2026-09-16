@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.3.2 — 2026-09-16
+
 - **Pacmon comes to JetBrains IDEs.** The `jetbrains/` module is a plugin
   for IntelliJ IDEA, WebStorm, PyCharm, PhpStorm and the rest of the family:
   the same `.pacmon/DEPENDENCY-NOTES.md`, read and written the same way. A
