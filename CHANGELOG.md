@@ -18,9 +18,9 @@
   rewrite it into canonical form; **Set Up AI Instructions** and the rest in
   the Tools menu. The rules are a hand-written port of `src/core`, kept in
   step by hand. The plugin carries the extension's version number, its logo
-  is the mark on the dark disc, and the Marketplace listing is named plainly
-  "Pacmon"; `jetbrains/README.md` says how it is built, verified and
-  published.
+  is the mark on the dark disc, and it is on the JetBrains Marketplace as
+  plainly [Pacmon](https://plugins.jetbrains.com/plugin/34295-pacmon);
+  `jetbrains/README.md` says how it is built, verified and published.
 
 - **The JetBrains plugin offers everything the VS Code view does.** The tool
   window had coverage, one checkbox for the mark and one for the end-of-line

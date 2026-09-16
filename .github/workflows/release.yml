@@ -3,8 +3,10 @@ name: Release
 # Publishing is a button, never a side effect of merging. Actions -> Release ->
 # Run workflow, pick patch / minor / major. The run raises the version, turns the
 # CHANGELOG's "Unreleased" section into that version, runs the whole test suite,
-# builds one VSIX, pushes the version commit and its tag to main, and sends that
-# same file to the Visual Studio Marketplace and to Open VSX.
+# builds one VSIX and one JetBrains plugin zip, pushes the version commit and its
+# tag to main, sends the VSIX to the Visual Studio Marketplace and to Open VSX,
+# and submits the zip to the JetBrains Marketplace, which lists it after its own
+# review. Both files go on the GitHub Release.
 #
 # A version number is spent the moment a registry accepts it, so nothing here is
 # retried blindly. Both publish steps skip a version the registry already has,
@@ -12,7 +14,8 @@ name: Release
 # "Re-run failed jobs" is the recovery path after an expired token, and it
 # cannot raise the version a second time.
 #
-# Tokens are the VSCE_PAT and OVSX_PAT repository secrets. See docs/releasing.md.
+# Tokens are the VSCE_PAT, OVSX_PAT and JETBRAINS_TOKEN repository secrets. See
+# docs/releasing.md.
 
 on:
   workflow_dispatch:
@@ -119,6 +122,22 @@ jobs:
           name: pacmon-vsix
           path: pacmon.vsix
 
+      # The JetBrains plugin, from the same tree at the same version: its
+      # build.gradle.kts reads the version the step above wrote to package.json
+      # and renders that version's CHANGELOG section into the change notes. The
+      # Plugin Verifier is not run here; CI runs it on every push to main.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - working-directory: jetbrains
+        run: ./gradlew test buildPlugin verifyPluginStructure
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pacmon-jetbrains
+          path: jetbrains/build/distributions/*.zip
+
       # Git first: the history should record a release before the registries
       # can hand it to anyone. A push with the built-in token starts no further
       # workflow run, so main does not re-run CI for this commit.
@@ -150,7 +169,28 @@ jobs:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: pnpm exec ovsx publish --packagePath pacmon.vsix --skip-duplicate
 
-      # The Release carries the VSIX, for anyone installing without a registry.
+      # JetBrains reviews every version by hand before listing it, normally within
+      # two business days, so this step submits rather than publishes. The
+      # Marketplace refuses a version it already has, so a re-run asks the
+      # plugin's update list first and skips, the way --skip-duplicate does above.
+      - name: Submit to the JetBrains Marketplace
+        env:
+          JETBRAINS_TOKEN: ${{ secrets.JETBRAINS_TOKEN }}
+          PLUGIN_ID: 34295 # plugins.jetbrains.com/plugin/34295-pacmon
+          VERSION: ${{ steps.version.outputs.version }}
+        working-directory: jetbrains
+        run: |
+          set -euo pipefail
+          if curl -fsS -H "Authorization: Bearer $JETBRAINS_TOKEN" \
+               "https://plugins.jetbrains.com/api/plugins/$PLUGIN_ID/updates?size=100" \
+             | jq -e --arg v "$VERSION" 'any(.[]; .version == $v)' > /dev/null; then
+            echo "The JetBrains Marketplace already has $VERSION - skipping."
+          else
+            ./gradlew publishPlugin
+          fi
+
+      # The Release carries the VSIX and the JetBrains zip, for anyone installing
+      # without a registry.
       - name: Publish the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -158,7 +198,7 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release upload "$TAG" pacmon.vsix --clobber
+            gh release upload "$TAG" pacmon.vsix jetbrains/build/distributions/*.zip --clobber
           else
-            gh release create "$TAG" pacmon.vsix --title "$TAG" --notes-file release-notes.md
+            gh release create "$TAG" pacmon.vsix jetbrains/build/distributions/*.zip --title "$TAG" --notes-file release-notes.md
           fi
