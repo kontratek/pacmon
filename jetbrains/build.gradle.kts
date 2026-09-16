@@ -30,11 +30,12 @@ val pluginVersion = Regex("(?m)^ {2}\"version\": \"([^\"]+)\"").find(packageJson
 version = pluginVersion
 
 // The listing shows this version's CHANGELOG section as its change notes, rendered
-// to HTML. Between releases no such section exists yet, so a local build carries
-// whatever is under "Unreleased" and still describes what is landing. Rendered
-// here, at configuration time, into a plain String: a provider mapped in this
-// script would carry a reference to the script, which the configuration cache
-// cannot store. The file read is still tracked as a build input.
+// to HTML. Between releases package.json still names the last release, so a local
+// build carries that release's notes; "Unreleased" is the fallback for a version
+// that has no section of its own. Rendered here, at configuration time, into a
+// plain String: a provider mapped in this script would carry a reference to the
+// script, which the configuration cache cannot store. The file read is still
+// tracked as a build input.
 val changeNotesHtml: String = run {
     val lines = providers.fileContents(layout.projectDirectory.file("../CHANGELOG.md")).asText.get().lines()
     fun section(isHeading: (String) -> Boolean): String? {
