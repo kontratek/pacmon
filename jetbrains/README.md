@@ -50,7 +50,9 @@ src/main/kotlin/dev/pacmon/jetbrains/
 │   ├── PacmonInlayHintsProvider.kt the inlay icon before each dependency name
 │   ├── PacmonLinePainter.kt        the end-of-line note preview
 │   ├── PacmonDocumentationProvider.kt  the quick-doc hover
-│   └── PacmonNotesAnnotator.kt     live NotesLint warnings in DEPENDENCY-NOTES.md
+│   └── PacmonNotesAnnotator.kt     live NotesLint warnings in DEPENDENCY-NOTES.md,
+│                                   as an `Annotator` for TEXT and (optionally) Markdown
+│                                   — the two languages an .md file can get
 │
 ├── service/   Project-level state and file I/O.
 │   ├── PacmonProjectService.kt  settings, resolving/reading/writing the notes file,
