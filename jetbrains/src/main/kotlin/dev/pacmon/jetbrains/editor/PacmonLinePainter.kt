@@ -31,10 +31,12 @@ class PacmonLinePainter : EditorLinePainter() {
             val decorations = service.decorations()
             if (decorations == Decorations.OFF) return@compute emptyList()
             val note = service.noteFor(file, dependency.name) ?: return@compute emptyList()
-            // "badge" is the marker on its own: the line says a note exists and
-            // nothing more, for people who want the hint without the prose.
+            // "badge" says a note exists and nothing more, for people who want
+            // the hint without the prose. The word carries it rather than the
+            // marker alone, which on its own reads as a stray character \u2014 the
+            // VS Code extension writes the same "\u25AA note".
             val text = if (decorations == Decorations.BADGE) {
-                "   \u25AA"
+                "   \u25AA note"
             } else {
                 "   \u25AA ${NotesCore.preview(note.layers, service.inlineSource())}"
             }

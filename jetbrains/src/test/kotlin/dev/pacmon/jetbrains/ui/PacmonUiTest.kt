@@ -18,6 +18,14 @@ import dev.pacmon.jetbrains.settings.NoteEntries
 import java.awt.Font
 
 class PacmonUiTest : BasePlatformTestCase() {
+    // The light project — and with it the settings service — is shared between
+    // test classes, so every class that writes a setting starts from defaults
+    // rather than from whatever the class before it left behind.
+    override fun setUp() {
+        super.setUp()
+        project.getService(PacmonProjectService::class.java).resetViewSettings()
+    }
+
     private class RecordingSink : InlayHintsSink {
         var inlineOffset: Int? = null
 
@@ -160,6 +168,20 @@ class PacmonUiTest : BasePlatformTestCase() {
         assertEquals(NoteEntries.PANEL, service.noteEntry())
         assertEquals(Decorations.PREVIEW, service.decorations())
         assertEquals(InlineSources.HUMAN_FIRST, service.state.inlineSource)
+    }
+
+    fun testEveryChoiceThatShowsASampleCanBuildOne() {
+        // The samples are built once, while the panel is, so a choice that
+        // cannot draw itself takes the whole tool window down with it.
+        for (id in NoteButtons.ALL) {
+            assertNotNull("No sample for the $id click target", NoteExamples.forClickTarget(id))
+        }
+        for (value in Decorations.ALL) {
+            assertNotNull("No sample for the $value note marker", NoteExamples.forMarker(value))
+        }
+        // "off" draws the dependency line and nothing after it — the absence is
+        // the point, so it must still produce a sample rather than nothing.
+        assertNotNull(NoteExamples.forMarker(Decorations.OFF))
     }
 
     fun testPanelAutosavesBothLayersAndCreatesAgentRules() {

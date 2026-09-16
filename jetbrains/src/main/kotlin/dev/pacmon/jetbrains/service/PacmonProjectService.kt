@@ -9,6 +9,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.StoragePathMacros
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
@@ -19,6 +20,7 @@ import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import com.intellij.psi.PsiManager
 import dev.pacmon.jetbrains.core.AiInstructions
 import dev.pacmon.jetbrains.core.InlineSource
 import dev.pacmon.jetbrains.core.NotesCore
@@ -67,7 +69,7 @@ class PacmonProjectService(private val project: Project) :
                     .toSet()
                 ApplicationManager.getApplication().invokeLater {
                     if (project.isDisposed) return@invokeLater
-                    DaemonCodeAnalyzer.getInstance(project).restart()
+                    refreshOpenEditors()
                     if (changedPacmonFiles.isNotEmpty()) {
                         project.messageBus.syncPublisher(PacmonNotesListener.TOPIC).notesChanged(changedPacmonFiles)
                     }
@@ -84,8 +86,37 @@ class PacmonProjectService(private val project: Project) :
 
     override fun dispose() = Unit
 
+    /**
+     * Every setting in the tool window changes what `package.json` looks like,
+     * so the open editors have to be told — and restarting the daemon on its
+     * own does not tell them.
+     *
+     * The inlay pass stamps the project's PSI modification count onto each
+     * editor as it collects hints, and skips the editor entirely on the next
+     * pass while that count still matches. Nothing about ticking a click
+     * target moves it, so the marks stayed exactly as they were until the file
+     * was edited, or closed and reopened. Dropping the PSI caches moves the
+     * count, which is what makes the pass run again. It is a heavier hammer
+     * than the job wants, but the alternative is the internal API the platform
+     * uses for its own inlay settings, and this happens once per click in a
+     * settings panel, never in a loop.
+     */
     fun settingsChanged() {
+        PsiManager.getInstance(project).dropPsiCaches()
+        refreshOpenEditors()
+    }
+
+    /**
+     * The daemon for everything it produces, and a repaint for the end-of-line
+     * markers, which [dev.pacmon.jetbrains.editor.PacmonLinePainter] draws
+     * straight onto the editor rather than through a pass — nothing the daemon
+     * does would bring them back.
+     */
+    private fun refreshOpenEditors() {
         DaemonCodeAnalyzer.getInstance(project).restart()
+        for (editor in EditorFactory.getInstance().allEditors) {
+            if (editor.project == project) editor.contentComponent.repaint()
+        }
     }
 
     fun inlineSource(): InlineSource = when (settings.inlineSource) {
@@ -235,8 +266,14 @@ class PacmonProjectService(private val project: Project) :
         FileDocumentManager.getInstance().saveDocument(document)
     }
 
+    /**
+     * A saved note moves the PSI modification count by itself — the notes file
+     * was just written — so this path only has to ask for the refresh, not
+     * force one. It runs on every autosave, which is roughly every keystroke,
+     * so it must stay cheap.
+     */
     private fun notifyNotesChanged(path: String) {
-        DaemonCodeAnalyzer.getInstance(project).restart()
+        refreshOpenEditors()
         project.messageBus.syncPublisher(PacmonNotesListener.TOPIC)
             .notesChanged(setOf(path.replace('\\', '/')))
     }

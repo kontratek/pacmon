@@ -43,6 +43,29 @@
   whole view back to its defaults. The Settings page under Tools → Pacmon
   lists the same settings for anyone who looks there first.
 
+- **The JetBrains tool window shows what each choice does, not just what it is
+  called.** Every click target and every note marker now carries a sample
+  `package.json` line drawn with the editor's own font and colors — the mark
+  before the name, the underlined name, the line above, the chip at the end,
+  the lightbulb, and for the markers the note text, the badge, or nothing.
+  This is the one thing the VS Code view is a webview for rather than a tree,
+  and the reason it matters here is `badge`: it was drawing the marker alone,
+  where the VS Code extension writes the marker and the word `note`. The
+  marker on its own reads as a stray character, so the plugin now writes
+  `▪ note` too, and the sample settles what the name never could.
+
+- **A setting changed in the JetBrains tool window reaches `package.json` at
+  once.** It used to reach it when you next edited the file, or closed and
+  reopened it: the inlay pass stamps the project's PSI modification count
+  onto an editor as it collects the marks, and skips that editor while the
+  count still matches — and nothing about ticking a click target moved it, so
+  the marks stayed exactly as they were. The settings path now moves the
+  count, and every refresh also repaints the open editors, because the
+  end-of-line markers are painted onto the editor rather than produced by a
+  pass and the daemon would never have brought them back. Saving a note is
+  unaffected: writing the notes file moves the count by itself, so the
+  autosave path stays as cheap as it was.
+
 ## 0.3.1 — 2026-09-15
 
 - The README shows the notes file being written by hand. The two recordings

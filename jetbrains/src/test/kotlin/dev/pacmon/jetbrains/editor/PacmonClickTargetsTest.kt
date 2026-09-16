@@ -54,6 +54,14 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         ) = Unit
     }
 
+    // The light project — and with it the settings service — is shared between
+    // test classes, so every class that writes a setting starts from defaults
+    // rather than from whatever the class before it left behind.
+    override fun setUp() {
+        super.setUp()
+        service().resetViewSettings()
+    }
+
     private fun service() = project.getService(PacmonProjectService::class.java)
 
     private fun collect(vararg buttons: String): RecordingSink {
@@ -174,8 +182,10 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
             painter.getLineExtensions(project, packageJson, line).single().text,
         )
 
+        // The badge is the marker AND the word, the way the VS Code extension
+        // writes it — the marker on its own reads as a stray character.
         service().state.decorations = Decorations.BADGE
-        assertEquals("   ▪", painter.getLineExtensions(project, packageJson, line).single().text)
+        assertEquals("   ▪ note", painter.getLineExtensions(project, packageJson, line).single().text)
 
         service().state.decorations = Decorations.OFF
         assertEmpty(painter.getLineExtensions(project, packageJson, line))

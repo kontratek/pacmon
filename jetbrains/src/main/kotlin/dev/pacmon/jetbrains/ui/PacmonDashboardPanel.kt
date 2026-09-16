@@ -117,11 +117,14 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
             }
             for (id in NoteButtons.ALL) {
                 row {
-                    val box = checkBox(NoteButtons.label(id))
-                        .comment("${NoteButtons.help(id)}  (${NoteButtons.gesture(id)})")
-                        .component
+                    val box = checkBox(NoteButtons.label(id)).resizableColumn().component
                     box.addActionListener { if (!loading) writeNoteButtons() }
                     buttonToggles[id] = box
+                    muted(NoteButtons.gesture(id)).align(AlignX.RIGHT)
+                }
+                indent {
+                    row { cell(NoteExamples.forClickTarget(id)).align(AlignX.FILL) }
+                    row { comment(NoteButtons.help(id)) }
                 }
             }
         }
@@ -137,7 +140,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
             row {
                 markersLede = comment("End-of-line hint on dependencies that already have a note.").component
             }
-            radioGroup(Decorations.ALL, decorationRadios, Decorations::help) { value ->
+            radioGroup(Decorations.ALL, decorationRadios, Decorations::help, NoteExamples::forMarker) { value ->
                 service.state.decorations = value
             }
         }
@@ -338,6 +341,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         values: List<String>,
         into: MutableMap<String, JBRadioButton>,
         help: (String) -> String,
+        example: ((String) -> JComponent)? = null,
         apply: (String) -> Unit,
     ) {
         // The DSL refuses a radio button outside a `buttonsGroup`, and a group
@@ -348,7 +352,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         buttonsGroup(indent = false) {
             for (value in values) {
                 row {
-                    val button = radioButton(value).comment(help(value)).component
+                    val button = radioButton(value).component
                     button.addActionListener {
                         if (!loading && button.isSelected) {
                             apply(value)
@@ -357,6 +361,10 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
                         }
                     }
                     into[value] = button
+                }
+                indent {
+                    example?.let { build -> row { cell(build(value)).align(AlignX.FILL) } }
+                    row { comment(help(value)) }
                 }
             }
         }
