@@ -52,55 +52,57 @@ class PacmonInlayHintsProvider : InlayHintsProvider<NoSettings> {
         settings: NoSettings,
         sink: InlayHintsSink,
     ): InlayHintsCollector? {
-        if (!DependencyPsi.isPackageJson(file)) return null
-        val packageJson = file.virtualFile ?: return null
+        if (!DependencyPsi.isManifest(file)) return null
+        val manifest = file.virtualFile ?: return null
         val notes = file.project.getService(PacmonProjectService::class.java)
         val icon = notes.noteButtonEnabled(NoteButtons.ICON_LEFT)
         val lens = notes.noteButtonEnabled(NoteButtons.CODE_LENS)
         val chip = notes.noteButtonEnabled(NoteButtons.INLAY_HINT)
         if (!icon && !lens && !chip) return null
+        val dependencies = notes.dependencies(manifest)
 
         return object : FactoryInlayHintsCollector(editor) {
             override fun collect(element: PsiElement, editor: Editor, sink: InlayHintsSink): Boolean {
-                val dependency = DependencyPsi.fromElement(element) ?: return true
-                if (element != dependency.property.nameElement.firstChild) return true
+                if (element != file) return true
+                for (dependency in dependencies) {
+                    val documented = notes.noteFor(manifest, dependency.name) != null
+                    val words = if (documented) "Edit note" else "Add note"
+                    val open = { NoteEditor.open(file.project, dependency, editor) }
+                    val nameStart = dependency.primaryRange.offset
 
-                val documented = notes.noteFor(packageJson, dependency.name) != null
-                val words = if (documented) "Edit note" else "Add note"
-                val open = { NoteEditor.open(file.project, dependency, editor) }
-                val nameStart = dependency.property.nameElement.textRange.startOffset
-
-                if (icon) {
-                    sink.addInlineElement(
-                        nameStart,
-                        false,
-                        clickable(factory.smallScaledIcon(PacmonIcons.forNote(documented)), open),
-                        false,
-                    )
+                    if (icon) {
+                        sink.addInlineElement(
+                            nameStart,
+                            false,
+                            clickable(factory.smallScaledIcon(PacmonIcons.forNote(documented)), open),
+                            false,
+                        )
+                    }
+                    if (lens) {
+                        val document = editor.document
+                        val column = nameStart - document.getLineStartOffset(document.getLineNumber(nameStart))
+                        sink.addBlockElement(
+                            nameStart,
+                            true,
+                            true,
+                            BLOCK_PRIORITY,
+                            factory.seq(
+                                factory.textSpacePlaceholder(column, true),
+                                clickable(factory.smallText(words), open),
+                            ),
+                        )
+                    }
+                    if (chip) {
+                        val lineEnd = editor.document.getLineEndOffset(editor.document.getLineNumber(nameStart))
+                        sink.addInlineElement(
+                            lineEnd,
+                            true,
+                            clickable(factory.roundWithBackground(factory.smallText(words)), open),
+                            true,
+                        )
+                    }
                 }
-                if (lens) {
-                    val document = editor.document
-                    val column = nameStart - document.getLineStartOffset(document.getLineNumber(nameStart))
-                    sink.addBlockElement(
-                        nameStart,
-                        true,
-                        true,
-                        BLOCK_PRIORITY,
-                        factory.seq(
-                            factory.textSpacePlaceholder(column, true),
-                            clickable(factory.smallText(words), open),
-                        ),
-                    )
-                }
-                if (chip) {
-                    sink.addInlineElement(
-                        dependency.property.textRange.endOffset,
-                        true,
-                        clickable(factory.roundWithBackground(factory.smallText(words)), open),
-                        true,
-                    )
-                }
-                return true
+                return false
             }
 
             /** A hand cursor and a plain click — no modifier, unlike VS Code's inlay hints. */

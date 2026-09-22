@@ -9,6 +9,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.WindowManager
 import dev.pacmon.jetbrains.core.NotesCore
+import dev.pacmon.jetbrains.core.ManifestRegistry
 import dev.pacmon.jetbrains.service.PacmonProjectService
 import dev.pacmon.jetbrains.settings.Decorations
 
@@ -18,14 +19,14 @@ import dev.pacmon.jetbrains.settings.Decorations
  * section, which have no action event to hand. The VS Code extension reaches
  * the same five commands from its view the same way.
  *
- * Every one of them takes the package.json to work from, because the caller
+ * Every one of them takes the dependency manifest to work from, because the caller
  * usually knows better than the active editor does: the tool window keeps
- * showing the last package.json you looked at even after you switch away from
+ * showing the last dependency manifest you looked at even after you switch away from
  * it.
  */
 object PacmonCommands {
-    fun openNotesFile(project: Project, packageJson: VirtualFile? = null) {
-        val notesFile = findNotesFile(project, packageJson)
+    fun openNotesFile(project: Project, manifest: VirtualFile? = null) {
+        val notesFile = findNotesFile(project, manifest)
         if (notesFile == null) {
             Messages.showInfoMessage(
                 project,
@@ -38,18 +39,22 @@ object PacmonCommands {
     }
 
     /** The mirror of [openNotesFile]: the manifest the notes describe. */
-    fun openPackageJson(project: Project, packageJson: VirtualFile? = null) {
-        val file = packageJson?.takeIf { it.isValid } ?: defaultPackageJson(project)
+    fun openManifest(project: Project, manifest: VirtualFile? = null) {
+        val file = manifest?.takeIf { it.isValid && ManifestRegistry.forFileName(it.name) != null }
+            ?: service(project).defaultManifest()
         if (file == null) {
-            Messages.showInfoMessage(project, "No package.json found in this project.", "Pacmon")
+            Messages.showInfoMessage(project, "No supported dependency manifest found in this project.", "Pacmon")
             return
         }
         service(project).open(file)
     }
 
-    fun formatNotesFile(project: Project, packageJson: VirtualFile? = null) {
+    /** Backward-compatible action id retained for existing keymaps. */
+    fun openPackageJson(project: Project, manifest: VirtualFile? = null) = openManifest(project, manifest)
+
+    fun formatNotesFile(project: Project, manifest: VirtualFile? = null) {
         val statusBar = WindowManager.getInstance().getStatusBar(project)
-        val notesFile = findNotesFile(project, packageJson)
+        val notesFile = findNotesFile(project, manifest)
         if (notesFile == null) {
             statusBar?.info =
                 "Pacmon: no ${NotesCore.NOTES_FILE_NAME} found. Use \"Add/Edit Dependency Note\" to create one."
@@ -59,7 +64,7 @@ object PacmonCommands {
         var changed = false
         WriteCommandAction.runWriteCommandAction(project, "Format DEPENDENCY-NOTES.md", null, {
             val document = FileDocumentManager.getInstance().getDocument(notesFile) ?: return@runWriteCommandAction
-            val canonical = NotesCore.normalizeText(document.text)
+            val canonical = NotesCore.normalizeText(document.text, service(project).notesKind(notesFile))
             if (canonical != document.text) {
                 document.setText(canonical)
                 FileDocumentManager.getInstance().saveDocument(document)
@@ -99,27 +104,25 @@ object PacmonCommands {
 
     /**
      * The notes file in play: the one open in the editor, else the one for the
-     * given (or active) package.json, else the project root's.
+     * given (or active) dependency manifest, else the project root's.
      */
-    fun findNotesFile(project: Project, packageJson: VirtualFile? = null): VirtualFile? {
+    fun findNotesFile(project: Project, manifest: VirtualFile? = null): VirtualFile? {
         val notes = service(project)
         val selected = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
-        if (selected?.name == NotesCore.NOTES_FILE_NAME) return selected
+        if (selected != null && notes.notesKind(selected) != null) return selected
 
-        val manifest = packageJson?.takeIf { it.isValid }
-            ?: selected?.takeIf { it.name == "package.json" }
-            ?: defaultPackageJson(project)
-        if (manifest != null) notes.resolveNotesFile(manifest)?.let { return it }
+        val chosen = manifest?.takeIf { it.isValid && ManifestRegistry.forFileName(it.name) != null }
+            ?: selected?.takeIf { ManifestRegistry.forFileName(it.name) != null }
+            ?: notes.defaultManifest()
+        if (chosen != null) notes.resolveNotesFile(chosen)?.let { return it }
 
-        return projectRoot(project)
-            ?.findChild(NotesCore.NOTES_DIRECTORY)
-            ?.findChild(NotesCore.NOTES_FILE_NAME)
+        return null
     }
 
-    /** The package.json in the editor, else the one at the project root. */
-    fun defaultPackageJson(project: Project): VirtualFile? =
-        FileEditorManager.getInstance(project).selectedFiles.firstOrNull { it.name == "package.json" }
-            ?: projectRoot(project)?.findChild("package.json")
+    fun defaultManifest(project: Project): VirtualFile? = service(project).defaultManifest()
+
+    /** Backward-compatible npm-era name. */
+    fun defaultPackageJson(project: Project): VirtualFile? = defaultManifest(project)
 
     fun projectRoot(project: Project): VirtualFile? = project.basePath
         ?.replace('\\', '/')

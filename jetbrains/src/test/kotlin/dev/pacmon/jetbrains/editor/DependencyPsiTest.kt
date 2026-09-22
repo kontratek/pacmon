@@ -45,6 +45,32 @@ class DependencyPsiTest : BasePlatformTestCase() {
         assertEmpty(DependencyPsi.all(file))
     }
 
+    fun testFindsCargoDependencyBySourceRangeWithoutTomlPsi() {
+        val file = myFixture.configureByText(
+            "Cargo.toml",
+            """
+            [dependencies]
+            serde = "1"
+            "quoted.name" = { version = "2" }
+            """.trimIndent(),
+        )
+        assertEquals(listOf("serde", "quoted.name"), DependencyPsi.all(file).map { it.name })
+        assertEquals("serde", DependencyPsi.atOffset(file, file.text.indexOf("serde") + 2)?.name)
+    }
+
+    fun testFindsMavenDependencyFromGroupAndArtifactRanges() {
+        val file = myFixture.configureByText(
+            "pom.xml",
+            """
+            <project><dependencies><dependency>
+              <groupId>org.example</groupId><artifactId>core</artifactId>
+            </dependency></dependencies></project>
+            """.trimIndent(),
+        )
+        assertEquals("org.example:core", DependencyPsi.atOffset(file, file.text.indexOf("org.example") + 2)?.name)
+        assertEquals("org.example:core", DependencyPsi.atOffset(file, file.text.indexOf("core") + 1)?.name)
+    }
+
     fun testUsesDifferentIconsForDocumentedAndUndocumentedDependencies() {
         assertSame(PacmonIcons.Documented, PacmonIcons.forNote(true))
         assertSame(PacmonIcons.Undocumented, PacmonIcons.forNote(false))

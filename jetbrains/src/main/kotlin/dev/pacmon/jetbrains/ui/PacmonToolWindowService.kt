@@ -9,7 +9,7 @@ import dev.pacmon.jetbrains.editor.DependencyRef
 import dev.pacmon.jetbrains.service.PacmonNotesListener
 
 data class PacmonTarget(
-    val packageJson: com.intellij.openapi.vfs.VirtualFile,
+    val manifest: com.intellij.openapi.vfs.VirtualFile,
     val name: String,
     val section: String,
 )
@@ -43,8 +43,7 @@ class PacmonToolWindowService(private val project: Project) : Disposable {
     }
 
     fun open(dependency: DependencyRef) {
-        val packageJson = dependency.property.containingFile.virtualFile ?: return
-        val target = PacmonTarget(packageJson, dependency.name, dependency.section)
+        val target = PacmonTarget(dependency.manifest, dependency.name, dependency.section)
         pendingTarget = target
         openingDependency = true
         val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID)

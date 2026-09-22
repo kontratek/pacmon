@@ -10,6 +10,7 @@ import com.intellij.util.Alarm
 import com.intellij.util.ui.JBUI
 import dev.pacmon.jetbrains.core.AgentNotes
 import dev.pacmon.jetbrains.core.AgentProblem
+import dev.pacmon.jetbrains.core.ManifestRegistry
 import dev.pacmon.jetbrains.service.PacmonProjectService
 import java.awt.BorderLayout
 import java.awt.Component
@@ -214,14 +215,17 @@ class PacmonToolWindowPanel(
         target = value
         nameLabel.text = value.name
         sectionLabel.text = value.section
+        notesPathLabel.text = "->  ${ManifestRegistry.forFileName(value.manifest.name)?.notesRelativePath.orEmpty()}"
         loadFromDisk(focusEmpty = true)
     }
 
     fun externalNotesChanged(paths: Set<String>) {
         if (disposed || writing || target == null) return
         val current = target ?: return
-        val relevantPath = notes.resolveNotesFile(current.packageJson)?.path?.replace('\\', '/')
-            ?: "${current.packageJson.parent.path.replace('\\', '/')}/${dev.pacmon.jetbrains.core.NotesCore.NOTES_RELATIVE_PATH}"
+        val relativePath = dev.pacmon.jetbrains.core.ManifestRegistry.forFileName(current.manifest.name)
+            ?.notesRelativePath ?: dev.pacmon.jetbrains.core.NotesCore.NOTES_RELATIVE_PATH
+        val relevantPath = notes.resolveNotesFile(current.manifest)?.path?.replace('\\', '/')
+            ?: "${current.manifest.parent.path.replace('\\', '/')}/$relativePath"
         if (relevantPath !in paths) return
         SwingUtilities.invokeLater {
             if (disposed || writing || target == null) return@invokeLater
@@ -253,7 +257,7 @@ class PacmonToolWindowPanel(
     private fun loadFromDisk(focusEmpty: Boolean, forceReset: Boolean = true) {
         val current = target ?: return
         saveAlarm.cancelAllRequests()
-        val note = notes.noteFor(current.packageJson, current.name)
+        val note = notes.noteFor(current.manifest, current.name)
         val loaded = Layers(note?.layers?.human.orEmpty(), note?.layers?.agent.orEmpty())
         baseline = loaded
         humanLayer.load(loaded.human, forceReset)
@@ -290,7 +294,7 @@ class PacmonToolWindowPanel(
         writing = true
         statusLabel.text = "Saving..."
         try {
-            notes.saveNoteLayers(current.packageJson, current.name, next.human, next.agent)
+            notes.saveNoteLayers(current.manifest, current.name, next.human, next.agent)
             baseline = next
             humanLayer.refreshPreview()
             agentLayer.refreshPreview()
@@ -308,8 +312,8 @@ class PacmonToolWindowPanel(
     private fun openNotesFile() {
         val current = target ?: return
         flushPending()
-        val file = notes.resolveNotesFile(current.packageJson)
-            ?: notes.saveNoteLayers(current.packageJson, current.name, humanLayer.text, agentLayer.text)
+        val file = notes.resolveNotesFile(current.manifest)
+            ?: notes.saveNoteLayers(current.manifest, current.name, humanLayer.text, agentLayer.text)
         notes.open(file)
     }
 

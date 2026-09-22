@@ -8,22 +8,22 @@
          notes, which build.gradle.kts renders from this version's CHANGELOG section.
          None of them can be edited on the site; a change ships as a new version. -->
     <description><![CDATA[
-        <p><b>package.json says what you depend on. Pacmon adds why.</b></p>
+        <p><b>Your dependency manifest says what you depend on. Pacmon adds why.</b></p>
         <p>Every dependency gets a short note: why it is here, what must not change,
-        what to check before an upgrade. The note shows in <code>package.json</code>
-        as quick documentation, and you write it from there.</p>
-        <p>All notes live in one Markdown file, <code>.pacmon/DEPENDENCY-NOTES.md</code>,
-        next to <code>package.json</code>. No database, no service, no account: one
-        file that you read, diff and commit like any other. AI coding agents read the
-        same file before they touch a package, and keep their own lines in it.</p>
+        what to check before an upgrade. The note shows in <code>package.json</code>,
+        <code>Cargo.toml</code>, or Maven <code>pom.xml</code> as quick documentation,
+        and you write it from there.</p>
+        <p>Notes are plain Markdown under <code>.pacmon/</code>, separated by ecosystem.
+        No database, no service, no account: files that you read, diff and commit like
+        any other. AI coding agents read the same files before they touch a package.</p>
         <ul>
-            <li>Five ways into a note from <code>package.json</code>, each one you turn
+            <li>Five ways into a note from a dependency manifest, each one you turn
             on or off: a mark before the package name — filled when it has a note,
             hollow when it does not — Ctrl+click on the name itself, a clickable line
             above the dependency, the words at the end of the line, and a lightbulb on
             the caret line. The first line of the note shows at the end of the line;
             the whole note shows as quick documentation.</li>
-            <li>Write a note from <code>package.json</code> in the Pacmon tool window or
+            <li>Write a note from the manifest in the Pacmon tool window or
             in a popup over the line, with a layer for people and a layer for agents.</li>
             <li><b>Documentation Coverage</b> lists which dependencies have a note and
             which do not.</li>
@@ -45,6 +45,7 @@
     <!-- Only to annotate DEPENDENCY-NOTES.md when the Markdown plugin claims
          .md files; without it they are plain text and the TEXT annotator runs. -->
     <depends optional="true" config-file="pacmon-markdown.xml">org.intellij.plugins.markdown</depends>
+    <depends optional="true" config-file="pacmon-toml.xml">org.toml.lang</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <projectConfigurable
@@ -55,6 +56,14 @@
         <codeInsight.inlayProvider
             language="JSON"
             id="PacmonDependencyIcons"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
+        <codeInsight.inlayProvider
+            language="XML"
+            id="PacmonDependencyIconsXml"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
+        <codeInsight.inlayProvider
+            language="TEXT"
+            id="PacmonDependencyIconsText"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
         <editor.linePainter
             implementation="dev.pacmon.jetbrains.editor.PacmonLinePainter"/>
@@ -67,11 +76,27 @@
             <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
             <category>Pacmon</category>
         </intentionAction>
+        <intentionAction>
+            <language>XML</language>
+            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
+            <category>Pacmon</category>
+        </intentionAction>
+        <intentionAction>
+            <language>TEXT</language>
+            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
+            <category>Pacmon</category>
+        </intentionAction>
         <annotator
             language="TEXT"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonNotesAnnotator"/>
         <lang.documentationProvider
             language="JSON"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>
+        <lang.documentationProvider
+            language="XML"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>
+        <lang.documentationProvider
+            language="TEXT"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>
         <toolWindow
             id="Pacmon"
@@ -97,12 +122,17 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
         <action
+            id="Pacmon.OpenManifest"
+            class="dev.pacmon.jetbrains.action.OpenManifestAction"
+            text="Open Dependency Manifest"
+            description="Open the dependency manifest these notes describe">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action
             id="Pacmon.OpenPackageJson"
             class="dev.pacmon.jetbrains.action.OpenPackageJsonAction"
             text="Open package.json"
-            description="Open the package.json these dependency notes describe">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-        </action>
+            description="Compatibility alias for Open Dependency Manifest"/>
         <action
             id="Pacmon.ShowCoverage"
             class="dev.pacmon.jetbrains.action.ShowCoverageAction"

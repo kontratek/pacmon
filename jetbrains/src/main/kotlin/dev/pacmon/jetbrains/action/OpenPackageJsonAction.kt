@@ -14,6 +14,6 @@ class OpenPackageJsonAction : AnAction() {
 
     override fun actionPerformed(event: AnActionEvent) {
         val project = event.project ?: return
-        PacmonCommands.openPackageJson(project)
+        PacmonCommands.openManifest(project)
     }
 }

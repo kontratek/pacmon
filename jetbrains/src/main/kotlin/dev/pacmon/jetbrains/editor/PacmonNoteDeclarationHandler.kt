@@ -11,7 +11,7 @@ import dev.pacmon.jetbrains.settings.NoteButtons
 
 /**
  * The `link` click target: Ctrl+click (Cmd+click) the package name in
- * `package.json` and its note opens. The counterpart of the VS Code
+ * a dependency manifest and its note opens. The counterpart of the VS Code
  * extension's document link, and like it, it adds nothing to the file —
  * the name is already there, and only the tooltip tells a documented
  * dependency from an undocumented one.
@@ -28,21 +28,24 @@ class PacmonNoteDeclarationHandler : GotoDeclarationHandler {
     ): Array<PsiElement>? {
         val element = sourceElement ?: return null
         val file = element.containingFile ?: return null
-        if (!DependencyPsi.isPackageJson(file)) return null
+        if (!DependencyPsi.isManifest(file)) return null
         val project = element.project
-        if (!project.getService(PacmonProjectService::class.java).noteButtonEnabled(NoteButtons.LINK)) return null
-        val dependency = DependencyPsi.fromElement(element) ?: return null
+        val service = project.getService(PacmonProjectService::class.java)
+        if (!service.noteButtonEnabled(NoteButtons.LINK)) return null
+        val manifest = file.virtualFile ?: return null
+        val dependency = service.dependencyAt(manifest, offset) ?: return null
         // Only the name half of `"express": "^4"`, so Ctrl+click on the version
         // range is left to whatever else claims it.
-        if (offset !in dependency.property.nameElement.textRange) return null
-        return arrayOf(NoteTarget(dependency, editor))
+        if (dependency.sourceRanges.none { it.contains(offset) }) return null
+        return arrayOf(NoteTarget(dependency, element, editor))
     }
 
     private class NoteTarget(
         private val dependency: DependencyRef,
+        private val source: PsiElement,
         private val editor: Editor?,
     ) : FakePsiElement() {
-        override fun getParent(): PsiElement = dependency.property
+        override fun getParent(): PsiElement = source
 
         /**
          * Go-to-declaration moves the caret, rather than navigating, when the
@@ -62,7 +65,7 @@ class PacmonNoteDeclarationHandler : GotoDeclarationHandler {
         override fun canNavigateToSource(): Boolean = false
 
         override fun navigate(requestFocus: Boolean) {
-            NoteEditor.open(dependency.property.project, dependency, editor)
+            NoteEditor.open(source.project, dependency, editor)
         }
     }
 }

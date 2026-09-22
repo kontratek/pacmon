@@ -81,8 +81,8 @@ class PacmonUiTest : BasePlatformTestCase() {
         val dependencies = DependencyPsi.all(psi).associateBy { it.name }
         val document = myFixture.editor.document
         val painter = PacmonLinePainter()
-        val vueLine = document.getLineNumber(dependencies.getValue("vue").property.textOffset)
-        val reactLine = document.getLineNumber(dependencies.getValue("react").property.textOffset)
+        val vueLine = document.getLineNumber(dependencies.getValue("vue").primaryRange.offset)
+        val reactLine = document.getLineNumber(dependencies.getValue("react").primaryRange.offset)
 
         val preview = painter.getLineExtensions(project, packageJson, vueLine).single()
         assertEquals("   \u25AA Frontend framework", preview.text)
@@ -97,8 +97,8 @@ class PacmonUiTest : BasePlatformTestCase() {
         val sink = RecordingSink()
         val collector = provider.getCollectorFor(myFixture.file, myFixture.editor, provider.createSettings(), sink)
         assertNotNull(collector)
-        assertTrue(collector!!.collect(dependency.property.nameElement.firstChild, myFixture.editor, sink))
-        assertEquals(dependency.property.nameElement.textRange.startOffset, sink.inlineOffset)
+        assertFalse(collector!!.collect(myFixture.file, myFixture.editor, sink))
+        assertEquals(dependency.primaryRange.offset, sink.inlineOffset)
 
         myFixture.configureByText("config.json", """{ "dependencies": { "vue": "^3" } }""")
         assertNull(provider.getCollectorFor(myFixture.file, myFixture.editor, provider.createSettings(), RecordingSink()))
