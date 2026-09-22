@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { lintNotes } from '../core/lint';
 import { parseNotes } from '../core/parseNotes';
 import { isNotesFile } from './config';
-import { packageJsonFor } from './resolveNotesFile';
+import { dependenciesForNotes, notesKind } from './resolveNotesFile';
 import type { Store } from './state';
 import { S } from './strings';
 
@@ -13,6 +13,8 @@ export type DiagCode =
   | 'missing-space'
   | 'missing-frontmatter'
   | 'unknown-format'
+  | 'missing-ecosystem'
+  | 'wrong-ecosystem'
   | 'missing-title'
   | 'wrong-title'
   | 'extra-title'
@@ -85,9 +87,9 @@ export class NotesDiagnostics implements vscode.Disposable {
       push(lineRange(p.line), S.duplicateSection(p.name, p.firstLine + 1), 'duplicate-section');
     }
 
-    const deps = await this.store.getDeps(packageJsonFor(doc.uri));
+    const deps = await dependenciesForNotes(this.store, doc.uri);
 
-    for (const f of lintNotes(model, deps.map((d) => d.name))) {
+    for (const f of lintNotes(model, deps.map((d) => d.noteKey), notesKind(doc.uri))) {
       switch (f.kind) {
         case 'wrongHeadingLevel':
           push(lineRange(f.line), S.wrongHeadingLevel(f.name), 'wrong-heading-level');
@@ -100,6 +102,12 @@ export class NotesDiagnostics implements vscode.Disposable {
           break;
         case 'unknownFormat':
           push(lineRange(f.line), S.unknownFormat(f.version), 'unknown-format');
+          break;
+        case 'missingEcosystem':
+          push(lineRange(f.line), S.missingEcosystem, 'missing-ecosystem');
+          break;
+        case 'wrongEcosystem':
+          push(lineRange(f.line), S.wrongEcosystem(f.actual, f.expected), 'wrong-ecosystem');
           break;
         case 'missingTitle':
           push(lineRange(f.line), S.missingTitle, 'missing-title');

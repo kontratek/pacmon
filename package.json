@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Notes",
-  "description": "Why each dependency exists, as a note next to it in package.json. Plain Markdown in your repo; AI agents read and write it too.",
+  "description": "Why each dependency exists, as a note next to package.json, Cargo.toml, or pom.xml. Plain Markdown in your repo; AI agents read and write it too.",
   "version": "0.3.2",
   "publisher": "kontra",
   "private": true,
@@ -23,6 +23,10 @@
   "keywords": [
     "dependencies",
     "package.json",
+    "Cargo.toml",
+    "pom.xml",
+    "Rust",
+    "Maven",
     "documentation",
     "notes",
     "dependency management"
@@ -30,7 +34,13 @@
   "activationEvents": [
     "onLanguage:json",
     "onLanguage:jsonc",
+    "onLanguage:toml",
+    "onLanguage:xml",
     "workspaceContains:**/.pacmon/DEPENDENCY-NOTES.md",
+    "workspaceContains:**/.pacmon/cargo/DEPENDENCY-NOTES.md",
+    "workspaceContains:**/.pacmon/maven/DEPENDENCY-NOTES.md",
+    "workspaceContains:**/Cargo.toml",
+    "workspaceContains:**/pom.xml",
     "onView:pacmon.settings"
   ],
   "main": "./dist/extension.js",
@@ -53,6 +63,11 @@
       {
         "command": "pacmon.openNotesFile",
         "title": "Open DEPENDENCY-NOTES.md",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.openManifest",
+        "title": "Open Dependency Manifest",
         "category": "Pacmon"
       },
       {
@@ -102,7 +117,7 @@
       "editor/context": [
         {
           "command": "pacmon.addOrEditNote",
-          "when": "resourceFilename == package.json && editorTextFocus",
+          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml) && editorTextFocus",
           "group": "1_modification@100"
         }
       ],
@@ -126,6 +141,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "pacmon.openPackageJson",
+          "when": "false"
+        },
         {
           "command": "pacmon.saveNoteComment",
           "when": "false"
@@ -162,7 +181,7 @@
             "off"
           ],
           "default": "preview",
-          "description": "End-of-line hint on package.json lines that have a note: 'preview' shows a one-line preview of the note (which layer: see pacmon.inlineSource), 'badge' shows a small marker, 'off' disables it."
+          "description": "End-of-line hint on dependency manifest lines that have a note: 'preview' shows a one-line preview, 'badge' shows a marker, and 'off' disables it."
         },
         "pacmon.inlineSource": {
           "type": "string",
@@ -179,7 +198,7 @@
             "Only what people wrote; a plain marker when the section has none.",
             "Only what agents wrote; a plain marker when the section has no agent block."
           ],
-          "markdownDescription": "Which layer of a note shows next to the dependency in `package.json` and leads its hover. Every note has two layers: the text people write right under `## name`, and the `### Agent notes` block AI agents fill in. The hover always shows both — this picks their order and the one-line preview."
+          "markdownDescription": "Which layer of a note shows next to the dependency in its manifest and leads its hover. Every note has two layers: the text people write right under `## name`, and the `### Agent notes` block AI agents fill in. The hover always shows both — this picks their order and the one-line preview."
         },
         "pacmon.noteEntry": {
           "type": "string",
@@ -192,13 +211,13 @@
           ],
           "default": "panel",
           "enumDescriptions": [
-            "A note editor opens in a panel beside package.json — write multi-line Markdown, Ctrl/Cmd+S to save. Unsaved text is kept as a draft when you switch dependencies.",
+            "A note editor opens in a panel beside the dependency manifest — write multi-line Markdown, Ctrl/Cmd+S to save. Unsaved text is kept as a draft when you switch dependencies.",
             "An embedded editor opens right below the dependency line (like Peek Definition), showing the note section — write multi-line Markdown in place, Esc to close, Ctrl+S to save.",
             "Quick single-line capture in an input box; multi-line notes open the file in the active column.",
-            "Like input, but multi-line notes open the file in a split BESIDE package.json.",
+            "Like input, but multi-line notes open the file in a split beside the dependency manifest.",
             "EXPERIMENTAL: dependency lines get a comment-thread UI (multi-line input right on the line, saved to the notes file)."
           ],
-          "description": "How notes are entered from package.json."
+          "description": "How notes are entered from a dependency manifest."
         },
         "pacmon.noteButtons": {
           "type": "array",
@@ -214,7 +233,7 @@
             "enumDescriptions": [
               "The Pacmon mark just before the package name — filled when the dependency has a note, hollow when it does not — with the words in the hover. Plain click, and the mouse turns into a hand over it.",
               "The package name itself opens its note on Ctrl+click. Adds nothing to the file.",
-              "A clickable line above each dependency. Unmissable, and it roughly doubles the apparent height of package.json.",
+              "A clickable line above each dependency. Unmissable, and it roughly doubles the apparent height of the manifest.",
               "The words spelled out at the end of the line, where they compete with the note preview. Needs Ctrl+click.",
               "A code action, so the lightbulb appears only on the line the cursor is on. Marks nothing at rest, but costs two clicks."
             ]
@@ -224,7 +243,7 @@
             "iconLeft",
             "link"
           ],
-          "markdownDescription": "Clickable ways into a dependency's note from `package.json`. Toggle these in the **Pacmon** view in the activity bar. Set to `[]` to remove all of them — the right-click menu and the `Pacmon: Add/Edit Dependency Note` command always work. Note that `iconLeft`, `codelens` and `inlayHint` mark dependencies that have no note yet — the one thing Pacmon otherwise never does. `link` and `lightbulb` do not: a link is drawn over every dependency name alike and only its tooltip tells the two apart, and the bulb shows only on the line the cursor is on."
+          "markdownDescription": "Clickable ways into a dependency's note from its manifest. Toggle these in the **Pacmon** view in the activity bar. Set to `[]` to remove all of them — the right-click menu and the `Pacmon: Add/Edit Dependency Note` command always work. Note that `iconLeft`, `codelens` and `inlayHint` mark dependencies that have no note yet — the one thing Pacmon otherwise never does. `link` and `lightbulb` do not."
         },
         "pacmon.monorepo": {
           "type": "string",
@@ -233,7 +252,7 @@
             "rootOnly"
           ],
           "default": "nearest",
-          "description": "Which notes file applies to a package.json: the nearest .pacmon/DEPENDENCY-NOTES.md walking up to the workspace root, or only the one at the workspace root."
+          "description": "Which ecosystem-specific notes file applies to a manifest: the nearest one walking up to the workspace root, or only the one at the workspace root."
         }
       }
     }

@@ -1,18 +1,18 @@
 import * as vscode from 'vscode';
 import { normalizeText } from '../../core/serialize';
-import { isNotesFile, isPackageJson, notesFileLabel, toggleDecorationsState } from '../config';
-import { defaultPackageJson, notesUriIn, resolveNotesFileFor } from '../resolveNotesFile';
+import { isManifest, isNotesFile, notesFileLabel, toggleDecorationsState } from '../config';
+import { defaultManifest, manifestForNotes, notesUriIn, resolveNotesFileFor } from '../resolveNotesFile';
 import type { Store } from '../state';
 import { S } from '../strings';
 
 async function findNotesUri(store: Store): Promise<vscode.Uri | undefined> {
   const editor = vscode.window.activeTextEditor;
   if (editor && isNotesFile(editor.document.uri)) return editor.document.uri;
-  if (editor && isPackageJson(editor.document.uri)) {
+  if (editor && isManifest(editor.document.uri)) {
     const resolved = await resolveNotesFileFor(editor.document.uri);
     if (resolved) return resolved;
   }
-  const pkg = await defaultPackageJson(store);
+  const pkg = await defaultManifest(store);
   if (pkg) {
     const resolved = await resolveNotesFileFor(pkg);
     if (resolved) return resolved;
@@ -36,21 +36,25 @@ export async function openNotesFile(store: Store): Promise<void> {
 }
 
 /** Open the package.json the notes belong to — the mirror of openNotesFile. */
-export async function openPackageJson(store: Store): Promise<void> {
+export async function openManifest(store: Store): Promise<void> {
   const editor = vscode.window.activeTextEditor;
-  if (editor && isPackageJson(editor.document.uri)) {
+  if (editor && isManifest(editor.document.uri)) {
     await vscode.window.showTextDocument(editor.document);
     return;
   }
-  const pkg = await defaultPackageJson(store);
+  const fromNotes = editor && isNotesFile(editor.document.uri) ? manifestForNotes(editor.document.uri) : undefined;
+  const pkg = fromNotes && (await store.getText(fromNotes)) !== undefined ? fromNotes : await defaultManifest(store);
   if (!pkg) {
     void vscode.window.showInformationMessage(
-      vscode.workspace.workspaceFolders?.length ? S.noPackageJson : S.noWorkspace,
+      vscode.workspace.workspaceFolders?.length ? S.noManifest : S.noWorkspace,
     );
     return;
   }
   await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(pkg));
 }
+
+/** Backward-compatible export for callers of the old npm-specific command. */
+export const openPackageJson = openManifest;
 
 export async function normalizeNotesFile(store: Store): Promise<void> {
   const uri = await findNotesUri(store);

@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import type { DepEntry, NotesFileModel } from '../core/model';
 import { parseNotes } from '../core/parseNotes';
-import { extractDeps } from '../core/packageJson';
+import { manifestAdapterForFileName } from '../core/manifest';
+import { uriBasename } from './config';
 
 interface CacheEntry<T> {
   version: string;
@@ -20,6 +21,7 @@ export class Store implements vscode.Disposable {
   private emitter = new vscode.EventEmitter<void>();
   readonly onDidChange = this.emitter.event;
   private timer: ReturnType<typeof setTimeout> | undefined;
+  private lastManifest: vscode.Uri | undefined;
 
   dispose(): void {
     if (this.timer !== undefined) clearTimeout(this.timer);
@@ -43,6 +45,14 @@ export class Store implements vscode.Disposable {
     this.notesCache.clear();
     this.depsCache.clear();
     this.fireSoon();
+  }
+
+  rememberManifest(uri: vscode.Uri): void {
+    if (manifestAdapterForFileName(uriBasename(uri))) this.lastManifest = uri;
+  }
+
+  getLastManifest(): vscode.Uri | undefined {
+    return this.lastManifest;
   }
 
   /** Text of a file. The open document wins only while it has unsaved edits;
@@ -85,18 +95,19 @@ export class Store implements vscode.Disposable {
     if (hit && hit.version === version) return hit.value;
     const text = await this.getText(uri);
     if (text === undefined) return [];
-    const value = extractDeps(text);
+    const value = manifestAdapterForFileName(uriBasename(uri))?.extractDependencies(text) ?? [];
     this.depsCache.set(key, { version, value });
     return value;
   }
 
   /** Deps straight from an open document (hover path — no fs round-trip). */
   depsForDocument(doc: vscode.TextDocument): DepEntry[] {
+    this.rememberManifest(doc.uri);
     const key = doc.uri.toString();
     const version = `doc:${doc.version}`;
     const hit = this.depsCache.get(key);
     if (hit && hit.version === version) return hit.value;
-    const value = extractDeps(doc.getText());
+    const value = manifestAdapterForFileName(uriBasename(doc.uri))?.extractDependencies(doc.getText()) ?? [];
     this.depsCache.set(key, { version, value });
     return value;
   }

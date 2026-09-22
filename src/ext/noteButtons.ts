@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { DepEntry } from '../core/model';
 import { findSection } from '../core/parseNotes';
-import { isPackageJson, type NoteButton, noteButtonEnabled } from './config';
+import { isManifest, MANIFEST_SELECTOR, type NoteButton, noteButtonEnabled } from './config';
 import { logError } from './log';
 import { MARK } from './markIcon';
 import { resolveNotesFileFor } from './resolveNotesFile';
@@ -66,11 +66,6 @@ import { S } from './strings';
  * dependency name alike and only its tooltip tells the two apart, and the bulb
  * shows only on the line the cursor is on.
  */
-
-const SELECTOR: vscode.DocumentSelector = [
-  { language: 'json', pattern: '**/package.json' },
-  { language: 'jsonc', pattern: '**/package.json' },
-];
 
 /**
  * One decoration type for one state of the mark. `light` and `dark` repeat the
@@ -139,26 +134,26 @@ export class NoteButtons implements vscode.Disposable {
         if (e.affectsConfiguration('pacmon.noteButtons')) this.onChanged();
       }),
 
-      vscode.languages.registerCodeLensProvider(SELECTOR, {
+      vscode.languages.registerCodeLensProvider(MANIFEST_SELECTOR, {
         onDidChangeCodeLenses: this.refresh.event,
         provideCodeLenses: (doc) => this.guard('codelens', doc, (deps, has) =>
           deps.map((d) => {
-            const line = doc.positionAt(d.keyOffset).line;
-            return new vscode.CodeLens(new vscode.Range(line, 0, line, 0), noteCommand(d.name, has(d)));
+            const line = doc.positionAt(d.primaryRange.offset).line;
+            return new vscode.CodeLens(new vscode.Range(line, 0, line, 0), noteCommand(d.noteKey, has(d)));
           }),
         ),
       }),
 
-      vscode.languages.registerInlayHintsProvider(SELECTOR, {
+      vscode.languages.registerInlayHintsProvider(MANIFEST_SELECTOR, {
         onDidChangeInlayHints: this.refresh.event,
         provideInlayHints: (doc, range) => this.guard('inlayHint', doc, (deps, has) =>
           deps
-            .filter((d) => range.contains(doc.positionAt(d.keyOffset)))
+            .filter((d) => range.contains(doc.positionAt(d.primaryRange.offset)))
             .map((d) => {
-              const line = doc.positionAt(d.keyOffset).line;
+              const line = doc.positionAt(d.primaryRange.offset).line;
               const part = new vscode.InlayHintLabelPart(has(d) ? S.buttonEdit : S.buttonAdd);
-              part.command = noteCommand(d.name, has(d));
-              part.tooltip = S.buttonTooltip(d.name);
+              part.command = noteCommand(d.noteKey, has(d));
+              part.tooltip = S.buttonTooltip(d.displayName);
               const hint = new vscode.InlayHint(doc.lineAt(line).range.end, [part]);
               hint.paddingLeft = true;
               return hint;
@@ -167,18 +162,18 @@ export class NoteButtons implements vscode.Disposable {
       }),
 
       vscode.languages.registerCodeActionsProvider(
-        SELECTOR,
+        MANIFEST_SELECTOR,
         {
           provideCodeActions: (doc, range) => this.guard('lightbulb', doc, (deps, has) => {
             const lineStart = doc.offsetAt(new vscode.Position(range.start.line, 0));
             const lineEnd = doc.offsetAt(doc.lineAt(range.start.line).range.end);
-            const dep = deps.find((d) => d.keyOffset >= lineStart && d.keyOffset <= lineEnd);
+            const dep = deps.find((d) => d.primaryRange.offset >= lineStart && d.primaryRange.offset <= lineEnd);
             if (!dep) return [];
             const action = new vscode.CodeAction(
               has(dep) ? S.buttonEdit : S.buttonAdd,
               vscode.CodeActionKind.QuickFix,
             );
-            action.command = noteCommand(dep.name, has(dep));
+            action.command = noteCommand(dep.noteKey, has(dep));
             return [action];
           }),
         },
@@ -208,13 +203,17 @@ export class NoteButtons implements vscode.Disposable {
     this.linkReg?.dispose();
     this.linkReg = undefined;
     if (!noteButtonEnabled('link')) return;
-    this.linkReg = vscode.languages.registerDocumentLinkProvider(SELECTOR, {
+    this.linkReg = vscode.languages.registerDocumentLinkProvider(MANIFEST_SELECTOR, {
       provideDocumentLinks: (doc) => this.guard('link', doc, (deps, has) =>
         deps.map((d) => {
-          // Inside the quotes: the name text itself, nothing more.
-          const start = doc.positionAt(d.keyOffset + 1);
-          const end = doc.positionAt(d.keyOffset + d.keyLength - 1);
-          const args = encodeURIComponent(JSON.stringify([d.name]));
+          const raw = doc.getText(new vscode.Range(
+            doc.positionAt(d.primaryRange.offset),
+            doc.positionAt(d.primaryRange.offset + d.primaryRange.length),
+          ));
+          const trimQuotes = raw.length >= 2 && ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'")));
+          const start = doc.positionAt(d.primaryRange.offset + (trimQuotes ? 1 : 0));
+          const end = doc.positionAt(d.primaryRange.offset + d.primaryRange.length - (trimQuotes ? 1 : 0));
+          const args = encodeURIComponent(JSON.stringify([d.noteKey]));
           const link = new vscode.DocumentLink(
             new vscode.Range(start, end),
             vscode.Uri.parse(`command:pacmon.addOrEditNote?${args}`),
@@ -235,16 +234,16 @@ export class NoteButtons implements vscode.Disposable {
   /** Draw (or clear) the iconLeft mark on one editor. */
   private async drawIcons(editor: vscode.TextEditor): Promise<void> {
     const doc = editor.document;
-    if (!isPackageJson(doc.uri)) return;
+    if (!isManifest(doc.uri)) return;
     const marks = await this.guard('iconLeft', doc, (deps, has) =>
       deps.map((d) => {
-        const keyPos = doc.positionAt(d.keyOffset);
+        const keyPos = doc.positionAt(d.primaryRange.offset);
         const documented = has(d);
         const hover = new vscode.MarkdownString(undefined, true);
         hover.isTrusted = { enabledCommands: ['pacmon.addOrEditNote'] };
-        const arg = encodeURIComponent(JSON.stringify([d.name]));
+        const arg = encodeURIComponent(JSON.stringify([d.noteKey]));
         hover.appendMarkdown(
-          `[${documented ? S.buttonEdit : S.buttonAdd}](command:pacmon.addOrEditNote?${arg}) — ${d.name}`,
+          `[${documented ? S.buttonEdit : S.buttonAdd}](command:pacmon.addOrEditNote?${arg}) — ${d.displayName}`,
         );
         return {
           documented,
@@ -287,14 +286,14 @@ export class NoteButtons implements vscode.Disposable {
       const sel = e.selections[0]!;
       if (!sel.isEmpty) return;
       const doc = e.textEditor.document;
-      if (!isPackageJson(doc.uri)) return;
+      if (!isManifest(doc.uri)) return;
 
       const deps = this.store.depsForDocument(doc);
-      const dep = deps.find((d) => doc.positionAt(d.keyOffset).line === sel.active.line);
+      const dep = deps.find((d) => doc.positionAt(d.primaryRange.offset).line === sel.active.line);
       if (!dep) return;
-      if (sel.active.character > doc.positionAt(dep.keyOffset).character) return;
+      if (sel.active.character > doc.positionAt(dep.primaryRange.offset).character) return;
 
-      await vscode.commands.executeCommand('pacmon.addOrEditNote', dep.name);
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', dep.noteKey);
     } catch (err) {
       logError('noteButtons.iconLeft.click', err);
     }
@@ -315,7 +314,7 @@ export class NoteButtons implements vscode.Disposable {
       if (deps.length === 0) return [];
       const notesUri = await resolveNotesFileFor(doc.uri);
       const notes = notesUri ? await this.store.getNotes(notesUri) : undefined;
-      const has = (d: DepEntry): boolean => (notes ? findSection(notes, d.name) !== undefined : false);
+      const has = (d: DepEntry): boolean => (notes ? findSection(notes, d.noteKey) !== undefined : false);
       return build(deps, has);
     } catch (e) {
       logError(`noteButtons.${which}`, e);

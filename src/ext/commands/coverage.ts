@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import { analyze } from '../../core/analyze';
-import { normalizeName } from '../../core/match';
+import { normalizeNameForEcosystem } from '../../core/match';
 import { notePreview, sectionLayers } from '../../core/layers';
-import { inlineSource, isPackageJson } from '../config';
+import { inlineSource, isManifest } from '../config';
 import type { NotePanel } from '../notePanel';
-import { defaultPackageJson, resolveNotesFileFor } from '../resolveNotesFile';
+import { defaultManifest, resolveNotesFileFor } from '../resolveNotesFile';
 import type { Store } from '../state';
 import { S } from '../strings';
 import { addOrEditNote } from './addOrEditNote';
@@ -17,9 +17,9 @@ interface CoverageItem extends vscode.QuickPickItem {
 export async function showCoverage(store: Store, panel: NotePanel): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const pkgUri =
-    editor && isPackageJson(editor.document.uri) ? editor.document.uri : await defaultPackageJson(store);
+    editor && isManifest(editor.document.uri) ? editor.document.uri : await defaultManifest(store);
   if (!pkgUri) {
-    void vscode.window.showInformationMessage(S.noPackageJson);
+    void vscode.window.showInformationMessage(S.noManifest);
     return;
   }
 
@@ -32,13 +32,13 @@ export async function showCoverage(store: Store, panel: NotePanel): Promise<void
   const items: CoverageItem[] = [];
   items.push({ label: S.coverageDocumented, kind: vscode.QuickPickItemKind.Separator });
   for (const d of documented) {
-    const section = byDep.get(normalizeName(d.name));
+    const section = byDep.get(normalizeNameForEcosystem(d.noteKey, notes?.frontmatter?.ecosystem));
     const detail = notes && section ? notePreview(sectionLayers(notes, section), source, 96) : '';
-    items.push({ label: `$(pass) ${d.name}`, description: d.section, detail, dep: d.name, documented: true });
+    items.push({ label: `$(pass) ${d.displayName}`, description: d.scope, detail, dep: d.noteKey, documented: true });
   }
   items.push({ label: S.coverageUndocumented, kind: vscode.QuickPickItemKind.Separator });
   for (const d of undocumented) {
-    items.push({ label: `$(circle-large-outline) ${d.name}`, description: d.section, dep: d.name, documented: false });
+    items.push({ label: `$(circle-large-outline) ${d.displayName}`, description: d.scope, dep: d.noteKey, documented: false });
   }
 
   const picked = await vscode.window.showQuickPick(items, {

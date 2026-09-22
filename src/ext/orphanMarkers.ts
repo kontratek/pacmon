@@ -3,7 +3,7 @@ import { orphanMarkers } from '../core/orphans';
 import { parseNotes } from '../core/parseNotes';
 import { isNotesFile } from './config';
 import { logError } from './log';
-import { packageJsonFor } from './resolveNotesFile';
+import { dependenciesForNotes } from './resolveNotesFile';
 import type { Store } from './state';
 import { S } from './strings';
 
@@ -49,7 +49,7 @@ export class OrphanMarkers implements vscode.Disposable {
   private async decorate(editor: vscode.TextEditor): Promise<void> {
     const doc = editor.document;
     if (!isNotesFile(doc.uri)) return;
-    const deps = await this.store.getDeps(packageJsonFor(doc.uri));
+    const deps = await dependenciesForNotes(this.store, doc.uri);
     // No package.json to compare against: nothing can be called an orphan.
     if (deps.length === 0) {
       editor.setDecorations(this.type, []);

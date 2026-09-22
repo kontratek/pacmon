@@ -1,20 +1,15 @@
 import * as vscode from 'vscode';
 import { orderedLayers, sectionLayers } from '../core/layers';
-import { depAtOffset } from '../core/packageJson';
+import { dependencyAtOffset } from '../core/manifest';
 import { findSection } from '../core/parseNotes';
-import { inlineSource, notesFileLabel } from './config';
+import { inlineSource, MANIFEST_SELECTOR, notesFileLabelForManifest } from './config';
 import { logError } from './log';
 import { resolveNotesFileFor } from './resolveNotesFile';
 import type { Store } from './state';
 import { S } from './strings';
 
 export function registerHover(store: Store): vscode.Disposable {
-  const selector: vscode.DocumentSelector = [
-    { language: 'json', pattern: '**/package.json' },
-    { language: 'jsonc', pattern: '**/package.json' },
-  ];
-
-  return vscode.languages.registerHoverProvider(selector, {
+  return vscode.languages.registerHoverProvider(MANIFEST_SELECTOR, {
     async provideHover(doc, position) {
       try {
         return await provide(doc, position);
@@ -30,14 +25,14 @@ export function registerHover(store: Store): vscode.Disposable {
       const deps = store.depsForDocument(doc);
       if (deps.length === 0) return undefined;
       const offset = doc.offsetAt(position);
-      const dep = depAtOffset(deps, offset);
+      const dep = dependencyAtOffset(deps, offset);
       if (!dep) return undefined;
 
       const notesUri = await resolveNotesFileFor(doc.uri);
       if (!notesUri) return undefined;
       const notes = await store.getNotes(notesUri);
       if (!notes) return undefined;
-      const section = findSection(notes, dep.name);
+      const section = findSection(notes, dep.noteKey);
       if (!section) return undefined; // undocumented lines stay silent
 
       // Both layers, in the order the setting asks for, a rule between them.
@@ -45,15 +40,18 @@ export function registerHover(store: Store): vscode.Disposable {
       if (parts.length === 0) return undefined; // a heading with nothing under it is no note
       const md = new vscode.MarkdownString(undefined, true);
       md.isTrusted = { enabledCommands: ['pacmon.addOrEditNote', 'pacmon.openNotesFile'] };
-      md.appendMarkdown(`**${dep.name}** ${S.hoverSourceSuffix(notesFileLabel())}\n\n`);
+      const fileLabel = notesFileLabelForManifest(doc.uri);
+      md.appendMarkdown(`**${dep.displayName}** ${S.hoverSourceSuffix(fileLabel)}\n\n`);
       if (parts.length > 0) md.appendMarkdown(`${parts.map((p) => p.text).join('\n\n---\n\n')}\n\n`);
-      const arg = encodeURIComponent(JSON.stringify([dep.name]));
+      const arg = encodeURIComponent(JSON.stringify([dep.noteKey]));
       md.appendMarkdown(
-        `---\n\n[${S.hoverEditNote}](command:pacmon.addOrEditNote?${arg}) · [${S.hoverOpenFile(notesFileLabel())}](command:pacmon.openNotesFile)`,
+        `---\n\n[${S.hoverEditNote}](command:pacmon.addOrEditNote?${arg}) · [${S.hoverOpenFile(fileLabel)}](command:pacmon.openNotesFile)`,
       );
 
-      const start = doc.positionAt(dep.keyOffset);
-      const end = doc.positionAt(dep.keyOffset + dep.keyLength);
+      const hit = dep.sourceRanges.find((range) => offset >= range.offset && offset <= range.offset + range.length)
+        ?? dep.primaryRange;
+      const start = doc.positionAt(hit.offset);
+      const end = doc.positionAt(hit.offset + hit.length);
       return new vscode.Hover(md, new vscode.Range(start, end));
     }
   }
