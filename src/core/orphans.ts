@@ -15,7 +15,7 @@ export interface OrphanMarker {
 
 export function orphanMarkers(deps: readonly DepEntry[], model: NotesFileModel): OrphanMarker[] {
   const { orphans, removed } = analyze(deps, model);
-  const names = deps.map((d) => d.name);
+  const names = deps.map((d) => d.noteKey);
   const out: OrphanMarker[] = [];
   for (const s of orphans) {
     const guess = closest(s.name, names);

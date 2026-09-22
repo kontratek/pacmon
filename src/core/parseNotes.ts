@@ -1,5 +1,5 @@
-import type { Frontmatter, NoteSection, NotesFileModel, NotesProblem } from './model';
-import { normalizeName } from './match';
+import type { Frontmatter, ManifestKind, NoteSection, NotesFileModel, NotesProblem } from './model';
+import { normalizeNameForEcosystem } from './match';
 import { AGENT_NOTES_HEADING, GENERATED_HEADING } from './template';
 
 const HEADING_RE = /^##(?!#)\s+(.+?)\s*$/;
@@ -45,6 +45,9 @@ export function parseNotes(text: string): NotesFileModel {
           // Unknown keys are kept as lines; only the format's own are read.
           if (kv[1] === 'format') fm.formatVersion = kv[2];
           else if (kv[1] === 'lang') fm.lang = kv[2];
+          else if (kv[1] === 'ecosystem' && ['cargo', 'maven'].includes(kv[2])) {
+            fm.ecosystem = kv[2] as ManifestKind;
+          }
         }
         model.frontmatter = fm;
         i = j + 1;
@@ -125,7 +128,7 @@ export function parseNotes(text: string): NotesFileModel {
   // --- Duplicates ---
   const seen = new Map<string, NoteSection>();
   for (const s of model.sections) {
-    const key = normalizeName(s.name);
+    const key = normalizeNameForEcosystem(s.name, model.frontmatter?.ecosystem);
     const first = seen.get(key);
     if (first) {
       const p: NotesProblem = {
@@ -145,8 +148,8 @@ export function parseNotes(text: string): NotesFileModel {
 
 /** First section matching the given package name (tolerant). */
 export function findSection(model: NotesFileModel, name: string): NoteSection | undefined {
-  const key = normalizeName(name);
-  return model.sections.find((s) => normalizeName(s.name) === key);
+  const key = normalizeNameForEcosystem(name, model.frontmatter?.ecosystem);
+  return model.sections.find((s) => normalizeNameForEcosystem(s.name, model.frontmatter?.ecosystem) === key);
 }
 
 /** Raw body text of a section, with surrounding blank lines trimmed. */

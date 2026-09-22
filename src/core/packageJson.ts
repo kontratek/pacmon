@@ -1,22 +1,23 @@
 import { parseTree } from 'jsonc-parser';
-import type { DepEntry, DepSection } from './model';
+import type { DependencyEntry, DepEntry } from './model';
+import { dependencyAtOffset, dependencyEntry } from './dependency';
 
-const DEP_SECTIONS: readonly DepSection[] = [
+const DEP_SECTIONS = [
   'dependencies',
   'devDependencies',
   'peerDependencies',
   'optionalDependencies',
-];
+] as const;
 
-function isDepSection(v: unknown): v is DepSection {
+function isDepSection(v: unknown): v is (typeof DEP_SECTIONS)[number] {
   return typeof v === 'string' && (DEP_SECTIONS as readonly string[]).includes(v);
 }
 
 /** Extract dependency names + key positions from a package.json text (jsonc tolerant). */
-export function extractDeps(text: string): DepEntry[] {
+export function extractNpmDependencies(text: string): DependencyEntry[] {
   const root = parseTree(text, [], { allowTrailingComma: true });
   if (!root || root.type !== 'object') return [];
-  const out: DepEntry[] = [];
+  const out: DependencyEntry[] = [];
   for (const prop of root.children ?? []) {
     if (prop.type !== 'property') continue;
     const keyNode = prop.children?.[0];
@@ -27,14 +28,17 @@ export function extractDeps(text: string): DepEntry[] {
     for (const entry of valNode.children ?? []) {
       const k = entry.children?.[0];
       if (k && typeof k.value === 'string') {
-        out.push({ name: k.value, section, keyOffset: k.offset, keyLength: k.length });
+        out.push(dependencyEntry(k.value, section, { offset: k.offset, length: k.length }));
       }
     }
   }
   return out;
 }
 
+/** Backward-compatible name used by the original npm-only core tests. */
+export const extractDeps = extractNpmDependencies;
+
 /** The dependency whose key range contains the given offset (quotes included). */
 export function depAtOffset(deps: readonly DepEntry[], offset: number): DepEntry | undefined {
-  return deps.find((d) => offset >= d.keyOffset && offset <= d.keyOffset + d.keyLength);
+  return dependencyAtOffset(deps, offset);
 }

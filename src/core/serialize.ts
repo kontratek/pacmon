@@ -1,13 +1,15 @@
 import type { NoteSection, NotesFileModel } from './model';
 import { layerRanges, sectionLayers } from './layers';
 import { parseNotes } from './parseNotes';
-import { normalizeName } from './match';
+import { normalizeNameForEcosystem } from './match';
 import {
   AGENT_NOTES_HEADING,
-  AI_FORMAT_COMMENT_LINES,
   DEFAULT_FRONTMATTER_LINES,
   DEFAULT_TITLE,
   FRONTMATTER_DEFAULTS,
+  FORMAT_VERSION_V2,
+  formatCommentLines,
+  frontmatterLinesFor,
 } from './template';
 
 function trimmedBodyLines(model: NotesFileModel, s: NoteSection): string[] {
@@ -34,7 +36,13 @@ function frontmatterLines(model: NotesFileModel): string[] {
   if (!model.frontmatter) return [...DEFAULT_FRONTMATTER_LINES];
   const inner = model.lines.slice(model.frontmatter.startLine + 1, model.frontmatter.endLine);
   const present = new Set(inner.map((l) => /^([A-Za-z][\w-]*):/.exec(l)?.[1]));
-  const missing = FRONTMATTER_DEFAULTS.filter(([key]) => !present.has(key)).map(([key, value]) => `${key}: ${value}`);
+  const defaults = model.frontmatter.formatVersion === FORMAT_VERSION_V2 && model.frontmatter.ecosystem
+    ? frontmatterLinesFor(model.frontmatter.ecosystem).slice(1, -1).map((line) => {
+        const split = line.indexOf(':');
+        return [line.slice(0, split), line.slice(split + 1).trim()] as const;
+      })
+    : FRONTMATTER_DEFAULTS;
+  const missing = defaults.filter(([key]) => !present.has(key)).map(([key, value]) => `${key}: ${value}`);
   return ['---', ...inner, ...missing, '---'];
 }
 
@@ -55,7 +63,7 @@ export function serialize(model: NotesFileModel): string {
   out.push(...frontmatterLines(model));
 
   out.push('');
-  out.push(...AI_FORMAT_COMMENT_LINES);
+  out.push(...formatCommentLines(model.frontmatter?.ecosystem));
 
   out.push('');
   // The title is the format's, like the header comment: always `# Dependency Notes`.
@@ -70,8 +78,8 @@ export function serialize(model: NotesFileModel): string {
   }
 
   const sorted = [...model.sections].sort((a, b) => {
-    const an = normalizeName(a.name);
-    const bn = normalizeName(b.name);
+    const an = normalizeNameForEcosystem(a.name, model.frontmatter?.ecosystem);
+    const bn = normalizeNameForEcosystem(b.name, model.frontmatter?.ecosystem);
     if (an < bn) return -1;
     if (an > bn) return 1;
     return a.headingLine - b.headingLine; // stable for duplicates
@@ -102,12 +110,13 @@ export function normalizeText(text: string): string {
  * we append at the end (no pretending).
  */
 export function insertionLine(model: NotesFileModel, name: string): number | null {
-  const names = model.sections.map((s) => normalizeName(s.name));
+  const normalize = (value: string): string => normalizeNameForEcosystem(value, model.frontmatter?.ecosystem);
+  const names = model.sections.map((s) => normalize(s.name));
   const isSorted = names.every((n, i) => i === 0 || (names[i - 1] ?? '') <= n);
   if (!isSorted) return null;
-  const key = normalizeName(name);
+  const key = normalize(name);
   for (const s of model.sections) {
-    if (normalizeName(s.name) > key) return s.headingLine;
+    if (normalize(s.name) > key) return s.headingLine;
   }
   return null;
 }
@@ -175,8 +184,8 @@ function bodyRegion(newBody: string, hasTail: boolean): string[] {
  */
 export function replaceSectionBodyInText(text: string, name: string, newBody: string): string {
   const model = parseNotes(text);
-  const key = normalizeName(name);
-  const section = model.sections.find((s) => normalizeName(s.name) === key);
+  const key = normalizeNameForEcosystem(name, model.frontmatter?.ecosystem);
+  const section = model.sections.find((s) => normalizeNameForEcosystem(s.name, model.frontmatter?.ecosystem) === key);
   if (!section) return text;
   const hasTail = section.bodyEnd < model.lines.length;
   return splice(model, section.headingLine + 1, section.bodyEnd, bodyRegion(newBody, hasTail));
@@ -189,8 +198,8 @@ export function replaceSectionBodyInText(text: string, name: string, newBody: st
  */
 export function replaceHumanBodyInText(text: string, name: string, human: string): string {
   const model = parseNotes(text);
-  const key = normalizeName(name);
-  const section = model.sections.find((s) => normalizeName(s.name) === key);
+  const key = normalizeNameForEcosystem(name, model.frontmatter?.ecosystem);
+  const section = model.sections.find((s) => normalizeNameForEcosystem(s.name, model.frontmatter?.ecosystem) === key);
   if (!section) return text;
   const { humanEnd } = layerRanges(section);
   const hasTail = humanEnd < model.lines.length;
@@ -207,8 +216,8 @@ export function replaceSectionLayersInText(
   l: { human: string; agent: string },
 ): string {
   const model = parseNotes(text);
-  const key = normalizeName(name);
-  const section = model.sections.find((s) => normalizeName(s.name) === key);
+  const key = normalizeNameForEcosystem(name, model.frontmatter?.ecosystem);
+  const section = model.sections.find((s) => normalizeNameForEcosystem(s.name, model.frontmatter?.ecosystem) === key);
   if (!section) return text;
   const { generated } = sectionLayers(model, section);
   return replaceSectionBodyInText(text, name, composeSectionBody({ human: l.human, agent: l.agent, generated }));

@@ -1,6 +1,6 @@
 import type { DepEntry, NoteSection, NotesFileModel, NotesProblem } from './model';
 import { isEmptySection, isRemovedSection } from './layers';
-import { normalizeName } from './match';
+import { normalizeNameForEcosystem } from './match';
 
 export interface Analysis {
   /** dep name (normalized) → first matching section */
@@ -20,11 +20,12 @@ export function analyze(deps: readonly DepEntry[], notes: NotesFileModel | undef
   const undocumented: DepEntry[] = [];
   const orphans: NoteSection[] = [];
   const removed: NoteSection[] = [];
+  const normalize = (name: string): string => normalizeNameForEcosystem(name, notes?.frontmatter?.ecosystem);
 
-  const depKeys = new Set(deps.map((d) => normalizeName(d.name)));
+  const depKeys = new Set(deps.map((d) => normalize(d.noteKey)));
   const sectionByKey = new Map<string, NoteSection>();
   for (const s of notes?.sections ?? []) {
-    const key = normalizeName(s.name);
+    const key = normalize(s.name);
     if (!sectionByKey.has(key)) sectionByKey.set(key, s);
     if (!depKeys.has(key)) {
       if (notes && isRemovedSection(notes, s)) removed.push(s);
@@ -33,10 +34,10 @@ export function analyze(deps: readonly DepEntry[], notes: NotesFileModel | undef
   }
 
   for (const d of deps) {
-    const s = sectionByKey.get(normalizeName(d.name));
+    const s = sectionByKey.get(normalize(d.noteKey));
     // A heading with nothing under it is not a note: coverage must not count it.
     if (s && notes && !isEmptySection(notes, s)) {
-      byDep.set(normalizeName(d.name), s);
+      byDep.set(normalize(d.noteKey), s);
       documented.push(d);
     } else {
       undocumented.push(d);
