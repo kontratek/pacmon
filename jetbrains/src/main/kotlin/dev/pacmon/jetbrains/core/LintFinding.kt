@@ -31,7 +31,21 @@ sealed class LintFinding(val line: Int) {
     }
 
     class UnknownFormat(line: Int, val version: String) : LintFinding(line) {
-        override fun message(): String = "Unknown format \"$version\" — this Pacmon reads ${NotesCore.FORMAT_VERSION}."
+        override fun message(): String =
+            "Unknown format \"$version\" — this Pacmon reads ${NotesCore.SUPPORTED_FORMAT_VERSIONS.joinToString(" and ")}."
+    }
+
+    class MissingEcosystem(line: Int) : LintFinding(line) {
+        override fun message(): String = "Format dependency-notes/2 requires ecosystem: cargo or ecosystem: maven."
+    }
+
+    class WrongEcosystem(
+        line: Int,
+        val actual: ManifestKind,
+        val expected: ManifestKind,
+    ) : LintFinding(line) {
+        override fun message(): String =
+            "This notes path is for ${expected.id}, but the frontmatter says ecosystem: ${actual.id}."
     }
 
     class MissingTitle(line: Int) : LintFinding(line) {
@@ -88,6 +102,7 @@ sealed class LintFinding(val line: Int) {
     }
 
     class RemovedButPresent(line: Int, val name: String, val span: Span) : LintFinding(line) {
-        override fun message(): String = "\"$name\" is in package.json — remove \"status: removed\"."
+        override fun message(): String =
+            "\"$name\" is still in its dependency manifest — remove \"status: removed\"."
     }
 }

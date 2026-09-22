@@ -19,11 +19,13 @@ object AiInstructions {
 
     fun block(): String = listOf(
         BLOCK_START,
-        "Dependency notes live in `${NotesCore.NOTES_RELATIVE_PATH}`: one `## <package>` section per dependency " +
-            "— people write right under the heading, AI agents write under `${NotesCore.AGENT_NOTES_HEADING}`.",
+        "Dependency notes live in `${NotesCore.NOTES_RELATIVE_PATH}` for npm, " +
+            "`.pacmon/cargo/${NotesCore.NOTES_FILE_NAME}` for Rust, and " +
+            "`.pacmon/maven/${NotesCore.NOTES_FILE_NAME}` for Maven; people write below `## <package>`, " +
+            "agents under `${NotesCore.AGENT_NOTES_HEADING}`.",
         "Rules and the field list are in `${NotesCore.AGENT_RULES_RELATIVE_PATH}`; read a package's section " +
             "before adding, bumping or removing it.",
-        "Update the notes in the same commit as `package.json`; a removed package keeps its section with " +
+        "Update the notes in the same commit as the dependency manifest; a removed package keeps its section with " +
             "`- status: removed …`.",
         BLOCK_END,
     ).joinToString("\n")

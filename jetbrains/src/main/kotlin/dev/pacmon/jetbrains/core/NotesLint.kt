@@ -10,7 +10,7 @@ package dev.pacmon.jetbrains.core
  *   `### Agent notes` — anything else is plain text;
  * - the agent layer has a fixed vocabulary: unknown keys, empty values,
  *   enumerated values of the wrong shape, and `status: removed` on a package
- *   that is still in package.json.
+ *   that is still in its dependency manifest.
  * The human text itself is never looked at, and prose lines in the agent block
  * are fine.
  */
@@ -20,9 +20,14 @@ object NotesLint {
     private val fence = Regex("^\\s{0,3}(`{3,}|~{3,})")
     private val removedStatus = Regex("^removed\\b", RegexOption.IGNORE_CASE)
 
-    fun lint(model: NotesFileModel, depNames: Collection<String>): List<LintFinding> {
+    fun lint(
+        model: NotesFileModel,
+        depNames: Collection<String>,
+        expectedEcosystem: ManifestKind? = null,
+    ): List<LintFinding> {
         val findings = mutableListOf<LintFinding>()
-        val deps = depNames.map { NotesCore.normalizeName(it) }.toSet()
+        val ecosystem = model.frontmatter?.ecosystem
+        val deps = depNames.map { NotesCore.normalizeName(it, ecosystem) }.toSet()
 
         model.problems.forEach {
             findings.add(LintFinding.DuplicateSection(it.line, it.name, it.firstLine))
@@ -30,7 +35,7 @@ object NotesLint {
 
         if (model.frontmatter == null) {
             findings.add(LintFinding.MissingFrontmatter(0))
-        } else if (model.frontmatter.formatVersion != null && model.frontmatter.formatVersion != NotesCore.FORMAT_VERSION) {
+        } else if (model.frontmatter.formatVersion != null && model.frontmatter.formatVersion !in NotesCore.SUPPORTED_FORMAT_VERSIONS) {
             var line = model.frontmatter.startLine
             for (i in model.frontmatter.startLine..model.frontmatter.endLine) {
                 if (Regex("^format\\s*:").containsMatchIn(model.lines.getOrElse(i) { "" })) {
@@ -40,11 +45,24 @@ object NotesLint {
             }
             findings.add(LintFinding.UnknownFormat(line, model.frontmatter.formatVersion))
         }
+        if (model.frontmatter?.formatVersion == NotesCore.FORMAT_VERSION_V2) {
+            if (model.frontmatter.ecosystem == null) {
+                findings.add(LintFinding.MissingEcosystem(model.frontmatter.startLine))
+            } else if (expectedEcosystem != null && model.frontmatter.ecosystem != expectedEcosystem) {
+                findings.add(
+                    LintFinding.WrongEcosystem(
+                        model.frontmatter.startLine,
+                        model.frontmatter.ecosystem,
+                        expectedEcosystem,
+                    ),
+                )
+            }
+        }
 
         // A `# lodash` where lodash is a dependency is a package heading at the
         // wrong level, not a title; the loop below reports it as such.
         val titleText = model.titleLine?.let { model.lines.getOrElse(it) { "" }.replace(Regex("^#\\s+"), "").trim() }
-        val titleIsDep = titleText != null && NotesCore.normalizeName(titleText) in deps
+        val titleIsDep = titleText != null && NotesCore.normalizeName(titleText, ecosystem) in deps
         if (model.titleLine == null) {
             val after = model.aiComment?.endLine ?: model.frontmatter?.endLine
             val line = if (after == null) 0 else minOf(after + 1, maxOf(model.lines.size - 1, 0))
@@ -72,7 +90,7 @@ object NotesLint {
             val noSpace = noSpaceH2.matchEntire(line)
             if (noSpace != null) {
                 val name = noSpace.groupValues[1]
-                if (NotesCore.normalizeName(name) in deps) {
+                if (NotesCore.normalizeName(name, ecosystem) in deps) {
                     findings.add(LintFinding.MissingSpaceAfterHashes(i, name.trim()))
                     continue
                 }
@@ -81,7 +99,7 @@ object NotesLint {
             val h = anyHeading.matchEntire(line) ?: continue
             val level = h.groupValues[1].length
             val text = h.groupValues[2].trim()
-            if (level != 2 && NotesCore.normalizeName(text) in deps) {
+            if (level != 2 && NotesCore.normalizeName(text, ecosystem) in deps) {
                 findings.add(LintFinding.WrongHeadingLevel(i, text, level))
                 continue
             }
@@ -133,7 +151,7 @@ object NotesLint {
                     continue
                 }
                 if (key == "status" && removedStatus.containsMatchIn(value) &&
-                    NotesCore.normalizeName(section.name) in deps
+                    NotesCore.normalizeName(section.name, ecosystem) in deps
                 ) {
                     findings.add(LintFinding.RemovedButPresent(i, section.name, valueSpan))
                     continue

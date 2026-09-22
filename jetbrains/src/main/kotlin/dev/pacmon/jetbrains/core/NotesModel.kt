@@ -26,6 +26,7 @@ data class Frontmatter(
     val endLine: Int,
     val formatVersion: String? = null,
     val lang: String? = null,
+    val ecosystem: ManifestKind? = null,
 )
 
 data class NotesFileModel(

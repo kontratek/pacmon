@@ -9,6 +9,8 @@ object NotesCore {
     const val AGENT_NOTES_HEADING = "### Agent notes"
     const val GENERATED_HEADING = "### Generated"
     const val FORMAT_VERSION = "dependency-notes/1"
+    const val FORMAT_VERSION_V2 = "dependency-notes/2"
+    val SUPPORTED_FORMAT_VERSIONS = setOf(FORMAT_VERSION, FORMAT_VERSION_V2)
     const val DEFAULT_TITLE = "# Dependency Notes"
     internal const val TITLE_TEXT = "Dependency Notes"
 
@@ -25,15 +27,18 @@ object NotesCore {
         "  by AI agents — rules in $AGENT_RULES_RELATIVE_PATH. -->",
     )
 
-    fun normalizeName(raw: String): String {
-        var value = raw.trim()
-        if (value.length >= 2) {
-            val first = value.first()
-            if ((first == '`' || first == '\'' || first == '"') && value.last() == first) {
-                value = value.substring(1, value.length - 1).trim()
-            }
-        }
-        return value.lowercase()
+    fun normalizeName(raw: String, ecosystem: ManifestKind? = null): String =
+        ManifestRegistry.normalizeName(raw, ecosystem)
+
+    fun notesRelativePath(ecosystem: ManifestKind): String = ManifestRegistry.forKind(ecosystem).notesRelativePath
+
+    fun formatCommentLines(ecosystem: ManifestKind?): List<String> = when (ecosystem) {
+        ManifestKind.CARGO, ManifestKind.MAVEN -> listOf(
+            "<!-- Each \"## name\" below is a package from the ${ecosystem.id} dependency manifest.",
+            "  The text under it is written by people. \"$AGENT_NOTES_HEADING\" and everything below",
+            "  it is written by AI agents — rules in $AGENT_RULES_RELATIVE_PATH. -->",
+        )
+        else -> AI_FORMAT_COMMENT_LINES
     }
 
     fun parse(textValue: String): NotesFileModel {
@@ -52,6 +57,7 @@ object NotesCore {
                 if (lines[j] == "---") {
                     var formatVersion: String? = null
                     var lang: String? = null
+                    var ecosystem: ManifestKind? = null
                     for (k in 1 until j) {
                         val kv = frontmatterKv.matchEntire(lines[k]) ?: continue
                         val value = kv.groupValues[2]
@@ -59,9 +65,10 @@ object NotesCore {
                         when (kv.groupValues[1]) {
                             "format" -> formatVersion = value
                             "lang" -> lang = value
+                            "ecosystem" -> ecosystem = ManifestKind.fromId(value)
                         }
                     }
-                    frontmatter = Frontmatter(0, j, formatVersion, lang)
+                    frontmatter = Frontmatter(0, j, formatVersion, lang, ecosystem)
                     i = j + 1
                     break
                 }
@@ -150,7 +157,7 @@ object NotesCore {
         val firstByName = mutableMapOf<String, NoteSection>()
         val problems = mutableListOf<NotesProblem>()
         sections.forEach { section ->
-            val key = normalizeName(section.name)
+            val key = normalizeName(section.name, frontmatter?.ecosystem)
             val first = firstByName[key]
             if (first == null) firstByName[key] = section
             else problems.add(NotesProblem(section.name, section.headingLine, first.headingLine))
@@ -160,8 +167,8 @@ object NotesCore {
     }
 
     fun findSection(model: NotesFileModel, name: String): NoteSection? {
-        val key = normalizeName(name)
-        return model.sections.firstOrNull { normalizeName(it.name) == key }
+        val key = normalizeName(name, model.frontmatter?.ecosystem)
+        return model.sections.firstOrNull { normalizeName(it.name, model.frontmatter?.ecosystem) == key }
     }
 
     fun layers(model: NotesFileModel, section: NoteSection): SectionLayers {
@@ -203,13 +210,27 @@ object NotesCore {
         return if (value.length > maxLength) value.take(maxLength - 1) + "…" else value
     }
 
-    fun newNotesFile(name: String, human: String, agent: String = ""): String {
+    fun newNotesFile(
+        name: String,
+        human: String,
+        agent: String = "",
+        ecosystem: ManifestKind = ManifestKind.NPM,
+    ): String {
         val body = composeLayers(human, agent)
         return buildString {
-            append("---\nformat: dependency-notes/1\nlang: en\n---\n\n")
-            append("<!-- Each \"## name\" below is a package from package.json. The text right under the\n")
-            append("  heading is written by people. \"### Agent notes\" and everything below it is written\n")
-            append("  by AI agents — rules in .pacmon/AGENT-RULES.md. -->\n\n")
+            if (ecosystem == ManifestKind.NPM) {
+                append("---\nformat: dependency-notes/1\nlang: en\n---\n\n")
+            } else {
+                append("---\nformat: dependency-notes/2\necosystem: ${ecosystem.id}\nlang: en\n---\n\n")
+            }
+            if (ecosystem == ManifestKind.NPM) {
+                append("<!-- Each \"## name\" below is a package from package.json. The text right under the\n")
+                append("  heading is written by people. \"### Agent notes\" and everything below it is written\n")
+                append("  by AI agents — rules in .pacmon/AGENT-RULES.md. -->\n\n")
+            }
+            if (ecosystem != ManifestKind.NPM) {
+                append(formatCommentLines(ecosystem).joinToString("\n")).append("\n\n")
+            }
             append("# Dependency Notes\n\n## ").append(name.trim()).append("\n\n")
             if (body.isNotEmpty()) append(body).append('\n')
         }
@@ -268,10 +289,12 @@ object NotesCore {
     }
 
     private fun insertSection(text: String, model: NotesFileModel, name: String, bodyValue: String): String {
-        val normalizedNames = model.sections.map { normalizeName(it.name) }
+        val normalizedNames = model.sections.map { normalizeName(it.name, model.frontmatter?.ecosystem) }
         val sorted = normalizedNames.zipWithNext().all { (left, right) -> left <= right }
-        val key = normalizeName(name)
-        val before = if (sorted) model.sections.firstOrNull { normalizeName(it.name) > key }?.headingLine else null
+        val key = normalizeName(name, model.frontmatter?.ecosystem)
+        val before = if (sorted) model.sections.firstOrNull {
+            normalizeName(it.name, model.frontmatter?.ecosystem) > key
+        }?.headingLine else null
         val snippet = buildString {
             append("## ").append(name.trim()).append(model.eol).append(model.eol)
             if (bodyValue.isNotBlank()) append(bodyValue.trim().replace(Regex("\\r?\\n"), model.eol)).append(model.eol)
@@ -309,11 +332,12 @@ object NotesCore {
      * trailing newline. Section bodies are kept verbatim (outer blank lines
      * trimmed). Duplicate sections are kept, in their relative order.
      */
-    fun serialize(model: NotesFileModel): String {
+    fun serialize(model: NotesFileModel, expectedEcosystem: ManifestKind? = null): String {
         val out = mutableListOf<String>()
-        out.addAll(frontmatterLines(model))
+        val ecosystem = model.frontmatter?.ecosystem ?: expectedEcosystem.takeIf { model.frontmatter == null }
+        out.addAll(frontmatterLines(model, expectedEcosystem))
         out.add("")
-        out.addAll(AI_FORMAT_COMMENT_LINES)
+        out.addAll(formatCommentLines(ecosystem))
         out.add("")
         out.add(DEFAULT_TITLE)
 
@@ -326,7 +350,7 @@ object NotesCore {
         }
 
         val sorted = model.sections
-            .sortedWith(compareBy<NoteSection> { normalizeName(it.name) }.thenBy { it.headingLine })
+            .sortedWith(compareBy<NoteSection> { normalizeName(it.name, ecosystem) }.thenBy { it.headingLine })
         for (section in sorted) {
             out.add("")
             out.add("## ${section.name.trim()}")
@@ -341,16 +365,24 @@ object NotesCore {
     }
 
     /** Parse + serialize convenience: rewrites [text] into canonical form. */
-    fun normalizeText(text: String): String = serialize(parse(text))
+    fun normalizeText(text: String, expectedEcosystem: ManifestKind? = null): String =
+        serialize(parse(text), expectedEcosystem)
 
-    private fun frontmatterLines(model: NotesFileModel): List<String> {
-        val frontmatter = model.frontmatter ?: return listOf("---", "format: $FORMAT_VERSION", "lang: en", "---")
+    private fun frontmatterLines(model: NotesFileModel, expectedEcosystem: ManifestKind?): List<String> {
+        val desired = when {
+            model.frontmatter == null -> expectedEcosystem
+            model.frontmatter.formatVersion == FORMAT_VERSION_V2 -> model.frontmatter.ecosystem
+            else -> null
+        }
+        val defaults = if (desired == ManifestKind.CARGO || desired == ManifestKind.MAVEN) {
+            listOf("format: $FORMAT_VERSION_V2", "ecosystem: ${desired.id}", "lang: en")
+        } else {
+            listOf("format: $FORMAT_VERSION", "lang: en")
+        }
+        val frontmatter = model.frontmatter ?: return listOf("---") + defaults + listOf("---")
         val inner = model.lines.subList(frontmatter.startLine + 1, frontmatter.endLine)
         val present = inner.mapNotNull { Regex("^([A-Za-z][\\w-]*):").find(it)?.groupValues?.get(1) }.toSet()
-        val missing = buildList {
-            if ("format" !in present) add("format: $FORMAT_VERSION")
-            if ("lang" !in present) add("lang: en")
-        }
+        val missing = defaults.filter { it.substringBefore(':') !in present }
         return listOf("---") + inner + missing + listOf("---")
     }
 

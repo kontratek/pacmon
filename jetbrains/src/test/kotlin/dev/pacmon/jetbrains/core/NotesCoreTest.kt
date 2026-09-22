@@ -7,6 +7,20 @@ import org.junit.Test
 
 class NotesCoreTest {
     @Test
+    fun `creates ecosystem scoped v2 files while npm stays v1`() {
+        val npm = NotesCore.newNotesFile("Vue", "Frontend")
+        val cargo = NotesCore.newNotesFile("Serde", "Serialization", ecosystem = ManifestKind.CARGO)
+        val maven = NotesCore.newNotesFile("Org.Example:Core", "Library", ecosystem = ManifestKind.MAVEN)
+
+        assertTrue(npm.contains("format: dependency-notes/1"))
+        assertTrue(cargo.contains("format: dependency-notes/2\necosystem: cargo\nlang: en"))
+        assertTrue(maven.contains("format: dependency-notes/2\necosystem: maven\nlang: en"))
+        assertNull(NotesCore.findSection(NotesCore.parse(cargo), "serde"))
+        assertEquals("Serde", NotesCore.findSection(NotesCore.parse(cargo), "Serde")?.name)
+        assertEquals("Vue", NotesCore.findSection(NotesCore.parse(npm), "vue")?.name)
+    }
+
+    @Test
     fun `parses human and agent layers`() {
         val model = NotesCore.parse(
             """
