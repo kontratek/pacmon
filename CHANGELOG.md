@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+- **Cargo and Maven dependency notes now work in JetBrains IDEs.** Pacmon's
+  hover, navigation, note markers, editor actions, coverage, dashboard and
+  live note validation now support `Cargo.toml` and Maven `pom.xml` alongside
+  `package.json`. The plugin uses dependency-free Kotlin manifest parsers, so
+  Rust, TOML and Maven plugins remain optional, and keeps each ecosystem's
+  notes isolated under its own `.pacmon/` path.
+
 ## 0.3.2 — 2026-09-16
 
 - **Pacmon comes to JetBrains IDEs.** The `jetbrains/` module is a plugin

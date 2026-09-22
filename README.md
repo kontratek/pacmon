@@ -47,7 +47,7 @@ generated, and nothing is cached anywhere else.
 
 ## Getting started
 
-1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon). VSCodium, Cursor, Windsurf, code-server and other editors that use [Open VSX](https://open-vsx.org/extension/kontra/pacmon) install it from there.
+1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon), [Open VSX](https://open-vsx.org/extension/kontra/pacmon), or the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34295-pacmon).
 2. Open a `package.json`, `Cargo.toml`, or Maven `pom.xml`. A hollow mark appears before every supported direct dependency that has no note yet.
 3. Right-click a dependency and choose **Pacmon: Add/Edit Dependency Note**, or click the mark. Write one line.
 4. The note now shows on hover and at the end of the line. Pacmon created the ecosystem-specific notes file and `.pacmon/AGENT-RULES.md`; commit them with the manifest.
@@ -76,7 +76,7 @@ The **Pacmon** view in the activity bar switches these without opening the setti
 
 ## Requirements
 
-VS Code 1.100 or newer. Nothing else: Pacmon reads and writes files in your workspace and makes no network requests. It works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
+VS Code 1.100 or newer, or a compatible JetBrains IDE. Nothing else: Pacmon reads and writes files in your workspace and makes no network requests. Rust, TOML, and Maven IDE plugins are optional. It also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
 
 ## Format reference
 
