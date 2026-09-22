@@ -1,12 +1,16 @@
-# The `dependency-notes/1` format
+# The dependency notes formats
 
-This document describes `.pacmon/DEPENDENCY-NOTES.md`. That file holds the notes a repository keeps about the dependencies of one `package.json`. This is version `1` of the format. See [Versioning](#versioning).
+Pacmon stores dependency notes as Markdown. Existing npm files use `dependency-notes/1`; ecosystem-scoped Cargo and Maven files use `dependency-notes/2`. See [Versioning](#versioning).
 
 ## The notes file
 
-The file is `.pacmon/DEPENDENCY-NOTES.md`. It sits in the same directory as the `package.json` it describes.
+The path identifies the ecosystem:
 
-A repository can have several `package.json` files, one inside another. A `package.json` without a notes file of its own uses the notes file of the closest ancestor directory that has one, up to the repository root.
+- npm: `.pacmon/DEPENDENCY-NOTES.md`, beside `package.json`;
+- Cargo: `.pacmon/cargo/DEPENDENCY-NOTES.md`, beside `Cargo.toml`;
+- Maven: `.pacmon/maven/DEPENDENCY-NOTES.md`, beside `pom.xml`.
+
+A manifest without its own notes file uses the closest ancestor notes file for the same ecosystem, up to the workspace root. npm, Cargo, and Maven files never share notes.
 
 The file is UTF-8. Its line ending is CRLF if the file contains one CRLF, otherwise LF. A byte order mark at the start is accepted; a tool that rewrites the file drops it.
 
@@ -37,15 +41,27 @@ Human layer.
 
 The frontmatter, the header comment and the title have fixed content, given below. A tool that formats the file rewrites them. The introduction is written by people. A section has layers: one is written by people, one by AI agents.
 
+Cargo and Maven files use v2 frontmatter:
+
+```yaml
+---
+format: dependency-notes/2
+ecosystem: cargo
+lang: en
+---
+```
+
 A fenced code block starts and ends with a line of three or more backticks or tildes, indented by at most three spaces. Inside a fenced code block, a line is never a heading and never a field.
 
 ## Frontmatter
 
 The frontmatter is present when the first line of the file is `---`. It ends at the next line that is `---`. Each line between them is `key: value`. A key is a letter followed by letters, digits, `_` or `-`. A key with an empty value is not read.
 
-The format defines two keys.
+Version 1 defines `format` and `lang`. Version 2 also requires `ecosystem`.
 
-`format` names the version of these rules the file follows. Its value is `dependency-notes/1`. When the key is missing, the file is read as `dependency-notes/1`.
+`format` names the version of these rules the file follows. Supported values are `dependency-notes/1` and `dependency-notes/2`. When the key is missing, the file is read as v1.
+
+`ecosystem` is required in v2 and is either `cargo` or `maven`. It must agree with the notes path.
 
 `lang` names the language the values are written in. Keys are always English. When the key is missing, the language is `en`.
 
@@ -53,7 +69,7 @@ Any other key is kept where it is and is not read.
 
 ## Header comment
 
-The header comment is the first HTML comment at the top of the file, after the frontmatter if there is one. Its text is fixed: the three lines shown above. It says who writes where, and it points AI agents to `.pacmon/AGENT-RULES.md`. That file holds instructions for agents and is not part of this format. A file's own commentary goes in the introduction, not in the header comment.
+The header comment is the first HTML comment at the top of the file, after the frontmatter if there is one. Its text is fixed: v1 names `package.json`; v2 names the Cargo or Maven dependency manifest selected by `ecosystem`. It says who writes where and points AI agents to `.pacmon/AGENT-RULES.md`. A file's own commentary goes in the introduction, not in the header comment.
 
 ## Title
 
@@ -65,17 +81,21 @@ The introduction is everything between the title and the first section. It holds
 
 ## Sections
 
-A section starts with a level-2 heading: `## <name>`. `<name>` is the package name exactly as it appears in `package.json`, including `@scope/`. Level-2 headings are reserved for package names everywhere in the file.
+A section starts with a level-2 heading: `## <name>`. Level-2 headings are reserved for dependency note keys everywhere in the file.
 
-A dependency is any key under `dependencies`, `devDependencies`, `peerDependencies` or `optionalDependencies` in `package.json`.
+A direct dependency is identified statically from its manifest:
 
-A section name matches a dependency name when the two are equal after both are trimmed, stripped of one pair of surrounding quotes or backticks, and lower-cased.
+- npm: keys under `dependencies`, `devDependencies`, `peerDependencies`, or `optionalDependencies`;
+- Cargo: local keys in dependency, dev-dependency, build-dependency, and target-specific dependency tables;
+- Maven: `groupId:artifactId` under project or profile `dependencies` (not dependency management or plugin dependencies).
+
+A v1/npm section matches after trimming, stripping one pair of surrounding quotes or backticks, and lower-casing. Cargo and Maven v2 keys preserve case after trimming and wrapper removal.
 
 Each dependency has at most one section. Two sections with the same name are a mistake; the file does not say which one is wrong. Until it is fixed, tools read the first one in the file.
 
 Sections are sorted by name. The sort compares the matched names character by character, so `@scope/x` comes before `a`.
 
-A section whose name matches no dependency is an orphan. An orphan whose agent layer has `status: removed …` is a removed section. A removed section is kept on purpose, for a package that left `package.json`. `status: removed …` in the section of a package that is still in `package.json` is a mistake.
+A section whose name matches no dependency is an orphan. An orphan whose agent layer has `status: removed …` is kept on purpose. `status: removed …` on a dependency still present in its manifest is a mistake.
 
 A section with an empty body does not count as a note.
 
@@ -128,22 +148,23 @@ The first six fields are the core fields. They are filled whenever there is some
 A file is valid when none of the following is true. Each of them is a mistake with a fix. The human layer is never checked.
 
 - The file has no frontmatter.
-- `format` is present and its value is not `dependency-notes/1`.
+- `format` is present and is neither `dependency-notes/1` nor `dependency-notes/2`.
+- A v2 file has no valid `ecosystem`, or it disagrees with the file path.
 - The file has no level-1 heading, or its level-1 heading is not `# Dependency Notes`, or it has a second level-1 heading.
 - A dependency name is a heading of a level other than 2, or is written `##name`, without the space.
 - A section contains a heading of level 3 or deeper other than `### Agent notes`.
 - Two sections have the same name.
 - A field line has a key that is not a field, or a value that is empty or only dashes.
 - `runtime`, `exposure`, `status` or `verified` has a value of the wrong shape.
-- `status: removed …` appears in the section of a package that is in `package.json`.
+- `status: removed …` appears in the section of a package that is still in its manifest.
 
-An orphan is not a mistake. It may be a typo, or a package that left `package.json` without its notes.
+An orphan is not a mistake. It may be a typo, or a package that left its manifest without its notes.
 
 ## Canonical form
 
 A file in canonical form has these parts, in this order:
 
-1. The frontmatter as written, with `format` and `lang` appended when missing. A file without frontmatter gets these two keys.
+1. The frontmatter as written, with required version keys appended when their values are known. A new v1 file gets `format` and `lang`; a new v2 file also gets `ecosystem`.
 2. One blank line, then the header comment.
 3. One blank line, then `# Dependency Notes`.
 4. If the file has an introduction: one blank line, then the introduction with its outer blank lines removed.
@@ -160,7 +181,7 @@ A tool that adds a section puts it at its sorted position when the file is sorte
 
 ## Changes
 
-None yet.
+- `dependency-notes/2` adds ecosystem-scoped Cargo and Maven notes while leaving npm v1 files in place.
 
 ## Example
 

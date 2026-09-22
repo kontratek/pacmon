@@ -6,7 +6,7 @@
 
 ## Before you touch a dependency
 
-Its notes are in `.pacmon/DEPENDENCY-NOTES.md` next to the `package.json` you are changing; in a monorepo, the nearest one walking up. Read two things first: the free text between `# Dependency Notes` and the first section (this repository's own rules), then the package's `## <name>` section.
+Its notes are beside the manifest you are changing: npm uses `.pacmon/DEPENDENCY-NOTES.md`, Rust uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, and Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`. In a monorepo, use the nearest matching ecosystem file walking up. Read the introduction and then the package's `## <name>` section.
 
 - **Adding a package:** open its section in the same commit, with at least `purpose:`. Say what you considered and why this one, in `alternatives:` or `log:`.
 - **Upgrading:** read its `constraint:` and `verify:` lines, then run what `verify:` says. Log the attempt with its outcome even if you reverted it — the next agent must not repeat it.
@@ -16,7 +16,7 @@ Its notes are in `.pacmon/DEPENDENCY-NOTES.md` next to the `package.json` you ar
 ## Where you write
 
 ```md
-## <exact package name from package.json, including @scope/>
+## <exact note key shown by Pacmon>
 
 Text written by people. Do not touch it.
 
@@ -33,7 +33,7 @@ Text written by people. Do not touch it.
 - Write judgments, not measurements.
 - Revise, do not accumulate: correct a line instead of adding a contradicting one. `log:` is the exception — it is the history.
 - Field keys are English. Write the values in the language given by `lang:` in the file's frontmatter.
-- Never remove the frontmatter or the header comment at the top of the file. If you are asked to draft the first human line, keep it short: it shows next to the dependency in `package.json`.
+- Never remove the frontmatter or the header comment at the top of the file. If you are asked to draft the first human line, keep it short: it shows next to the dependency in its manifest.
 
 ## Fields
 
@@ -63,7 +63,7 @@ Add these only when they are true and non-obvious:
 | `links:` | Sources? | changelog, docs, upstream issue, registry page — the specific ones, not the obvious |
 | `note:` | Anything else the next agent must know? | free text that fits no other field — one thought per line, never a measurement |
 
-A section whose `status:` starts with `removed` is kept on purpose for a package that left `package.json`; Pacmon does not flag it as an orphan.
+A section whose `status:` starts with `removed` is kept on purpose for a package that left its manifest; Pacmon does not flag it as an orphan.
 
 ## Example
 
