@@ -1,0 +1,205 @@
+package dev.pacmon.jetbrains.core
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ManifestCoreTest {
+    @Test
+    fun `registry matches only supported manifests in priority order`() {
+        assertEquals(
+            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle"),
+            ManifestRegistry.adapters.flatMap { it.fileNames },
+        )
+        assertEquals(ManifestKind.NPM, ManifestRegistry.forFileName("package.json")?.kind)
+        assertEquals(ManifestKind.CARGO, ManifestRegistry.forFileName("Cargo.toml")?.kind)
+        assertEquals(ManifestKind.MAVEN, ManifestRegistry.forFileName("pom.xml")?.kind)
+        assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle.kts")?.kind)
+        assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle")?.kind)
+        assertNull(ManifestRegistry.forFileName("settings.gradle.kts"))
+    }
+
+    @Test
+    fun `npm extracts four dependency scopes with source ranges`() {
+        val text = """
+            {
+              // jsonc is accepted
+              "dependencies": { "vue": "^3", },
+              "devDependencies": { "vitest": "^4" },
+              "peerDependencies": { "react": "^19" },
+              "optionalDependencies": { "fsevents": "^2" },
+              "scripts": { "test": "vitest" }
+            }
+        """.trimIndent()
+        val dependencies = NpmManifestAdapter.extractDependencies(text)
+        assertEquals(listOf("vue", "vitest", "react", "fsevents"), dependencies.map { it.noteKey })
+        assertEquals(
+            listOf("dependencies", "devDependencies", "peerDependencies", "optionalDependencies"),
+            dependencies.map { it.scope },
+        )
+        val vue = dependencies.first()
+        assertEquals("\"vue\"", text.substring(vue.primaryRange.offset, vue.primaryRange.offset + vue.primaryRange.length))
+        assertEquals(vue.primaryRange, vue.iconRange)
+        assertEquals(vue, ManifestRegistry.dependencyAtOffset(dependencies, vue.primaryRange.offset + 2))
+    }
+
+    @Test
+    fun `cargo extracts direct target table alias and workspace declarations`() {
+        val text = """
+            [dependencies]
+            serde = "1"
+            local = { package = "upstream", version = "2" }
+            "quoted.name" = { workspace = true }
+            workspace-crate.workspace = true
+
+            [dev-dependencies]
+            insta = "1"
+
+            [build-dependencies.bindgen]
+            version = "0.70"
+
+            [target.'cfg(unix)'.dependencies]
+            nix = {
+              version = "0.29"
+            }
+
+            [target."cfg(windows)".dependencies.windows-sys]
+            version = "0.59"
+
+            [workspace.dependencies]
+            ignored = "1"
+        """.trimIndent()
+        val dependencies = CargoManifestAdapter.extractDependencies(text)
+        assertEquals(
+            listOf("serde", "local", "quoted.name", "workspace-crate", "insta", "bindgen", "nix", "windows-sys"),
+            dependencies.map { it.noteKey },
+        )
+        assertEquals("local", dependencies[1].displayName)
+        assertEquals("build-dependencies", dependencies[5].scope)
+        assertEquals("target:cfg(unix)/dependencies", dependencies[6].scope)
+        assertEquals("target:cfg(windows)/dependencies", dependencies[7].scope)
+        dependencies.forEach { dependency ->
+            assertTrue(text.substring(dependency.primaryRange.offset, dependency.primaryRange.offset + dependency.primaryRange.length).isNotBlank())
+            assertEquals(dependency.primaryRange, dependency.iconRange)
+        }
+    }
+
+    @Test
+    fun `maven extracts project and profile dependencies and excludes managed and plugins`() {
+        val text = """
+            <?xml version="1.0"?>
+            <m:project xmlns:m="urn:test">
+              <m:dependencies>
+                <m:dependency optional="true">
+                  <m:groupId>org.example</m:groupId>
+                  <m:artifactId><![CDATA[core-lib]]></m:artifactId>
+                </m:dependency>
+                <!-- retained coordinates -->
+                <m:dependency>
+                  <m:groupId>${'$'}{company.group}</m:groupId>
+                  <m:artifactId>api&amp;client</m:artifactId>
+                  <m:scope>runtime</m:scope>
+                </m:dependency>
+              </m:dependencies>
+              <m:dependencyManagement><m:dependencies><m:dependency>
+                <m:groupId>ignored</m:groupId><m:artifactId>managed</m:artifactId>
+              </m:dependency></m:dependencies></m:dependencyManagement>
+              <m:build><m:plugins><m:plugin><m:dependencies><m:dependency>
+                <m:groupId>ignored</m:groupId><m:artifactId>plugin</m:artifactId>
+              </m:dependency></m:dependencies></m:plugin></m:plugins></m:build>
+              <m:profiles><m:profile><m:id>fast</m:id><m:dependencies><m:dependency>
+                <m:groupId>org.junit</m:groupId><m:artifactId>junit</m:artifactId><m:scope>test</m:scope>
+              </m:dependency></m:dependencies></m:profile></m:profiles>
+            </m:project>
+        """.trimIndent()
+        val dependencies = MavenManifestAdapter.extractDependencies(text)
+        assertEquals(
+            listOf("org.example:core-lib", "${'$'}{company.group}:api&client", "org.junit:junit"),
+            dependencies.map { it.noteKey },
+        )
+        assertEquals(listOf("compile", "runtime", "profile:fast/test"), dependencies.map { it.scope })
+        assertEquals(2, dependencies.first().sourceRanges.size)
+        assertEquals("core-lib", text.substring(
+            dependencies.first().primaryRange.offset,
+            dependencies.first().primaryRange.offset + dependencies.first().primaryRange.length,
+        ))
+        assertEquals(text.indexOf("<m:dependency optional=\"true\">"), dependencies.first().iconRange.offset)
+        assertEquals("<", text.substring(
+            dependencies.first().iconRange.offset,
+            dependencies.first().iconRange.offset + dependencies.first().iconRange.length,
+        ))
+        assertNull(ManifestRegistry.dependencyAtOffset(dependencies, dependencies.first().iconRange.offset))
+    }
+
+    @Test
+    fun `malformed input is safe`() {
+        assertTrue(NpmManifestAdapter.extractDependencies("{\"dependencies\": {").isEmpty())
+        assertTrue(CargoManifestAdapter.extractDependencies("[dependencies\nserde = {").isEmpty())
+        assertTrue(MavenManifestAdapter.extractDependencies("<project><dependencies><dependency>").isEmpty())
+        assertTrue(GradleManifestAdapter.extractDependencies("dependencies { implementation(\"g:a:1\")").isEmpty())
+    }
+
+    @Test
+    fun `gradle extracts static module map platform alias and add declarations`() {
+        val text = """
+            plugins { id("java") }
+            dependencies {
+                val example = "ignored:string:1"
+                // implementation("ignored:comment:1")
+                implementation("com.google.guava:guava:33.4.0-jre")
+                testImplementation 'org.junit.jupiter:junit-jupiter:5.12.0'
+                api(group = "org.slf4j", name = "slf4j-api", version = version)
+                runtimeOnly group: 'org.postgresql', name: 'postgresql', version: pgVersion
+                implementation(platform("org.springframework.boot:spring-boot-dependencies:3.5.0"))
+                implementation(libs.jackson.databind)
+                add("integrationTestImplementation", "org.assertj:assertj-core:3.27.3")
+                "customRuntime"("com.acme:tool:1")
+                constraints { implementation("ignored:constraint:1") }
+                implementation(project(":local"))
+                runtimeOnly(files("libs/local.jar"))
+                runtimeOnly(files("C:/libs/local.jar"))
+                implementation(libs.bundles.testing)
+            }
+            buildscript { dependencies { classpath("ignored:plugin:1") } }
+        """.trimIndent()
+        val dependencies = GradleManifestAdapter.extractDependencies(text)
+        assertEquals(
+            listOf(
+                "implementation:com.google.guava:guava",
+                "testImplementation:org.junit.jupiter:junit-jupiter",
+                "api:org.slf4j:slf4j-api",
+                "runtimeOnly:org.postgresql:postgresql",
+                "implementation:org.springframework.boot:spring-boot-dependencies",
+                "implementation:libs.jackson.databind",
+                "integrationTestImplementation:org.assertj:assertj-core",
+                "customRuntime:com.acme:tool",
+            ),
+            dependencies.map { "${it.scope}:${it.noteKey}" },
+        )
+        val guava = dependencies.first()
+        assertEquals("guava", text.substring(guava.primaryRange.offset, guava.primaryRange.offset + guava.primaryRange.length))
+        assertEquals(
+            "implementation",
+            text.substring(guava.iconRange.offset, guava.iconRange.offset + guava.iconRange.length),
+        )
+        assertEquals(
+            listOf("com.google.guava", "guava"),
+            guava.sourceRanges.map { text.substring(it.offset, it.offset + it.length) },
+        )
+    }
+
+    @Test
+    fun `gradle handles multiline wrappers`() {
+        val text = """
+            dependencies {
+                implementation(
+                    enforcedPlatform(
+                        "com.acme:bom:1"
+                    )
+                )
+            }
+        """.trimIndent()
+        assertEquals(listOf("com.acme:bom"), GradleManifestAdapter.extractDependencies(text).map { it.noteKey })
+    }
+}

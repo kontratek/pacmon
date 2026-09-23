@@ -12,7 +12,7 @@ import dev.pacmon.jetbrains.settings.NoteButtons
 
 /**
  * The `lightbulb` click target: the quietest of the five. Nothing is drawn in
- * `package.json` at rest; the note is one Alt+Enter away while the caret sits
+ * dependency manifests at rest; the note is one Alt+Enter away while the caret sits
  * on a dependency line. The VS Code extension offers the same thing as a code
  * action.
  */
@@ -29,12 +29,12 @@ class PacmonAddNoteIntention : IntentionAction, PriorityAction {
 
     override fun isAvailable(project: Project, editor: Editor?, file: PsiFile?): Boolean {
         if (editor == null || file == null) return false
-        if (!DependencyPsi.isPackageJson(file)) return false
+        if (!DependencyPsi.isManifest(file)) return false
         val notes = project.getService(PacmonProjectService::class.java)
         if (!notes.noteButtonEnabled(NoteButtons.LIGHTBULB)) return false
-        val dependency = DependencyPsi.atOffset(file, editor.caretModel.offset) ?: return false
-        val packageJson = file.virtualFile ?: return false
-        val documented = notes.noteFor(packageJson, dependency.name) != null
+        val manifest = file.virtualFile ?: return false
+        val dependency = notes.dependencyAt(manifest, editor.caretModel.offset, lineFallback = true) ?: return false
+        val documented = notes.noteFor(manifest, dependency.name) != null
         text = if (documented) {
             "Edit the Pacmon note for ${dependency.name}"
         } else {
@@ -46,7 +46,9 @@ class PacmonAddNoteIntention : IntentionAction, PriorityAction {
     @Throws(IncorrectOperationException::class)
     override fun invoke(project: Project, editor: Editor?, file: PsiFile?) {
         if (editor == null || file == null) return
-        val dependency = DependencyPsi.atOffset(file, editor.caretModel.offset) ?: return
+        val manifest = file.virtualFile ?: return
+        val dependency = project.getService(PacmonProjectService::class.java)
+            .dependencyAt(manifest, editor.caretModel.offset, lineFallback = true) ?: return
         NoteEditor.open(project, dependency, editor)
     }
 

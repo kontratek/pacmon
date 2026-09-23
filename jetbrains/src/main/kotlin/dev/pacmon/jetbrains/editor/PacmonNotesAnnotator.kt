@@ -4,14 +4,13 @@ import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.util.TextRange
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiManager
 import dev.pacmon.jetbrains.core.LintFinding
 import dev.pacmon.jetbrains.core.NotesCore
 import dev.pacmon.jetbrains.core.NotesLint
 import dev.pacmon.jetbrains.core.Span
+import dev.pacmon.jetbrains.service.PacmonProjectService
 
 /**
  * Live `docs/format.md` warnings for `DEPENDENCY-NOTES.md`: every finding
@@ -36,7 +35,11 @@ class PacmonNotesAnnotator : Annotator {
 
         val text = file.viewProvider.document?.immutableCharSequence?.toString() ?: file.text
         val model = NotesCore.parse(text)
-        val findings = NotesLint.lint(model, dependencyNames(file))
+        val notesFile = file.virtualFile ?: file.originalFile.virtualFile ?: return
+        val service = file.project.getService(PacmonProjectService::class.java)
+        val kind = service.notesKind(notesFile) ?: return
+        val dependencies = service.dependenciesForNotes(notesFile).map { it.name }
+        val findings = NotesLint.lint(model, dependencies, kind)
         if (findings.isEmpty()) return
 
         val starts = lineStartOffsets(text)
@@ -47,34 +50,6 @@ class PacmonNotesAnnotator : Annotator {
                 .range(range)
                 .create()
         }
-    }
-
-    /**
-     * The dependencies the notes file describes: the nearest package.json at or
-     * above its `.pacmon/` directory. `.pacmon/` normally sits right next to
-     * one, which is the VS Code extension's `packageJsonFor`; walking up covers
-     * a notes file kept at another depth.
-     *
-     * Nothing found means no dependency names, and the findings that need them
-     * (a name under the wrong heading level, `##name`, `status: removed` on a
-     * package that is still there) simply do not apply — that is the same rule
-     * the TypeScript core follows.
-     */
-    private fun dependencyNames(file: PsiFile): List<String> {
-        val notes = file.virtualFile ?: file.originalFile.virtualFile ?: return emptyList()
-        val packageJson = packageJsonFor(notes) ?: return emptyList()
-        val psiFile = PsiManager.getInstance(file.project).findFile(packageJson) ?: return emptyList()
-        return DependencyPsi.all(psiFile).map { it.name }
-    }
-
-    private fun packageJsonFor(notes: VirtualFile): VirtualFile? {
-        var directory = notes.parent?.parent
-        repeat(64) {
-            val current = directory ?: return null
-            current.findChild("package.json")?.let { if (!it.isDirectory) return it }
-            directory = current.parent
-        }
-        return null
     }
 
     private fun lineStartOffsets(text: String): List<Int> {

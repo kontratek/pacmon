@@ -1,9 +1,9 @@
 import { AGENT_FIELDS, EXPOSURE_VALUES, RUNTIME_VALUES } from './vocabulary';
 import { AGENT_FIELD_RE, layerRanges } from './layers';
-import type { NoteSection, NotesFileModel } from './model';
-import { normalizeName } from './match';
+import type { ManifestKind, NoteSection, NotesFileModel } from './model';
+import { normalizeNameForEcosystem } from './match';
 import { closest, levenshtein } from './similar';
-import { DEFAULT_TITLE, FORMAT_VERSION } from './template';
+import { DEFAULT_TITLE, FORMAT_VERSION_V2, SUPPORTED_FORMAT_VERSIONS } from './template';
 
 /** Columns [start, end) within the finding's line: the key, or the value at fault. */
 export interface Span {
@@ -20,6 +20,8 @@ export type LintFinding =
   | { kind: 'missingFrontmatter'; line: number }
   /** `format:` names a version this Pacmon does not read. */
   | { kind: 'unknownFormat'; line: number; version: string }
+  | { kind: 'missingEcosystem'; line: number }
+  | { kind: 'wrongEcosystem'; line: number; actual: string; expected: ManifestKind }
   /** The one `#` heading is `# Dependency Notes`: missing, worded differently, or repeated. */
   | { kind: 'missingTitle'; line: number }
   | { kind: 'wrongTitle'; line: number; text: string }
@@ -98,13 +100,21 @@ function valueProblem(key: string, value: string): string | undefined {
  * The human text itself is never looked at, and prose lines in the agent block
  * are fine.
  */
-export function lintNotes(model: NotesFileModel, depNames: readonly string[]): LintFinding[] {
+export function lintNotes(
+  model: NotesFileModel,
+  depNames: readonly string[],
+  expectedEcosystem?: ManifestKind,
+): LintFinding[] {
   const findings: LintFinding[] = [];
-  const deps = new Set(depNames.map((n) => normalizeName(n)));
+  const normalize = (name: string): string => normalizeNameForEcosystem(name, model.frontmatter?.ecosystem);
+  const deps = new Set(depNames.map(normalize));
 
   if (!model.frontmatter) {
     findings.push({ kind: 'missingFrontmatter', line: 0 });
-  } else if (model.frontmatter.formatVersion !== undefined && model.frontmatter.formatVersion !== FORMAT_VERSION) {
+  } else if (
+    model.frontmatter.formatVersion !== undefined
+    && !(SUPPORTED_FORMAT_VERSIONS as readonly string[]).includes(model.frontmatter.formatVersion)
+  ) {
     let line = model.frontmatter.startLine;
     for (let i = model.frontmatter.startLine; i <= model.frontmatter.endLine; i++) {
       if (/^format\s*:/.test(model.lines[i] ?? '')) {
@@ -114,11 +124,23 @@ export function lintNotes(model: NotesFileModel, depNames: readonly string[]): L
     }
     findings.push({ kind: 'unknownFormat', line, version: model.frontmatter.formatVersion });
   }
+  if (model.frontmatter?.formatVersion === FORMAT_VERSION_V2) {
+    if (!model.frontmatter.ecosystem) {
+      findings.push({ kind: 'missingEcosystem', line: model.frontmatter.startLine });
+    } else if (expectedEcosystem && model.frontmatter.ecosystem !== expectedEcosystem) {
+      findings.push({
+        kind: 'wrongEcosystem',
+        line: model.frontmatter.startLine,
+        actual: model.frontmatter.ecosystem,
+        expected: expectedEcosystem,
+      });
+    }
+  }
 
   // A `# lodash` where lodash is a dependency is a package heading at the
   // wrong level, not a title; the loop below reports it as such.
   const titleText = model.titleLine === undefined ? undefined : (model.lines[model.titleLine] ?? '').replace(/^#\s+/, '').trim();
-  const titleIsDep = titleText !== undefined && deps.has(normalizeName(titleText));
+  const titleIsDep = titleText !== undefined && deps.has(normalize(titleText));
   if (model.titleLine === undefined) {
     const after = model.aiComment?.endLine ?? model.frontmatter?.endLine;
     const line = after === undefined ? 0 : Math.min(after + 1, Math.max(model.lines.length - 1, 0));
@@ -145,7 +167,7 @@ export function lintNotes(model: NotesFileModel, depNames: readonly string[]): L
     if (inFence || inHeaderBlock(i) || (i === model.titleLine && !titleIsDep)) continue;
 
     const noSpace = NO_SPACE_H2_RE.exec(line);
-    if (noSpace && noSpace[1] !== undefined && deps.has(normalizeName(noSpace[1]))) {
+    if (noSpace && noSpace[1] !== undefined && deps.has(normalize(noSpace[1]))) {
       findings.push({ kind: 'missingSpaceAfterHashes', line: i, name: noSpace[1].trim() });
       continue;
     }
@@ -154,7 +176,7 @@ export function lintNotes(model: NotesFileModel, depNames: readonly string[]): L
     if (!h || h[1] === undefined || h[2] === undefined) continue;
     const level = h[1].length;
     const text = h[2].trim();
-    if (level !== 2 && deps.has(normalizeName(text))) {
+    if (level !== 2 && deps.has(normalize(text))) {
       findings.push({ kind: 'wrongHeadingLevel', line: i, name: text, level });
       continue;
     }
@@ -208,7 +230,7 @@ export function lintNotes(model: NotesFileModel, depNames: readonly string[]): L
         findings.push({ kind: 'emptyAgentValue', line: i, key, span: keySpan });
         continue;
       }
-      if (key === 'status' && /^removed\b/i.test(value) && deps.has(normalizeName(section.name))) {
+      if (key === 'status' && /^removed\b/i.test(value) && deps.has(normalize(section.name))) {
         findings.push({ kind: 'removedButPresent', line: i, name: section.name, span: valueSpan });
         continue;
       }

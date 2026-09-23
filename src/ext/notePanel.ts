@@ -2,10 +2,9 @@ import * as vscode from 'vscode';
 import { type AgentProblem, fixAgentText, lintAgentText } from '../core/fixes';
 import { sectionLayers } from '../core/layers';
 import { miniMarkdown } from '../core/miniMarkdown';
-import type { DepSection } from '../core/model';
 import { normalizeName } from '../core/match';
 import { findSection } from '../core/parseNotes';
-import { notesFileLabel } from './config';
+import { notesFileLabelForManifest } from './config';
 import { logError } from './log';
 import { renderHtml } from './notePanelHtml';
 import { resolveNotesFileFor } from './resolveNotesFile';
@@ -19,7 +18,7 @@ interface Target {
   key: string;
   pkgUri: vscode.Uri;
   name: string;
-  depSection?: DepSection;
+  depSection?: string;
 }
 
 /** The two editable layers of a section. `### Generated` never shows here. */
@@ -47,7 +46,7 @@ interface Problems {
 }
 
 function targetKey(pkgUri: vscode.Uri, name: string): string {
-  return `${pkgUri.toString()}::${normalizeName(name)}`;
+  return `${pkgUri.toString()}::${name}`;
 }
 
 function sameLayers(a: Layers, b: Layers): boolean {
@@ -142,8 +141,8 @@ export class NotePanel implements vscode.Disposable {
     await this.flushCurrent();
 
     const deps = await this.store.getDeps(pkgUri);
-    const dep = deps.find((d) => normalizeName(d.name) === normalizeName(name));
-    const target: Target = { key: targetKey(pkgUri, name), pkgUri, name, depSection: dep?.section };
+    const dep = deps.find((d) => d.noteKey === name || normalizeName(d.noteKey) === normalizeName(name));
+    const target: Target = { key: targetKey(pkgUri, name), pkgUri, name, depSection: dep?.scope };
     this.targets.set(target.key, target);
     this.current = target;
 
@@ -297,7 +296,7 @@ export class NotePanel implements vscode.Disposable {
       key: target.key,
       name: target.name,
       depSection: target.depSection ?? '',
-      hint: S.panelTargetSuffix(notesFileLabel()),
+      hint: S.panelTargetSuffix(notesFileLabelForManifest(target.pkgUri)),
       human: this.live.human,
       agent: this.live.agent,
       humanHtml,

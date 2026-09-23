@@ -89,8 +89,8 @@ describe('settings view html', () => {
     const commands = [...html.matchAll(/data-command="([^"]+)"/g)].map((m) => m[1]).sort();
     expect(commands).toEqual([
       'pacmon.normalizeNotesFile',
+      'pacmon.openManifest',
       'pacmon.openNotesFile',
-      'pacmon.openPackageJson',
       'pacmon.setupAiInstructions',
       'pacmon.showCoverage',
     ]);

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { analyze } from '../core/analyze';
 import {
   ALL_NOTE_BUTTONS,
-  isPackageJson,
+  isManifest,
   type NoteButton,
   decorationsSetting,
   inlineSource,
@@ -11,7 +11,7 @@ import {
   notesFileLabel,
 } from './config';
 import { logError } from './log';
-import { defaultPackageJson } from './resolveNotesFile';
+import { defaultManifest } from './resolveNotesFile';
 import { resolveNotesFileFor } from './resolveNotesFile';
 import { choiceValues, writeScope } from './settingChoices';
 import { renderHtml } from './settingsViewHtml';
@@ -33,7 +33,7 @@ interface Incoming {
 /** Commands the view may run — the id off the wire is never trusted. */
 const ALLOWED_COMMANDS = new Set([
   'pacmon.openNotesFile',
-  'pacmon.openPackageJson',
+  'pacmon.openManifest',
   'pacmon.showCoverage',
   'pacmon.normalizeNotesFile',
   'pacmon.setupAiInstructions',
@@ -133,8 +133,8 @@ export class SettingsView implements vscode.WebviewViewProvider, vscode.Disposab
    * stays a run of toggles.
    */
   private async revealManifest(): Promise<void> {
-    if (vscode.window.visibleTextEditors.some((e) => isPackageJson(e.document.uri))) return;
-    const pkgUri = this.lastPkg ?? (await defaultPackageJson(this.store));
+    if (vscode.window.visibleTextEditors.some((e) => isManifest(e.document.uri))) return;
+    const pkgUri = this.lastPkg ?? (await defaultManifest(this.store));
     if (!pkgUri) return;
     const doc = await vscode.workspace.openTextDocument(pkgUri);
     await vscode.window.showTextDocument(doc, { preserveFocus: true, preview: true });
@@ -187,8 +187,8 @@ export class SettingsView implements vscode.WebviewViewProvider, vscode.Disposab
     } => ({ ratio: '', percent: 0, pkgLabel: '', status });
 
     const active = vscode.window.activeTextEditor?.document.uri;
-    if (active && isPackageJson(active)) this.lastPkg = active;
-    const pkgUri = this.lastPkg ?? (await defaultPackageJson(this.store));
+    if (active && isManifest(active)) this.lastPkg = active;
+    const pkgUri = this.lastPkg ?? (await defaultManifest(this.store));
     if (!pkgUri) return empty(S.viewCoverageEmpty);
 
     const deps = await this.store.getDeps(pkgUri);

@@ -7,9 +7,11 @@ import {
   replaceSectionLayersInText,
 } from '../../core/serialize';
 import { newNotesFileContent } from '../../core/template';
+import { manifestAdapterForFileName } from '../../core/manifest';
 import { agentRulesText } from '../agentRules';
 import { agentRulesUriFor, clearResolverCache, creationTargetFor, resolveNotesFileFor } from '../resolveNotesFile';
 import type { Store } from '../state';
+import { uriBasename } from '../config';
 
 /** Write full text to the notes file. Through the open document only when it
  *  has UNSAVED edits (preserves them + undo); otherwise straight to disk —
@@ -93,11 +95,17 @@ async function onDisk(uri: vscode.Uri): Promise<boolean> {
 
 /** First write next to a package.json: the `.pacmon/` directory and the notes
  *  file with its one section. The agent rules follow in `settle`. */
-async function createNotesFile(notesUri: vscode.Uri, name: string, body: string): Promise<void> {
+async function createNotesFile(
+  notesUri: vscode.Uri,
+  manifestUri: vscode.Uri,
+  name: string,
+  body: string,
+): Promise<void> {
+  const ecosystem = manifestAdapterForFileName(uriBasename(manifestUri))?.kind;
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(notesUri, '..'));
   await vscode.workspace.fs.writeFile(
     notesUri,
-    new TextEncoder().encode(newNotesFileContent('\n', name, body)),
+    new TextEncoder().encode(newNotesFileContent('\n', name, body, ecosystem)),
   );
   clearResolverCache(); // the walk-up cache still says "nothing here"
 }
@@ -106,7 +114,7 @@ async function createNotesFile(notesUri: vscode.Uri, name: string, body: string)
 export async function ensureSection(store: Store, pkgUri: vscode.Uri, name: string): Promise<vscode.Uri> {
   const { notesUri, text } = await locate(store, pkgUri);
   if (text === undefined) {
-    await createNotesFile(notesUri, name, '');
+    await createNotesFile(notesUri, pkgUri, name, '');
   } else {
     const notes = await store.getNotes(notesUri);
     if (notes && findSection(notes, name)) return notesUri;
@@ -129,7 +137,7 @@ export async function upsertNote(
 ): Promise<vscode.Uri> {
   const { notesUri, text } = await locate(store, pkgUri);
   if (text === undefined) {
-    await createNotesFile(notesUri, name, human);
+    await createNotesFile(notesUri, pkgUri, name, human);
   } else {
     const notes = await store.getNotes(notesUri);
     const next =
@@ -151,7 +159,7 @@ export async function upsertNoteLayers(
 ): Promise<vscode.Uri> {
   const { notesUri, text } = await locate(store, pkgUri);
   if (text === undefined) {
-    await createNotesFile(notesUri, name, composeSectionBody({ human, agent }));
+    await createNotesFile(notesUri, pkgUri, name, composeSectionBody({ human, agent }));
   } else {
     const notes = await store.getNotes(notesUri);
     const next =

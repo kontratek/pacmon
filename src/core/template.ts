@@ -1,7 +1,11 @@
+import type { ManifestKind } from './model';
+
 export const FORMAT_VERSION = 'dependency-notes/1';
+export const FORMAT_VERSION_V2 = 'dependency-notes/2';
+export const SUPPORTED_FORMAT_VERSIONS = [FORMAT_VERSION, FORMAT_VERSION_V2] as const;
 export const DEFAULT_LANG = 'en';
 
-/** Everything Pacmon owns lives in this directory, next to the package.json it describes. */
+/** Everything Pacmon owns lives beside the dependency manifest under this directory. */
 export const NOTES_DIR = '.pacmon';
 export const NOTES_FILE_NAME = 'DEPENDENCY-NOTES.md';
 export const AGENT_RULES_FILE_NAME = 'AGENT-RULES.md';
@@ -24,6 +28,11 @@ export const DEFAULT_FRONTMATTER_LINES = [
   '---',
 ];
 
+export function frontmatterLinesFor(ecosystem?: ManifestKind): string[] {
+  if (!ecosystem || ecosystem === 'npm') return [...DEFAULT_FRONTMATTER_LINES];
+  return ['---', `format: ${FORMAT_VERSION_V2}`, `ecosystem: ${ecosystem}`, `lang: ${DEFAULT_LANG}`, '---'];
+}
+
 export const DEFAULT_TITLE = '# Dependency Notes';
 
 /**
@@ -37,12 +46,26 @@ export const AI_FORMAT_COMMENT_LINES = [
   `  by AI agents — rules in ${AGENT_RULES_REL_PATH}. -->`,
 ];
 
+export function formatCommentLines(ecosystem?: ManifestKind): string[] {
+  if (!ecosystem || ecosystem === 'npm') return [...AI_FORMAT_COMMENT_LINES];
+  return [
+    `<!-- Each "## name" below is a package from the ${ecosystem} dependency manifest.`,
+    `  The text under it is written by people. "${AGENT_NOTES_HEADING}" and everything below`,
+    `  it is written by AI agents — rules in ${AGENT_RULES_REL_PATH}. -->`,
+  ];
+}
+
 /** Full content of a freshly created notes file. */
-export function newNotesFileContent(eol: string, firstSectionName?: string, body?: string): string {
+export function newNotesFileContent(
+  eol: string,
+  firstSectionName?: string,
+  body?: string,
+  ecosystem?: ManifestKind,
+): string {
   const lines = [
-    ...DEFAULT_FRONTMATTER_LINES,
+    ...frontmatterLinesFor(ecosystem),
     '',
-    ...AI_FORMAT_COMMENT_LINES,
+    ...formatCommentLines(ecosystem),
     '',
     DEFAULT_TITLE,
   ];
@@ -68,9 +91,9 @@ const LEGACY_AI_BLOCK = ['<!-- pacmon:deps-notes:start -->', '<!-- pacmon:deps-n
 export function aiInstructionsBlock(): string {
   return [
     AI_BLOCK_START,
-    `Dependency notes live in \`${NOTES_REL_PATH}\`: one \`## <package>\` section per dependency — people write right under the heading, AI agents write under \`${AGENT_NOTES_HEADING}\`.`,
+    `Dependency notes live in \`${NOTES_REL_PATH}\` for npm, \`${NOTES_DIR}/cargo/${NOTES_FILE_NAME}\` for Rust, \`${NOTES_DIR}/maven/${NOTES_FILE_NAME}\` for Maven, and \`${NOTES_DIR}/gradle/${NOTES_FILE_NAME}\` for Gradle; people write below \`## <package>\`, agents under \`${AGENT_NOTES_HEADING}\`.`,
     `Rules and the field list are in \`${AGENT_RULES_REL_PATH}\`; read a package's section before adding, bumping or removing it.`,
-    `Update the notes in the same commit as \`package.json\`; a removed package keeps its section with \`- status: removed …\`.`,
+    `Update the notes in the same commit as the dependency manifest; a removed package keeps its section with \`- status: removed …\`.`,
     AI_BLOCK_END,
   ].join('\n');
 }

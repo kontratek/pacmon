@@ -3,7 +3,7 @@ import { AgentBlockLenses } from './agentBlockLenses';
 import { setExtensionRoot } from './agentRules';
 import { fixAgentNotes, registerFixProviders } from './codeActions';
 import { NoteComments } from './comments';
-import { NOTES_GLOB, isNotesFile, isPackageJson } from './config';
+import { NOTES_GLOB, isManifest, isNotesFile } from './config';
 import { DecorationController } from './decorations';
 import { NotesDiagnostics } from './diagnostics';
 import { registerHover } from './hover';
@@ -19,7 +19,7 @@ import { StatusBarController } from './statusBar';
 import { addOrEditNote } from './commands/addOrEditNote';
 import { setupAiInstructions } from './commands/aiSetup';
 import { showCoverage } from './commands/coverage';
-import { normalizeNotesFile, openNotesFile, openPackageJson, toggleDecorations } from './commands/simple';
+import { normalizeNotesFile, openManifest, openNotesFile, toggleDecorations } from './commands/simple';
 
 export function activate(context: vscode.ExtensionContext): void {
   setExtensionRoot(context.extensionUri);
@@ -27,7 +27,13 @@ export function activate(context: vscode.ExtensionContext): void {
   // when a relevant editor first appears.
   logInfo(`Pacmon ${context.extension.packageJSON.version as string} activated (${vscode.env.appName})`);
   const store = new Store();
+  const rememberActiveManifest = (): void => {
+    const uri = vscode.window.activeTextEditor?.document.uri;
+    if (uri) store.rememberManifest(uri);
+  };
+  rememberActiveManifest();
   context.subscriptions.push(store);
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(rememberActiveManifest));
   const statusBar = new StatusBarController(store);
   context.subscriptions.push(statusBar);
   const noteComments = new NoteComments(store);
@@ -54,7 +60,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // Invalidate caches when relevant documents change (debounced inside Store).
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => {
-      if (isPackageJson(e.document.uri) || isNotesFile(e.document.uri)) {
+      if (isManifest(e.document.uri) || isNotesFile(e.document.uri)) {
         store.invalidate(e.document.uri);
       }
     }),
@@ -73,6 +79,10 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(w);
   };
   registerWatcher('**/package.json');
+  registerWatcher('**/Cargo.toml');
+  registerWatcher('**/pom.xml');
+  registerWatcher('**/build.gradle.kts');
+  registerWatcher('**/build.gradle');
   registerWatcher(NOTES_GLOB);
 
   context.subscriptions.push(
@@ -107,7 +117,8 @@ export function activate(context: vscode.ExtensionContext): void {
     command('pacmon.resetView', () => resetView()),
     command('pacmon.openSettings', () => openSettings(context.extension.id)),
     command('pacmon.openNotesFile', () => openNotesFile(store)),
-    command('pacmon.openPackageJson', () => openPackageJson(store)),
+    command('pacmon.openManifest', () => openManifest(store)),
+    command('pacmon.openPackageJson', () => openManifest(store)),
     command('pacmon.normalizeNotesFile', () => normalizeNotesFile(store)),
     command('pacmon.showCoverage', () => showCoverage(store, notePanel)),
     command('pacmon.setupAiInstructions', (targets) =>

@@ -70,13 +70,21 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         val sink = RecordingSink()
         val collector = provider.getCollectorFor(myFixture.file, myFixture.editor, provider.createSettings(), sink)
             ?: return sink
-        val dependency = DependencyPsi.all(myFixture.file).single()
-        collector.collect(dependency.property.nameElement.firstChild, myFixture.editor, sink)
+        collector.collect(myFixture.file, myFixture.editor, sink)
         return sink
     }
 
     private fun configurePackageJson(): VirtualFile {
-        myFixture.configureByText("package.json", """{ "dependencies": { "vue": "^3" } }""")
+        myFixture.configureByText(
+            "package.json",
+            """
+            {
+              "dependencies": {
+                "vue": "^3"
+              }
+            }
+            """.trimIndent(),
+        )
         return myFixture.file.virtualFile
     }
 
@@ -85,7 +93,7 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         val dependency = DependencyPsi.all(myFixture.file).single()
 
         val icon = collect(NoteButtons.ICON_LEFT)
-        assertEquals(listOf(dependency.property.nameElement.textRange.startOffset to false), icon.inline)
+        assertEquals(listOf(dependency.iconRange.offset to false), icon.inline)
         assertEquals(0, icon.blocks)
 
         val lens = collect(NoteButtons.CODE_LENS)
@@ -93,7 +101,10 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         assertEquals(1, lens.blocks)
 
         val chip = collect(NoteButtons.INLAY_HINT)
-        assertEquals(listOf(dependency.property.textRange.endOffset to true), chip.inline)
+        val lineEnd = myFixture.editor.document.getLineEndOffset(
+            myFixture.editor.document.getLineNumber(dependency.primaryRange.offset),
+        )
+        assertEquals(listOf(lineEnd to true), chip.inline)
         assertEquals(0, chip.blocks)
 
         val all = collect(NoteButtons.ICON_LEFT, NoteButtons.CODE_LENS, NoteButtons.INLAY_HINT)
@@ -115,8 +126,8 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
     fun testCtrlClickTargetFollowsTheLinkSettingAndOnlyTheNameHalf() {
         configurePackageJson()
         val dependency = DependencyPsi.all(myFixture.file).single()
-        val nameOffset = dependency.property.nameElement.textRange.startOffset + 1
-        val versionOffset = dependency.property.value!!.textRange.startOffset + 1
+        val nameOffset = dependency.primaryRange.offset + 1
+        val versionOffset = myFixture.file.text.indexOf("^3")
         val handler = PacmonNoteDeclarationHandler()
 
         service().setNoteButtons(listOf(NoteButtons.LINK))
@@ -152,7 +163,7 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         val intention = PacmonAddNoteIntention()
 
         service().setNoteButtons(listOf(NoteButtons.LIGHTBULB))
-        myFixture.editor.caretModel.moveToOffset(dependency.property.textRange.startOffset + 1)
+        myFixture.editor.caretModel.moveToOffset(dependency.primaryRange.offset + 1)
         assertTrue(intention.isAvailable(project, myFixture.editor, myFixture.file))
         assertEquals("Add a Pacmon note for vue", intention.text)
 
@@ -160,7 +171,7 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         assertFalse(intention.isAvailable(project, myFixture.editor, myFixture.file))
 
         service().setNoteButtons(listOf(NoteButtons.ICON_LEFT))
-        myFixture.editor.caretModel.moveToOffset(dependency.property.textRange.startOffset + 1)
+        myFixture.editor.caretModel.moveToOffset(dependency.primaryRange.offset + 1)
         assertFalse(intention.isAvailable(project, myFixture.editor, myFixture.file))
     }
 
@@ -172,7 +183,7 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         myFixture.tempDirFixture.createFile(".pacmon/DEPENDENCY-NOTES.md", "## vue\n\nFrontend framework\n")
         myFixture.configureFromExistingVirtualFile(packageJson)
         val line = myFixture.editor.document.getLineNumber(
-            DependencyPsi.all(myFixture.file).single().property.textOffset,
+            DependencyPsi.all(myFixture.file).single().primaryRange.offset,
         )
         val painter = PacmonLinePainter()
 
@@ -189,5 +200,88 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
 
         service().state.decorations = Decorations.OFF
         assertEmpty(painter.getLineExtensions(project, packageJson, line))
+    }
+
+    fun testCargoMavenAndGradleUseTheSameInlayLinkAndDecorationSurfaces() {
+        val cargo = myFixture.tempDirFixture.createFile("Cargo.toml", "[dependencies]\nserde = \"1\"\n")
+        myFixture.tempDirFixture.createFile(
+            ".pacmon/cargo/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: cargo\nlang: en\n---\n# Dependency Notes\n\n## serde\n\nSerialization\n",
+        )
+        myFixture.configureFromExistingVirtualFile(cargo)
+        val cargoDependency = DependencyPsi.all(myFixture.file).single()
+        service().setNoteButtons(listOf(NoteButtons.ICON_LEFT, NoteButtons.LINK))
+        assertEquals(listOf(cargoDependency.iconRange.offset to false), collect(NoteButtons.ICON_LEFT).inline)
+        val cargoLine = myFixture.editor.document.getLineNumber(cargoDependency.primaryRange.offset)
+        assertEquals("   ▪ Serialization", PacmonLinePainter().getLineExtensions(project, cargo, cargoLine).single().text)
+
+        val pom = myFixture.tempDirFixture.createFile(
+            "pom.xml",
+            """
+            <project><dependencies>
+              <dependency>
+                <groupId>org.example</groupId>
+                <artifactId>core</artifactId>
+              </dependency>
+            </dependencies></project>
+            """.trimIndent(),
+        )
+        myFixture.tempDirFixture.createFile(
+            ".pacmon/maven/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: maven\nlang: en\n---\n# Dependency Notes\n\n## org.example:core\n\nCore library\n",
+        )
+        myFixture.configureFromExistingVirtualFile(pom)
+        val mavenDependency = DependencyPsi.all(myFixture.file).single()
+        assertEquals(myFixture.file.text.indexOf("<dependency>"), mavenDependency.iconRange.offset)
+        assertEquals(listOf(mavenDependency.iconRange.offset to false), collect(NoteButtons.ICON_LEFT).inline)
+        assertTrue(
+            myFixture.editor.document.getLineNumber(mavenDependency.iconRange.offset) !=
+                myFixture.editor.document.getLineNumber(mavenDependency.primaryRange.offset),
+        )
+        val handler = PacmonNoteDeclarationHandler()
+        service().setNoteButtons(listOf(NoteButtons.LINK))
+        for (value in listOf("org.example", "core")) {
+            val offset = myFixture.file.text.indexOf(value) + 1
+            assertEquals(
+                1,
+                handler.getGotoDeclarationTargets(
+                    myFixture.file.findElementAt(offset),
+                    offset,
+                    myFixture.editor,
+                )?.size,
+            )
+        }
+
+        val gradle = myFixture.tempDirFixture.createFile(
+            "build.gradle.kts",
+            """
+            dependencies {
+                implementation("org.slf4j:slf4j-api:2.0.17")
+            }
+            """.trimIndent(),
+        )
+        myFixture.tempDirFixture.createFile(
+            ".pacmon/gradle/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: gradle\nlang: en\n---\n# Dependency Notes\n\n## org.slf4j:slf4j-api\n\nLogging facade\n",
+        )
+        myFixture.configureFromExistingVirtualFile(gradle)
+        val gradleDependency = DependencyPsi.all(myFixture.file).single()
+        assertEquals(myFixture.file.text.indexOf("implementation"), gradleDependency.iconRange.offset)
+        assertEquals(listOf(gradleDependency.iconRange.offset to false), collect(NoteButtons.ICON_LEFT).inline)
+        val gradleLine = myFixture.editor.document.getLineNumber(gradleDependency.primaryRange.offset)
+        assertEquals(
+            "   \u25AA Logging facade",
+            PacmonLinePainter().getLineExtensions(project, gradle, gradleLine).single().text,
+        )
+        service().setNoteButtons(listOf(NoteButtons.LINK))
+        val artifactOffset = myFixture.file.text.indexOf("slf4j-api") + 1
+        assertEquals(
+            1,
+            handler.getGotoDeclarationTargets(
+                myFixture.file.findElementAt(artifactOffset),
+                artifactOffset,
+                myFixture.editor,
+            )?.size,
+        )
     }
 }

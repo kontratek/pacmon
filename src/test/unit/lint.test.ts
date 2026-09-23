@@ -32,12 +32,24 @@ describe('lintNotes — headings of dependencies', () => {
 });
 
 describe('lintNotes — frontmatter and title', () => {
-  it('reports missing frontmatter once, and an unknown format version', () => {
+  it('accepts v1 and validates the v2 ecosystem field', () => {
     expect(of('## express\nx', ['missingFrontmatter'])).toHaveLength(1);
     expect(of('---\nformat: dependency-notes/1\n---\n## express\nx', ['missingFrontmatter', 'unknownFormat'])).toEqual([]);
-    expect(of('---\nlang: en\nformat: dependency-notes/2\n---\n# Dependency Notes\n', ['unknownFormat'])).toEqual([
-      { kind: 'unknownFormat', line: 2, version: 'dependency-notes/2' },
+    expect(of('---\nlang: en\nformat: dependency-notes/2\n---\n# Dependency Notes\n', ['missingEcosystem'])).toEqual([
+      { kind: 'missingEcosystem', line: 0 },
     ]);
+    expect(of('---\nformat: dependency-notes/3\n---\n# Dependency Notes\n', ['unknownFormat'])).toEqual([
+      { kind: 'unknownFormat', line: 1, version: 'dependency-notes/3' },
+    ]);
+    expect(lintNotes(
+      parseNotes('---\nformat: dependency-notes/2\necosystem: cargo\n---\n# Dependency Notes\n'),
+      [],
+      'maven',
+    ).filter((finding) => finding.kind === 'wrongEcosystem')).toEqual([
+      { kind: 'wrongEcosystem', line: 0, actual: 'cargo', expected: 'maven' },
+    ]);
+    expect(parseNotes('---\nformat: dependency-notes/2\necosystem: gradle\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
+      .toBe('gradle');
   });
 
   it('wants exactly one title, worded "# Dependency Notes"', () => {

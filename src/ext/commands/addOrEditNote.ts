@@ -2,19 +2,19 @@ import * as vscode from 'vscode';
 import { sectionLayers } from '../../core/layers';
 import type { DepEntry } from '../../core/model';
 import { normalizeName } from '../../core/match';
-import { depAtOffset } from '../../core/packageJson';
+import { dependencyAtOffset } from '../../core/manifest';
 import { findSection, parseNotes } from '../../core/parseNotes';
-import { isPackageJson, noteEntryMode, notesFileLabel } from '../config';
+import { isManifest, noteEntryMode, notesFileLabelForManifest } from '../config';
 import type { NotePanel } from '../notePanel';
-import { defaultPackageJson, resolveNotesFileFor } from '../resolveNotesFile';
+import { defaultManifest, resolveNotesFileFor } from '../resolveNotesFile';
 import type { Store } from '../state';
 import { S } from '../strings';
 import { ensureSection, upsertNote } from './writeNote';
 
 async function pickDep(deps: readonly DepEntry[]): Promise<string | undefined> {
-  const items = deps.map((d) => ({ label: d.name, description: d.section }));
+  const items = deps.map((d) => ({ label: d.displayName, description: d.scope, noteKey: d.noteKey }));
   const picked = await vscode.window.showQuickPick(items, { placeHolder: S.pickDepPlaceholder });
-  return picked?.label;
+  return picked?.noteKey;
 }
 
 /** Reveal a section and put the cursor on its body line. */
@@ -52,14 +52,14 @@ async function openPeek(
   if (!notesUri || !notes || !section) return false;
 
   const deps = store.depsForDocument(pkgEditor.document);
-  const dep = deps.find((d) => normalizeName(d.name) === normalizeName(name));
+  const dep = deps.find((d) => d.noteKey === name || normalizeName(d.noteKey) === normalizeName(name));
   if (!dep) return false;
-  const anchor = pkgEditor.document.positionAt(dep.keyOffset + 1);
+  const anchor = pkgEditor.document.positionAt(dep.primaryRange.offset);
 
   const bodyLine = Math.min(section.bodyStart, Math.max(notes.lines.length - 1, 0));
   const target = new vscode.Location(notesUri, new vscode.Range(bodyLine, 0, bodyLine, 0));
   await vscode.commands.executeCommand('editor.action.peekLocations', pkgUri, anchor, [target], 'peek');
-  vscode.window.setStatusBarMessage(S.peekHint(notesFileLabel()), 5000);
+  vscode.window.setStatusBarMessage(S.peekHint(notesFileLabelForManifest(pkgUri)), 5000);
   return true;
 }
 
@@ -93,18 +93,18 @@ export async function addOrEditNote(
   let pkgUri: vscode.Uri | undefined;
   let name = nameArg;
 
-  if (editor && isPackageJson(editor.document.uri)) {
+  if (editor && isManifest(editor.document.uri)) {
     pkgUri = editor.document.uri;
     const deps = store.depsForDocument(editor.document);
     if (!name) {
       const offset = editor.document.offsetAt(editor.selection.active);
-      name = depAtOffset(deps, offset)?.name ?? (await pickDep(deps));
+      name = dependencyAtOffset(deps, offset)?.noteKey ?? (await pickDep(deps));
     }
   } else {
-    pkgUri = await defaultPackageJson(store);
+    pkgUri = await defaultManifest(store);
     if (!pkgUri) {
       void vscode.window.showInformationMessage(
-        vscode.workspace.workspaceFolders?.length ? S.noPackageJson : S.noWorkspace,
+        vscode.workspace.workspaceFolders?.length ? S.noManifest : S.noWorkspace,
       );
       return;
     }
@@ -114,6 +114,7 @@ export async function addOrEditNote(
     }
   }
   if (!name) return;
+  const fileLabel = notesFileLabelForManifest(pkgUri);
 
   // Primary experience: the note editor beside package.json. Needs no anchor in
   // the editor, so it works from the command palette and coverage list too.
@@ -143,7 +144,7 @@ export async function addOrEditNote(
   if (existingHuman !== undefined && (existingHuman.includes('\n') || bodyArg !== undefined)) {
     if (bodyArg !== undefined) {
       await upsertNote(store, pkgUri, name, bodyArg);
-      vscode.window.setStatusBarMessage(S.noteSaved(name, notesFileLabel()), 4000);
+      vscode.window.setStatusBarMessage(S.noteSaved(name, fileLabel), 4000);
       return;
     }
     await openAt(resolved!, name); // multi-line prose belongs in the editor
@@ -155,7 +156,7 @@ export async function addOrEditNote(
   if (body === undefined) {
     body = await vscode.window.showInputBox({
       title: existingHuman !== undefined ? S.editNoteTitle(name) : S.addNoteTitle(name),
-      prompt: S.addNotePrompt(notesFileLabel()),
+      prompt: S.addNotePrompt(fileLabel),
       placeHolder: existingHuman === undefined ? S.addNotePlaceholder : undefined,
       value: existingHuman,
     });
@@ -170,5 +171,5 @@ export async function addOrEditNote(
   }
 
   await upsertNote(store, pkgUri, name, body);
-  vscode.window.setStatusBarMessage(S.noteSaved(name, notesFileLabel()), 4000);
+  vscode.window.setStatusBarMessage(S.noteSaved(name, fileLabel), 4000);
 }

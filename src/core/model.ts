@@ -40,6 +40,8 @@ export interface Frontmatter extends LineRange {
   formatVersion?: string;
   /** `lang:` — language the values are written in (keys are always English). */
   lang?: string;
+  /** `ecosystem:` — required by dependency-notes/2 files. */
+  ecosystem?: ManifestKind;
 }
 
 export interface NotesFileModel {
@@ -55,16 +57,36 @@ export interface NotesFileModel {
   problems: NotesProblem[];
 }
 
-export type DepSection =
-  | 'dependencies'
-  | 'devDependencies'
-  | 'peerDependencies'
-  | 'optionalDependencies';
+export type ManifestKind = 'npm' | 'cargo' | 'maven' | 'gradle';
 
-export interface DepEntry {
+export interface SourceRange {
+  offset: number;
+  length: number;
+}
+
+/** A direct dependency declaration in any supported manifest. */
+export interface DependencyEntry {
+  /** Stable section key in DEPENDENCY-NOTES.md. */
+  noteKey: string;
+  /** Human-facing identifier. Usually the same as noteKey. */
+  displayName: string;
+  /** Manifest-specific dependency scope. */
+  scope: string;
+  /** Range used for line decorations and placement. */
+  primaryRange: SourceRange;
+  /** Range before which the Pacmon icon is rendered. */
+  iconRange: SourceRange;
+  /** Every source range that should respond to hover/navigation. */
+  sourceRanges: readonly SourceRange[];
+  /** @deprecated Compatibility alias for noteKey. */
   name: string;
-  section: DepSection;
-  /** Offset of the key node in the package.json text (includes the opening quote). */
+  /** @deprecated Compatibility alias for scope. */
+  section: string;
+  /** @deprecated Compatibility alias for primaryRange.offset. */
   keyOffset: number;
+  /** @deprecated Compatibility alias for primaryRange.length. */
   keyLength: number;
 }
+
+/** Kept while editor integrations migrate from the original npm-only name. */
+export type DepEntry = DependencyEntry;

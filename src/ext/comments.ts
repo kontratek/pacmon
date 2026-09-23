@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { depAtOffset } from '../core/packageJson';
+import { dependencyAtOffset } from '../core/manifest';
 import { sectionLayers } from '../core/layers';
 import { findSection } from '../core/parseNotes';
-import { isPackageJson, noteEntryMode, notesFileLabel } from './config';
+import { isManifest, noteEntryMode, notesFileLabelForManifest } from './config';
 import { logError } from './log';
 import { resolveNotesFileFor } from './resolveNotesFile';
 import type { Store } from './state';
@@ -21,10 +21,10 @@ export class NoteComments implements vscode.Disposable {
     this.controller = vscode.comments.createCommentController('pacmon', 'Pacmon Dependency Notes');
     this.controller.commentingRangeProvider = {
       provideCommentingRanges: (doc) => {
-        if (noteEntryMode() !== 'comments' || !isPackageJson(doc.uri)) return [];
+        if (noteEntryMode() !== 'comments' || !isManifest(doc.uri)) return [];
         const deps = this.store.depsForDocument(doc);
         return deps.map((d) => {
-          const line = doc.positionAt(d.keyOffset).line;
+          const line = doc.positionAt(d.primaryRange.offset).line;
           return new vscode.Range(line, 0, line, 0);
         });
       },
@@ -47,14 +47,15 @@ export class NoteComments implements vscode.Disposable {
       const deps = this.store.depsForDocument(doc);
       const offset = doc.offsetAt(new vscode.Position(thread.range.start.line, 0));
       const lineEnd = doc.offsetAt(doc.lineAt(thread.range.start.line).range.end);
-      const dep = deps.find((d) => d.keyOffset >= offset && d.keyOffset <= lineEnd) ?? depAtOffset(deps, offset);
+      const dep = deps.find((d) => d.primaryRange.offset >= offset && d.primaryRange.offset <= lineEnd)
+        ?? dependencyAtOffset(deps, offset);
       if (!dep) {
         thread.dispose();
         return;
       }
       const body = reply.text.trim();
-      if (body !== '') await upsertNote(this.store, thread.uri, dep.name, body);
-      await this.showThread(thread, dep.name);
+      if (body !== '') await upsertNote(this.store, thread.uri, dep.noteKey, body);
+      await this.showThread(thread, dep.noteKey);
     } catch (e) {
       logError('comments.saveFromReply', e);
     }
@@ -72,7 +73,7 @@ export class NoteComments implements vscode.Disposable {
     const comment: vscode.Comment = {
       body: md,
       mode: vscode.CommentMode.Preview,
-      author: { name: notesFileLabel() },
+      author: { name: notesFileLabelForManifest(pkgUri) },
     };
     thread.comments = [comment];
     thread.label = depName;

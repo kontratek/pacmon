@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { analyze } from '../core/analyze';
-import { normalizeName } from '../core/match';
+import { normalizeNameForEcosystem } from '../core/match';
 import { notePreview, sectionLayers } from '../core/layers';
-import { decorationsEnabled, decorationsSetting, inlineSource, isPackageJson } from './config';
+import { decorationsEnabled, decorationsSetting, inlineSource, isManifest } from './config';
 import { logError } from './log';
 import { resolveNotesFileFor } from './resolveNotesFile';
 import type { Store } from './state';
@@ -58,7 +58,7 @@ export class DecorationController implements vscode.Disposable {
 
   private async doRefreshEditor(editor: vscode.TextEditor): Promise<void> {
     const doc = editor.document;
-    if (!isPackageJson(doc.uri)) return;
+    if (!isManifest(doc.uri)) return;
     if (!decorationsEnabled()) {
       editor.setDecorations(this.type, []);
       return;
@@ -79,9 +79,9 @@ export class DecorationController implements vscode.Disposable {
     const source = inlineSource();
     const options: vscode.DecorationOptions[] = [];
     for (const dep of documented) {
-      const line = doc.positionAt(dep.keyOffset).line;
+      const line = doc.positionAt(dep.primaryRange.offset).line;
       const end = doc.lineAt(line).range.end;
-      const section = byDep.get(normalizeName(dep.name));
+      const section = byDep.get(normalizeNameForEcosystem(dep.noteKey, notes.frontmatter?.ecosystem));
       const text =
         style === 'preview' && section ? ` ▪ ${notePreview(sectionLayers(notes, section), source)}` : ' ▪ note';
       options.push({

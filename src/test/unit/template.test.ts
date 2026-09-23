@@ -38,6 +38,19 @@ describe('template: frontmatter and header', () => {
     expect(fresh).toContain('\nx\n');
     expect(normalizeText(fresh)).toBe(fresh);
   });
+
+  it('creates v2 ecosystem notes without changing the npm v1 default', () => {
+    const cargo = newNotesFileContent('\n', 'serde', 'Serialization.', 'cargo');
+    expect(cargo).toContain('format: dependency-notes/2');
+    expect(cargo).toContain('ecosystem: cargo');
+    expect(cargo).toContain('cargo dependency manifest');
+    expect(normalizeText(cargo)).toBe(cargo);
+    expect(newNotesFileContent('\n', 'express')).toContain('format: dependency-notes/1');
+    const gradle = newNotesFileContent('\n', 'org.slf4j:slf4j-api', 'Logging.', 'gradle');
+    expect(gradle).toContain('ecosystem: gradle');
+    expect(gradle).toContain('gradle dependency manifest');
+    expect(normalizeText(gradle)).toBe(gradle);
+  });
 });
 
 describe('template: pointer block for the user’s agent files', () => {

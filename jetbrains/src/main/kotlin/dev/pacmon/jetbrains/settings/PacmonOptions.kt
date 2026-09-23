@@ -3,7 +3,7 @@ package dev.pacmon.jetbrains.settings
 /**
  * The values the Pacmon tool window and the Settings page may write, and the
  * words next to them. The VS Code extension keeps the same vocabulary in
- * `package.json` (`pacmon.noteButtons`, `pacmon.decorations`,
+ * dependency manifests (`pacmon.noteButtons`, `pacmon.decorations`,
  * `pacmon.noteEntry`, `pacmon.inlineSource`) and the same help text in
  * `src/ext/strings.ts`; both editors are meant to offer the same choices under
  * the same names, so a note written in one reads the same in the other.
@@ -24,7 +24,7 @@ object NoteButtons {
     val DEFAULT = listOf(ICON_LEFT, LINK)
 
     fun label(id: String): String = when (id) {
-        ICON_LEFT -> "Icon before the name"
+        ICON_LEFT -> "Icon before the dependency"
         LINK -> "The package name"
         CODE_LENS -> "Line above the dependency"
         INLAY_HINT -> "Chip at end of line"
@@ -40,10 +40,10 @@ object NoteButtons {
 
     fun help(id: String): String = when (id) {
         ICON_LEFT ->
-            "The Pacmon mark before the name — filled when the dependency has a note, " +
+            "The Pacmon mark before the dependency — filled when it has a note, " +
                 "hollow when it does not. The mouse turns into a hand over it."
         LINK -> "The package name itself opens its note. Adds nothing to the file."
-        CODE_LENS -> "Unmissable — and it roughly doubles the apparent height of package.json."
+        CODE_LENS -> "Unmissable — and it roughly doubles the apparent height of the manifest."
         INLAY_HINT -> "Spelled out at the end of the line, where it competes with the note preview."
         LIGHTBULB -> "The quietest option: nothing is drawn until the caret is on the line."
         else -> ""

@@ -6,7 +6,6 @@ import com.intellij.openapi.editor.LineExtensionInfo
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiManager
 import com.intellij.ui.JBColor
 import dev.pacmon.jetbrains.core.NotesCore
 import dev.pacmon.jetbrains.service.PacmonProjectService
@@ -19,15 +18,13 @@ class PacmonLinePainter : EditorLinePainter() {
         file: VirtualFile,
         lineNumber: Int,
     ): Collection<LineExtensionInfo> {
-        if (file.name != "package.json") return emptyList()
+        if (!DependencyPsi.isManifest(file)) return emptyList()
         return ReadAction.compute<Collection<LineExtensionInfo>, RuntimeException> {
-            val psiFile = PsiManager.getInstance(project).findFile(file) ?: return@compute emptyList()
             val document = FileDocumentManager.getInstance().getDocument(file) ?: return@compute emptyList()
-            val dependency = DependencyPsi.all(psiFile).firstOrNull {
-                document.getLineNumber(it.property.textOffset) == lineNumber
-            } ?: return@compute emptyList()
-
             val service = project.getService(PacmonProjectService::class.java)
+            val dependency = service.dependencies(file).firstOrNull {
+                document.getLineNumber(it.primaryRange.offset) == lineNumber
+            } ?: return@compute emptyList()
             val decorations = service.decorations()
             if (decorations == Decorations.OFF) return@compute emptyList()
             val note = service.noteFor(file, dependency.name) ?: return@compute emptyList()

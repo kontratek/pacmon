@@ -5,8 +5,8 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 
 /**
- * Opens the notes file for the package.json in play. Enabled wherever you are
- * in the project, not only inside `package.json`: the VS Code command falls
+ * Opens the notes file for the dependency manifest in play. Enabled wherever you are
+ * in the project, not only inside a manifest: the VS Code command falls
  * back to the active editor, then to the workspace's own manifest, and this
  * one does the same through [PacmonCommands.findNotesFile].
  */

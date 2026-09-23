@@ -1,13 +1,14 @@
 # Pacmon for JetBrains IDEs
 
-The JetBrains counterpart of the [VS Code extension](../README.md): the same `.pacmon/DEPENDENCY-NOTES.md` file, read and written the same way, inside IntelliJ IDEA, WebStorm and the rest of the JetBrains family. `docs/format.md` (at the repository root) is the authority on the file format both clients read; this module keeps its own hand-written port of the same rules, not a shared library.
+The JetBrains counterpart of the [VS Code extension](../README.md): the same ecosystem-specific dependency notes, read and written the same way, inside IntelliJ IDEA, WebStorm and the rest of the JetBrains family. npm uses `.pacmon/DEPENDENCY-NOTES.md`, Cargo uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`, and Gradle uses `.pacmon/gradle/DEPENDENCY-NOTES.md`. `docs/format.md` (at the repository root) is the authority on the formats both clients read; this module keeps its own hand-written port of the same rules, not a shared library.
 
 ## What it does
 
 - A **Pacmon** tool window (right stripe) with two views: a dashboard (documentation coverage, click-target and note-marker settings) and a per-dependency editor with separate human and agent layers.
-- Small inlay icons before each dependency name in `package.json` — filled when it has a note, hollow when it doesn't — plus an end-of-line preview and a quick-doc hover.
+- Small inlay icons at dependency declarations in `package.json`, `Cargo.toml`, Maven `pom.xml`, `build.gradle`, and `build.gradle.kts` — filled when they have a note, hollow when they do not — plus an end-of-line preview and a quick-doc hover.
 - Live `docs/format.md` warnings, underlined with a hover message, wherever `DEPENDENCY-NOTES.md` is open.
-- Four Tools-menu commands — **Open DEPENDENCY-NOTES.md**, **Documentation Coverage**, **Set Up AI Instructions**, **Format DEPENDENCY-NOTES.md** — and **Add/Edit Dependency Note** in the editor's context menu.
+- Five Tools-menu commands — **Open DEPENDENCY-NOTES.md**, **Open Dependency Manifest**, **Documentation Coverage**, **Set Up AI Instructions**, **Format DEPENDENCY-NOTES.md** — and **Add/Edit Dependency Note** in the editor's context menu.
+- Pure Kotlin manifest parsers; Rust, TOML, Maven, Groovy, Kotlin, and Gradle plugins are not required. When optional language plugins are installed, Pacmon also registers directly for their language support.
 
 ## Requirements
 
@@ -42,11 +43,13 @@ src/main/kotlin/dev/pacmon/jetbrains/
 │   │                     layer ranges, lint spans)
 │   ├── NotesLint.kt      the full format lint — a line-for-line port of src/core/lint.ts
 │   ├── LintFinding.kt    one sealed class per lint finding kind, with its message()
+│   ├── ManifestCore.kt   the npm, Cargo and Maven adapters and source-range parsers
+│   ├── GradleManifest.kt the Groovy/Kotlin DSL Gradle adapter and source-range parser
 │   ├── AgentNotes.kt     agent-layer field lint used live in the note editor's side panel
 │   └── AiInstructions.kt the AGENTS.md/CLAUDE.md pointer block ("Set Up AI Instructions")
 │
-├── editor/    Wiring into the package.json editor and the notes file editor.
-│   ├── DependencyPsi.kt            reads dependency names out of package.json's PSI
+├── editor/    Wiring into dependency manifest editors and the notes file editor.
+│   ├── DependencyPsi.kt            bridges manifest source ranges to IntelliJ PSI entry points
 │   ├── PacmonInlayHintsProvider.kt the inlay icon before each dependency name
 │   ├── PacmonLinePainter.kt        the end-of-line note preview
 │   ├── PacmonDocumentationProvider.kt  the quick-doc hover
@@ -55,8 +58,8 @@ src/main/kotlin/dev/pacmon/jetbrains/
 │                                   — the two languages an .md file can get
 │
 ├── service/   Project-level state and file I/O.
-│   ├── PacmonProjectService.kt  settings, resolving/reading/writing the notes file,
-│   │                            AGENT-RULES.md, the monorepo "nearest ancestor" search
+│   ├── PacmonProjectService.kt  settings, cached manifest parsing, ecosystem-specific
+│   │                            note resolution, AGENT-RULES.md and workspace indexing
 │   └── PacmonNotesListener.kt   message-bus topic other components subscribe to when
 │                                 the notes file changes (including from outside the IDE)
 │
@@ -76,7 +79,7 @@ src/main/kotlin/dev/pacmon/jetbrains/
 └── action/    AnAction entry points wired in plugin.xml (Tools menu, editor popup menu).
 ```
 
-`src/test/kotlin/...` mirrors this layout. `core/` and `editor/DependencyPsi` are covered by plain JUnit tests; the tool-window UI is covered by `BasePlatformTestCase`-based tests under `ui/`.
+`src/test/kotlin/...` mirrors this layout. Parser, format, resolver, editor integration, and tool-window behavior are covered by `BasePlatformTestCase`-based tests.
 
 ### Keeping this in sync with the TypeScript core
 

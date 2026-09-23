@@ -10,9 +10,7 @@ import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiManager
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBCheckBox
@@ -23,7 +21,7 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.ui.JBUI
 import dev.pacmon.jetbrains.action.PacmonCommands
 import dev.pacmon.jetbrains.core.NotesCore
-import dev.pacmon.jetbrains.editor.DependencyPsi
+import dev.pacmon.jetbrains.core.ManifestRegistry
 import dev.pacmon.jetbrains.service.PacmonProjectService
 import dev.pacmon.jetbrains.settings.Decorations
 import dev.pacmon.jetbrains.settings.InlineSources
@@ -82,7 +80,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
     private val decorationRadios = LinkedHashMap<String, JBRadioButton>()
     private val inlineSourceRadios = LinkedHashMap<String, JBRadioButton>()
 
-    private var lastPackageJson: VirtualFile? = null
+    private var lastManifest: VirtualFile? = null
     private var loading = false
 
     private val content = panel {
@@ -111,7 +109,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
 
         group("CLICK TARGETS") {
             row {
-                comment("How you open a dependency's note from package.json. Right-click always works too.")
+                comment("How you open a dependency's note from its manifest. Right-click always works too.")
                     .resizableColumn()
                 targetsCountLabel = muted("").align(AlignX.RIGHT).component
             }
@@ -130,7 +128,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         }
 
         group("NOTE EDITOR") {
-            row { comment("Where a note is written when you open one from package.json.") }
+            row { comment("Where a note is written when you open one from a dependency manifest.") }
             radioGroup(NoteEntries.ALL, noteEntryRadios, NoteEntries::help) { value ->
                 service.state.noteEntry = value
             }
@@ -161,19 +159,19 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         group("ACTIONS") {
             row {
                 openNotesLink = link("Open ${NotesCore.NOTES_FILE_NAME}") {
-                    PacmonCommands.openNotesFile(project, lastPackageJson)
-                }.comment("The notes file for the package.json you are in.").component
+                    PacmonCommands.openNotesFile(project, lastManifest)
+                }.comment("The notes file for the dependency manifest you are in.").component
             }
             row {
-                link("Open package.json") { PacmonCommands.openPackageJson(project, lastPackageJson) }
+                link("Open dependency manifest") { PacmonCommands.openManifest(project, lastManifest) }
                     .comment("The manifest these notes describe.")
             }
             row {
-                link("Search dependencies…") { DependencyPicker.show(project, lastPackageJson) }
+                link("Search dependencies…") { DependencyPicker.show(project, lastManifest) }
                     .comment("Every dependency in one list, documented or not — pick one to open its note.")
             }
             row {
-                link("Format notes file") { PacmonCommands.formatNotesFile(project, lastPackageJson) }
+                link("Format notes file") { PacmonCommands.formatNotesFile(project, lastManifest) }
                     .comment("Sort sections and canonicalize headings. Prose untouched.")
             }
             row {
@@ -201,14 +199,19 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
             FileEditorManagerListener.FILE_EDITOR_MANAGER,
             object : FileEditorManagerListener {
                 override fun selectionChanged(event: FileEditorManagerEvent) {
-                    if (event.newFile?.name == "package.json") lastPackageJson = event.newFile
+                    if (ManifestRegistry.forFileName(event.newFile?.name.orEmpty()) != null) {
+                        lastManifest = event.newFile
+                        event.newFile?.let(service::rememberManifest)
+                    }
                     scheduleRefresh()
                 }
             },
         )
         EditorFactory.getInstance().eventMulticaster.addDocumentListener(object : DocumentListener {
             override fun documentChanged(event: DocumentEvent) {
-                if (FileDocumentManager.getInstance().getFile(event.document)?.name == "package.json") scheduleRefresh()
+                if (ManifestRegistry.forFileName(FileDocumentManager.getInstance().getFile(event.document)?.name.orEmpty()) != null) {
+                    scheduleRefresh()
+                }
             }
         }, project)
     }
@@ -222,21 +225,25 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         loading = false
         refreshTargetsCount()
 
-        val selected = FileEditorManager.getInstance(project).selectedFiles.firstOrNull { it.name == "package.json" }
-        if (selected != null) lastPackageJson = selected
-        val packageJson = selected ?: lastPackageJson?.takeIf { it.isValid } ?: rootPackageJson()
-        markersLede.text = markersHelp(packageJson)
-        openNotesLink.text = "Open ${notesFileLabel(packageJson)}"
-        if (packageJson == null) {
-            showCoverage("", "", 0, "Open a package.json to see its dependencies here.", false)
+        val selected = FileEditorManager.getInstance(project).selectedFiles
+            .firstOrNull { ManifestRegistry.forFileName(it.name) != null }
+        if (selected != null) {
+            lastManifest = selected
+            service.rememberManifest(selected)
+        }
+        val manifest = selected ?: lastManifest?.takeIf { it.isValid } ?: service.defaultManifest()
+        markersLede.text = markersHelp(manifest)
+        openNotesLink.text = "Open ${notesFileLabel(manifest)}"
+        if (manifest == null) {
+            showCoverage("", "", 0, "Open a dependency manifest to see its dependencies here.", false)
             return
         }
-        val dependencies = PsiManager.getInstance(project).findFile(packageJson)?.let(DependencyPsi::all).orEmpty()
+        val dependencies = service.dependencies(manifest)
         if (dependencies.isEmpty()) {
-            showCoverage("", relativePath(packageJson), 0, "This package.json has no dependencies.", false)
+            showCoverage("", relativePath(manifest), 0, "This dependency manifest has no supported dependencies.", false)
             return
         }
-        val documented = dependencies.count { service.noteFor(packageJson, it.name) != null }
+        val documented = dependencies.count { service.noteFor(manifest, it.name) != null }
         val missing = dependencies.size - documented
         val status = when (missing) {
             0 -> "Every dependency has a note."
@@ -245,7 +252,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         }
         showCoverage(
             "$documented of ${dependencies.size}",
-            relativePath(packageJson),
+            relativePath(manifest),
             (documented * 100.0 / dependencies.size).roundToInt(),
             status,
             true,
@@ -297,13 +304,13 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         targetsCountLabel.text = "${service.noteButtons().size} of ${NoteButtons.ALL.size}"
     }
 
-    private fun markersHelp(packageJson: VirtualFile?): String =
-        "End-of-line hint on dependencies that already have a note in ${notesFileLabel(packageJson)}."
+    private fun markersHelp(manifest: VirtualFile?): String =
+        "End-of-line hint on dependencies that already have a note in ${notesFileLabel(manifest)}."
 
-    /** The notes file this package.json resolves to, shown the way you would
+    /** The notes file this manifest resolves to, shown the way you would
      *  type it — or the bare file name when there is no notes file yet. */
-    private fun notesFileLabel(packageJson: VirtualFile?): String {
-        val notesFile = packageJson?.takeIf { it.isValid }?.let(service::resolveNotesFile)
+    private fun notesFileLabel(manifest: VirtualFile?): String {
+        val notesFile = manifest?.takeIf { it.isValid }?.let(service::resolveNotesFile)
         return if (notesFile == null) NotesCore.NOTES_FILE_NAME else relativePath(notesFile)
     }
 
@@ -319,10 +326,6 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         if (!project.isDisposed) refresh()
     }
 
-    private fun rootPackageJson(): VirtualFile? = project.basePath
-        ?.replace('\\', '/')
-        ?.let { LocalFileSystem.getInstance().findFileByPath("$it/package.json") }
-
     private fun relativePath(file: VirtualFile): String {
         val root = project.basePath?.replace('\\', '/')?.trimEnd('/') ?: return file.name
         return file.path.replace('\\', '/').removePrefix("$root/")
@@ -335,7 +338,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
      * One exclusive group of choices with its help line under each — the Swing
      * shape of the VS Code view's radio rows. Writing goes through [apply];
      * every group refreshes the editor afterwards, since each of them changes
-     * what package.json looks like.
+     * what dependency manifests look like.
      */
     private fun com.intellij.ui.dsl.builder.Panel.radioGroup(
         values: List<String>,
@@ -357,7 +360,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
                         if (!loading && button.isSelected) {
                             apply(value)
                             service.settingsChanged()
-                            markersLede.text = markersHelp(lastPackageJson)
+                            markersLede.text = markersHelp(lastManifest)
                         }
                     }
                     into[value] = button

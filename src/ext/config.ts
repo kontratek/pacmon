@@ -2,17 +2,32 @@ import * as vscode from 'vscode';
 import { INLINE_SOURCES, type InlineSource } from '../core/layers';
 import { NOTES_DIR, NOTES_FILE_NAME, NOTES_REL_PATH } from '../core/template';
 import { DEFAULT_NOTE_BUTTONS, type NoteButton } from './noteButtonIds';
+import { manifestAdapterForFileName, manifestAdapterForKind } from '../core/manifest';
+import type { ManifestKind } from '../core/model';
 
 export { AGENT_RULES_REL_PATH, NOTES_REL_PATH } from '../core/template';
 
 /** Where the notes live, wherever a package.json sits. The layout is part of
  *  the format, so it is not a setting. */
-export const NOTES_GLOB = `**/${NOTES_REL_PATH}`;
+export const NOTES_GLOB = '**/.pacmon/{DEPENDENCY-NOTES.md,cargo/DEPENDENCY-NOTES.md,maven/DEPENDENCY-NOTES.md,gradle/DEPENDENCY-NOTES.md}';
 
 /** How messages name the notes file. */
-export function notesFileLabel(): string {
-  return NOTES_REL_PATH;
+export function notesFileLabel(kind: ManifestKind = 'npm'): string {
+  return manifestAdapterForKind(kind).notesRelativePath;
 }
+
+export function notesFileLabelForManifest(uri: vscode.Uri): string {
+  const adapter = manifestAdapterForFileName(uriBasename(uri));
+  return adapter?.notesRelativePath ?? NOTES_REL_PATH;
+}
+
+export const MANIFEST_SELECTOR: vscode.DocumentSelector = [
+  { pattern: '**/package.json' },
+  { pattern: '**/Cargo.toml' },
+  { pattern: '**/pom.xml' },
+  { pattern: '**/build.gradle.kts' },
+  { pattern: '**/build.gradle' },
+];
 
 /** Which layer of a note feeds the end-of-line preview and leads the hover. */
 export function inlineSource(): InlineSource {
@@ -81,9 +96,15 @@ export function isPackageJson(uri: vscode.Uri): boolean {
   return uriBasename(uri) === 'package.json';
 }
 
+export function isManifest(uri: vscode.Uri): boolean {
+  return manifestAdapterForFileName(uriBasename(uri)) !== undefined;
+}
+
 /** `DEPENDENCY-NOTES.md` inside a `.pacmon/` directory — nothing else counts, not
  *  even a `DEPENDENCY-NOTES.md` at the root. */
 export function isNotesFile(uri: vscode.Uri): boolean {
   const parts = uri.path.split('/');
-  return parts[parts.length - 1] === NOTES_FILE_NAME && parts[parts.length - 2] === NOTES_DIR;
+  if (parts[parts.length - 1] !== NOTES_FILE_NAME) return false;
+  if (parts[parts.length - 2] === NOTES_DIR) return true;
+  return ['cargo', 'maven', 'gradle'].includes(parts[parts.length - 2] ?? '') && parts[parts.length - 3] === NOTES_DIR;
 }

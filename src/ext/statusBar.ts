@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { analyze } from '../core/analyze';
-import { decorationsEnabled, isNotesFile, isPackageJson } from './config';
+import { decorationsEnabled, isManifest, isNotesFile } from './config';
 import { DIAG_SOURCE } from './diagnostics';
 import { logError } from './log';
 import { resolveNotesFileFor } from './resolveNotesFile';
@@ -51,7 +51,7 @@ export class StatusBarController implements vscode.Disposable {
         this.showProblems(editor.document.uri);
         return;
       }
-      if (!isPackageJson(editor.document.uri)) {
+      if (!isManifest(editor.document.uri)) {
         this.item.hide();
         return;
       }

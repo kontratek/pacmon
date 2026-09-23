@@ -6,6 +6,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NotesLintTest {
+    @Test
+    fun `validates v2 ecosystem against notes path`() {
+        val missing = NotesCore.parse("---\nformat: dependency-notes/2\nlang: en\n---\n# Dependency Notes\n")
+        assertTrue(NotesLint.lint(missing, emptyList(), ManifestKind.CARGO).any { it is LintFinding.MissingEcosystem })
+
+        val wrong = NotesCore.parse(
+            "---\nformat: dependency-notes/2\necosystem: cargo\nlang: en\n---\n# Dependency Notes\n",
+        )
+        assertTrue(NotesLint.lint(wrong, emptyList(), ManifestKind.MAVEN).any { it is LintFinding.WrongEcosystem })
+    }
+
     private val deps = listOf("express", "@scope/util", "lodash")
     private val head = listOf("---", "format: dependency-notes/1", "---", "", "# Dependency Notes", "")
 
@@ -55,10 +66,10 @@ class NotesLintTest {
         assertTrue(of<LintFinding.MissingFrontmatter>("---\nformat: dependency-notes/1\n---\n## express\nx").isEmpty())
         assertTrue(of<LintFinding.UnknownFormat>("---\nformat: dependency-notes/1\n---\n## express\nx").isEmpty())
 
-        val findings = of<LintFinding.UnknownFormat>("---\nlang: en\nformat: dependency-notes/2\n---\n# Dependency Notes\n")
+        val findings = of<LintFinding.UnknownFormat>("---\nlang: en\nformat: dependency-notes/999\n---\n# Dependency Notes\n")
         assertEquals(1, findings.size)
         assertEquals(2, findings[0].line)
-        assertEquals("dependency-notes/2", findings[0].version)
+        assertEquals("dependency-notes/999", findings[0].version)
     }
 
     @Test

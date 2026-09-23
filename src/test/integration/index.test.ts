@@ -97,6 +97,104 @@ suite('pacmon integration', () => {
     );
   });
 
+  test('Cargo.toml dependencies use the Cargo notes namespace', async () => {
+    const manifest = fixtureUri('Cargo.toml');
+    const doc = await vscode.workspace.openTextDocument(manifest);
+    await vscode.window.showTextDocument(doc);
+    const offset = doc.getText().indexOf('serde');
+    const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+      'vscode.executeHoverProvider',
+      manifest,
+      doc.positionAt(offset + 1),
+    );
+    const text = (hovers ?? []).flatMap((hover) => hover.contents)
+      .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+    assert.ok(text.includes('Serialization layer'), `Cargo note missing, got: ${text}`);
+    assert.ok(text.includes('.pacmon/cargo/DEPENDENCY-NOTES.md'));
+  });
+
+  test('Cargo notes validate their ecosystem and open their Cargo manifest', async function () {
+    this.timeout(15000);
+    const notes = fixtureUri('.pacmon', 'cargo', 'DEPENDENCY-NOTES.md');
+    const doc = await vscode.workspace.openTextDocument(notes);
+    const editor = await vscode.window.showTextDocument(doc);
+    const line = doc.getText().split(/\r?\n/).findIndex((value) => value === 'ecosystem: cargo');
+    assert.ok(line > 0);
+    await editor.edit((edit) => edit.replace(doc.lineAt(line).range, 'ecosystem: maven'));
+    try {
+      const diagnostics = await poll(() => {
+        const mine = vscode.languages.getDiagnostics(notes).filter((item) => item.source === 'pacmon');
+        return mine.some((item) => item.code === 'wrong-ecosystem') ? mine : undefined;
+      });
+      assert.ok(diagnostics.some((item) => item.code === 'wrong-ecosystem'));
+    } finally {
+      await vscode.commands.executeCommand('workbench.action.files.revert');
+    }
+    await vscode.commands.executeCommand('pacmon.openManifest');
+    await poll(() => vscode.window.activeTextEditor?.document.uri.path.endsWith('/Cargo.toml') ? true : undefined);
+  });
+
+  test('pom.xml groupId and artifactId both open the Maven note', async () => {
+    const manifest = fixtureUri('pom.xml');
+    const doc = await vscode.workspace.openTextDocument(manifest);
+    await vscode.window.showTextDocument(doc);
+    for (const token of ['org.slf4j', 'slf4j-api']) {
+      const offset = doc.getText().indexOf(token);
+      const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+        'vscode.executeHoverProvider',
+        manifest,
+        doc.positionAt(offset + 1),
+      );
+      const text = (hovers ?? []).flatMap((hover) => hover.contents)
+        .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+      assert.ok(text.includes('Logging facade'), `Maven note missing on ${token}, got: ${text}`);
+    }
+  });
+
+  test('Gradle coordinates and catalog aliases use the Gradle notes namespace', async () => {
+    const manifest = fixtureUri('build.gradle.kts');
+    const doc = await vscode.workspace.openTextDocument(manifest);
+    await vscode.window.showTextDocument(doc);
+    for (const token of ['slf4j-api', 'libs.junit.jupiter']) {
+      const offset = doc.getText().indexOf(token);
+      const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+        'vscode.executeHoverProvider',
+        manifest,
+        doc.positionAt(offset + 1),
+      );
+      const text = (hovers ?? []).flatMap((hover) => hover.contents)
+        .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+      assert.ok(text.includes('.pacmon/gradle/DEPENDENCY-NOTES.md'), `Gradle path missing on ${token}: ${text}`);
+    }
+  });
+
+  test('writing a Cargo note does not change other ecosystem notes', async function () {
+    this.timeout(15000);
+    const cargoNotes = fixtureUri('.pacmon', 'cargo', 'DEPENDENCY-NOTES.md');
+    const npmNotes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
+    const mavenNotes = fixtureUri('.pacmon', 'maven', 'DEPENDENCY-NOTES.md');
+    const gradleNotes = fixtureUri('.pacmon', 'gradle', 'DEPENDENCY-NOTES.md');
+    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes];
+    const originals = await Promise.all(notesFiles.map((uri) => vscode.workspace.fs.readFile(uri)));
+    try {
+      const cargo = fixtureUri('Cargo.toml');
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(cargo));
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'anyhow', 'Application error context.');
+      const updated = await poll(async () => {
+        const text = await readText(cargoNotes);
+        return text.includes('## anyhow') ? text : undefined;
+      });
+      assert.ok(updated.includes('Application error context.'));
+      assert.strictEqual(await readText(npmNotes), new TextDecoder().decode(originals[1]!));
+      assert.strictEqual(await readText(mavenNotes), new TextDecoder().decode(originals[2]!));
+      assert.strictEqual(await readText(gradleNotes), new TextDecoder().decode(originals[3]!));
+    } finally {
+      await Promise.all(notesFiles.map((uri, index) =>
+        vscode.workspace.fs.writeFile(uri, originals[index]!),
+      ));
+    }
+  });
+
   test('sections not in package.json get no diagnostic, and everything Pacmon reports is a warning', async function () {
     this.timeout(15000);
     const notes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');

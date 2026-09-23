@@ -14,7 +14,7 @@ import dev.pacmon.jetbrains.ui.PacmonToolWindowService
 import java.awt.Dimension
 
 /**
- * Where a note is written when one is opened from `package.json` — the
+ * Where a note is written when one is opened from a dependency manifest — the
  * `noteEntry` setting, the same two first-class choices the VS Code extension
  * offers:
  *
@@ -29,7 +29,9 @@ import java.awt.Dimension
  */
 object NoteEditor {
     fun open(project: Project, dependency: DependencyRef, editor: Editor? = null) {
-        val entry = project.getService(PacmonProjectService::class.java).noteEntry()
+        val service = project.getService(PacmonProjectService::class.java)
+        service.rememberManifest(dependency.manifest)
+        val entry = service.noteEntry()
         if (entry == NoteEntries.PEEK) openPeek(project, dependency, editor) else openPanel(project, dependency)
     }
 
@@ -38,10 +40,10 @@ object NoteEditor {
     }
 
     private fun openPeek(project: Project, dependency: DependencyRef, editor: Editor?) {
-        val packageJson = dependency.property.containingFile.virtualFile ?: return
+        val manifest = dependency.manifest
         val panel = PacmonToolWindowPanel(project)
         panel.preferredSize = Dimension(JBUI.scale(520), JBUI.scale(360))
-        panel.showTarget(PacmonTarget(packageJson, dependency.name, dependency.section))
+        panel.showTarget(PacmonTarget(manifest, dependency.name, dependency.section))
         val popup = JBPopupFactory.getInstance()
             .createComponentPopupBuilder(panel, panel)
             .setProject(project)

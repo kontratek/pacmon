@@ -10,7 +10,7 @@ import com.intellij.openapi.project.Project
 /**
  * The Pacmon tool window's title action: back from a note to the front page —
  * coverage, the settings and the actions. The tool window shows one or the
- * other, and opening a note from `package.json` swaps the front page out, so
+ * other, and opening a note from a dependency manifest swaps the front page out, so
  * there has to be a way back that does not mean closing the tool window.
  */
 class ShowDashboardAction(private val project: Project) :

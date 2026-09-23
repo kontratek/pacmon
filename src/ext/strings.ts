@@ -1,4 +1,4 @@
-import { AGENT_RULES_REL_PATH, FORMAT_VERSION } from '../core/template';
+import { AGENT_RULES_REL_PATH, SUPPORTED_FORMAT_VERSIONS } from '../core/template';
 
 /** Centralized user-facing strings (EN). l10n-ready: swap this module later. */
 export const S = {
@@ -8,6 +8,7 @@ export const S = {
   pickDepPlaceholder: 'Select a dependency',
   noWorkspace: 'Pacmon: open a folder first.',
   noPackageJson: 'Pacmon: no package.json found in this workspace folder.',
+  noManifest: 'Pacmon: no supported dependency manifest found in this workspace folder.',
   noNotesFile: (fileName: string) => `Pacmon: no ${fileName} found. Use "Add/Edit Dependency Note" to create one.`,
   formatted: (fileName: string) => `Pacmon: ${fileName} formatted.`,
   alreadyCanonical: (fileName: string) => `Pacmon: ${fileName} is already in canonical form.`,
@@ -24,9 +25,11 @@ export const S = {
   // Sections whose package is not in package.json: a marker before the heading, not a diagnostic.
   orphanGlyph: '⚠︎',
   orphanHover: (name: string) =>
-    `**${name}** is not in package.json. Removed? The notes can stay — agents mark it \`status: removed\`.`,
-  orphanHoverTypo: (name: string, guess: string) => `**${name}** is not in package.json — did you mean **${guess}**?`,
-  orphanHoverRemoved: (name: string) => `**${name}** is not in package.json — marked removed, kept on purpose.`,
+    `**${name}** is not in the dependency manifest. Removed? The notes can stay — agents mark it \`status: removed\`.`,
+  orphanHoverTypo: (name: string, guess: string) =>
+    `**${name}** is not in the dependency manifest — did you mean **${guess}**?`,
+  orphanHoverRemoved: (name: string) =>
+    `**${name}** is not in the dependency manifest — marked removed, kept on purpose.`,
   willUpdate: 'exists — block will be updated',
   willCreate: 'will be created',
   addNoteTitle: (name: string) => `Note for ${name}`,
@@ -59,29 +62,29 @@ export const S = {
   // Pacmon view (activity bar)
   viewTitle: 'Pacmon — Dependency Notes',
   viewGroupTargets: 'Click targets',
-  viewTargetsLede: 'How you open a dependency’s note from package.json. Right-click always works too.',
+  viewTargetsLede: 'How you open a dependency’s note from its manifest. Right-click always works too.',
   viewGroupActions: 'Actions',
   viewOpenNotes: (fileName: string) => `Open ${fileName}`,
-  viewOpenPackage: 'Open package.json',
-  viewOpenPackageHelp: 'The manifest these notes describe.',
+  viewOpenPackage: 'Open dependency manifest',
+  viewOpenPackageHelp: 'The package.json, Cargo.toml, pom.xml, or Gradle build file these notes describe.',
   viewSearch: 'Search dependencies…',
   viewSearchHelp: 'Every dependency in one list, documented or not — pick one to open its note.',
   viewGroupCoverage: 'Coverage',
   viewCoverageRatio: (documented: number, total: number) => `${documented} of ${total}`,
-  viewCoverageEmpty: 'Open a package.json to see its dependencies here.',
+  viewCoverageEmpty: 'Open a dependency manifest to see its dependencies here.',
   viewCoverageAllDone: 'Every dependency has a note.',
   viewCoverageMissing: (n: number) =>
     n === 1 ? '1 dependency has no note yet.' : `${n} dependencies have no note yet.`,
-  viewCoverageNoDeps: 'This package.json has no dependencies.',
+  viewCoverageNoDeps: 'This manifest has no supported direct dependencies.',
   viewFormat: 'Format notes file',
   viewAiSetup: 'Set up AI instructions',
-  viewOpenNotesHelp: 'The notes file for the package.json you are in.',
+  viewOpenNotesHelp: 'The ecosystem-specific notes file for the active manifest.',
   viewFormatHelp: 'Sort sections and canonicalize headings. Prose untouched.',
   viewAiSetupHelp: `Write ${AGENT_RULES_REL_PATH} — the rules agents follow — and point AGENTS.md, CLAUDE.md and friends at it.`,
   viewOtherEntry: (value: string) => `Currently set to "${value}" in your settings.`,
   viewNoteEntry: 'Note editor',
   viewMarkers: 'Note markers',
-  viewNoteEntryHelp: 'Where a note is written when you open one from package.json.',
+  viewNoteEntryHelp: 'Where a note is written when you open one from a dependency manifest.',
   viewMarkersHelp: (fileName: string) =>
     `End-of-line hint on dependencies that already have a note in ${fileName}.`,
   viewInlineSource: 'Inline note source',
@@ -89,7 +92,7 @@ export const S = {
     'Which layer of a note shows next to the dependency and leads its hover. Every note has two: what people write under the heading, and the “Agent notes” block AI agents fill in. The hover always shows both.',
   buttonLabel: (id: string): string =>
     (({
-      iconLeft: 'Icon before the name',
+      iconLeft: 'Icon before the dependency',
       link: 'The package name',
       codelens: 'Line above the dependency',
       inlayHint: 'Chip at end of line',
@@ -109,18 +112,18 @@ export const S = {
   buttonHelp: (id: string): string =>
     (({
       iconLeft:
-        'The Pacmon mark before the name — filled when the dependency has a note, hollow when it does not. The mouse turns into a hand over it.',
+        'The Pacmon mark before the dependency — filled when it has a note, hollow when it does not. The mouse turns into a hand over it.',
       link: 'The package name itself opens its note. Adds nothing to the file.',
-      codelens: 'Unmissable — and it roughly doubles the apparent height of package.json.',
+      codelens: 'Unmissable — and it roughly doubles the apparent height of the manifest.',
       inlayHint: 'Spelled out at the end of the line, where it competes with the note preview.',
       lightbulb: 'The quietest option: nothing is drawn until the cursor is on the line.',
     }) as Record<string, string>)[id] ?? '',
   settingChoiceHelp: (key: string, value: string): string =>
     (({
-      'noteEntry:panel': 'A note editor beside package.json (default).',
+      'noteEntry:panel': 'A note editor beside the dependency manifest (default).',
       'noteEntry:peek': 'An embedded editor below the dependency line.',
       'noteEntry:input': 'A one-line input box; longer notes open the file.',
-      'noteEntry:inputBeside': 'Like input, but the file opens in a split beside package.json.',
+      'noteEntry:inputBeside': 'Like input, but the file opens in a split beside the manifest.',
       'noteEntry:comments': 'Experimental: a comment thread on the line.',
       'decorations:preview': 'Show the first line of the note at end of line.',
       'decorations:badge': 'Show a plain marker instead of the note text.',
@@ -155,14 +158,18 @@ export const S = {
   panelProblemBad: (line: number, key: string, expected: string) => `line ${line}: "${key}:" expects ${expected}`,
   panelFix: 'Fix',
   missingFrontmatter: 'No frontmatter — "Format DEPENDENCY-NOTES.md" adds it.',
-  unknownFormat: (version: string) => `Unknown format "${version}" — this Pacmon reads ${FORMAT_VERSION}.`,
+  unknownFormat: (version: string) =>
+    `Unknown format "${version}" — this Pacmon reads ${SUPPORTED_FORMAT_VERSIONS.join(' and ')}.`,
+  missingEcosystem: 'Format dependency-notes/2 requires an "ecosystem" field.',
+  wrongEcosystem: (actual: string, expected: string) =>
+    `This notes path belongs to ${expected}, but frontmatter says ${actual}.`,
   missingTitle: 'No "# Dependency Notes" title — "Format DEPENDENCY-NOTES.md" adds it.',
   wrongTitle: 'The title is "# Dependency Notes".',
   extraTitle: 'Only one "#" heading, "# Dependency Notes" — make this plain text.',
   strayHeading: 'Only "### Agent notes" may head a section — make this plain text.',
   strayHeadingAgent: 'Did you mean "### Agent notes"?',
   strayHeadingGenerated: '"### Generated" is reserved for tools — nothing writes it yet.',
-  removedButPresent: (name: string) => `"${name}" is in package.json — remove "status: removed".`,
+  removedButPresent: (name: string) => `"${name}" is in the dependency manifest — remove "status: removed".`,
   fixTitle: 'Change to "# Dependency Notes"',
   fixAgentHeading: 'Change to "### Agent notes"',
   fixPlainText: 'Make it plain text',
