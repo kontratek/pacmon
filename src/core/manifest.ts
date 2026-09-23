@@ -3,6 +3,7 @@ import { extractCargoDependencies } from './cargoManifest';
 import { extractMavenDependencies } from './mavenManifest';
 import { extractNpmDependencies } from './packageJson';
 import { extractGradleDependencies } from './gradleManifest';
+import { extractMixDependencies } from './mixManifest';
 export { dependencyAtOffset } from './dependency';
 
 export interface ManifestAdapter {
@@ -48,6 +49,13 @@ export const MANIFEST_ADAPTERS: readonly ManifestAdapter[] = [
     fileNames: ['build.gradle.kts', 'build.gradle'],
     notesRelativePath: '.pacmon/gradle/DEPENDENCY-NOTES.md',
     extractDependencies: extractGradleDependencies,
+    normalizeNoteKey: tolerantKey,
+  },
+  {
+    kind: 'mix',
+    fileNames: ['mix.exs'],
+    notesRelativePath: '.pacmon/mix/DEPENDENCY-NOTES.md',
+    extractDependencies: extractMixDependencies,
     normalizeNoteKey: tolerantKey,
   },
 ];

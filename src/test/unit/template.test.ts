@@ -50,6 +50,10 @@ describe('template: frontmatter and header', () => {
     expect(gradle).toContain('ecosystem: gradle');
     expect(gradle).toContain('gradle dependency manifest');
     expect(normalizeText(gradle)).toBe(gradle);
+    const mix = newNotesFileContent('\n', 'phoenix', 'Framework.', 'mix');
+    expect(mix).toContain('ecosystem: mix');
+    expect(mix).toContain('mix dependency manifest');
+    expect(normalizeText(mix)).toBe(mix);
   });
 });
 
@@ -69,6 +73,7 @@ describe('template: pointer block for the user’s agent files', () => {
     expect(text).toContain(AGENT_RULES_REL_PATH);
     expect(text).toContain('### Agent notes');
     expect(text).toContain('status: removed');
+    expect(text).toContain('.pacmon/mix/DEPENDENCY-NOTES.md');
   });
 
   it('appends the block once and replaces it on re-run', () => {
