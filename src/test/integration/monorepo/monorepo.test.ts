@@ -1,8 +1,8 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-// Runs in a copy of fixtures/monorepo: a root package.json (turbo-fake) with
-// its own .pacmon/, and packages/app (express, react-fake) with its own.
+// Runs in a copy of fixtures/monorepo: npm root/child manifests plus a Mix
+// umbrella whose web child has nearer notes while accounts shares root notes.
 
 function at(...parts: string[]): vscode.Uri {
   const folder = vscode.workspace.workspaceFolders![0]!;
@@ -53,6 +53,22 @@ async function hoverText(pkg: vscode.Uri, dep: string): Promise<string> {
     .join('\n');
 }
 
+async function mixHoverText(manifest: vscode.Uri, dep: string): Promise<string> {
+  const doc = await vscode.workspace.openTextDocument(manifest);
+  await vscode.window.showTextDocument(doc);
+  const offset = doc.getText().indexOf(`:${dep}`);
+  assert.ok(offset > 0, `${dep} is not in ${manifest.path}`);
+  const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+    'vscode.executeHoverProvider',
+    manifest,
+    doc.positionAt(offset + 2),
+  );
+  return (hovers ?? [])
+    .flatMap((h) => h.contents)
+    .map((c) => (typeof c === 'string' ? c : c.value))
+    .join('\n');
+}
+
 const cfg = (): vscode.WorkspaceConfiguration => vscode.workspace.getConfiguration('pacmon');
 
 suite('pacmon monorepo', () => {
@@ -93,6 +109,22 @@ suite('pacmon monorepo', () => {
     assert.ok(text.includes('Root-level tooling note.'), text);
   });
 
+  test('Mix umbrella children resolve their nearest shared or child notes', async function () {
+    this.timeout(20000);
+    const accounts = await poll(async () => {
+      const text = await mixHoverText(at('apps', 'accounts', 'mix.exs'), 'ecto_sql');
+      return text.includes('Root umbrella database note') ? text : undefined;
+    });
+    assert.ok(accounts.includes('.pacmon/mix/DEPENDENCY-NOTES.md'), accounts);
+
+    const web = await poll(async () => {
+      const text = await mixHoverText(at('apps', 'web', 'mix.exs'), 'phoenix');
+      return text.includes('Web child note') ? text : undefined;
+    });
+    assert.ok(web.includes('Web child note: nearest Mix file wins.'), web);
+    assert.ok(!web.includes('Root umbrella web note'), 'the root Mix note must not leak into the web child');
+  });
+
   test('pacmon.monorepo = rootOnly ignores the nested notes file', async function () {
     this.timeout(20000);
     await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
@@ -103,6 +135,20 @@ suite('pacmon monorepo', () => {
         return t.includes('App-level') ? undefined : t;
       });
       assert.ok(!text.includes('command:pacmon.') && !text.includes('Edit note'), `expected silence, got: ${text}`);
+    } finally {
+      await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test('pacmon.monorepo = rootOnly makes an umbrella child use root Mix notes', async function () {
+    this.timeout(20000);
+    await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
+    try {
+      const text = await poll(async () => {
+        const value = await mixHoverText(at('apps', 'web', 'mix.exs'), 'phoenix');
+        return value.includes('Root umbrella web note') ? value : undefined;
+      });
+      assert.ok(!text.includes('Web child note'), 'rootOnly must ignore the child Mix notes file');
     } finally {
       await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
     }
