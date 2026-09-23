@@ -7,18 +7,23 @@
 
 ## Unreleased
 
-- **Gradle dependency notes now work in VS Code and JetBrains IDEs.** Pacmon
-  reads static external module declarations from `build.gradle` and
-  `build.gradle.kts`, including map notation, platforms, custom configurations
-  and `libs.*` catalog aliases, and keeps their notes in
-  `.pacmon/gradle/DEPENDENCY-NOTES.md` without running Gradle.
+## 0.3.3 — 2026-09-23
 
-- **Cargo and Maven dependency notes now work in JetBrains IDEs.** Pacmon's
-  hover, navigation, note markers, editor actions, coverage, dashboard and
-  live note validation now support `Cargo.toml` and Maven `pom.xml` alongside
-  `package.json`. The plugin uses dependency-free Kotlin manifest parsers, so
-  Rust, TOML and Maven plugins remain optional, and keeps each ecosystem's
-  notes isolated under its own `.pacmon/` path.
+- **A release submits the JetBrains plugin too.** The plugin was uploaded by
+  hand and kept a version number of its own: `build.gradle.kts` said 0.3.1
+  while the extension shipped 0.3.2. It now reads `package.json`, so the
+  Release workflow raises one version for the whole repository and the plugin
+  follows. Its "What's New" was a `<change-notes>` block written into
+  `plugin.xml` beside the real notes in this file, and went stale the way a
+  second copy does; it is now that version's section here, rendered to HTML at
+  build time. One version number and one set of notes serve the Visual Studio
+  Marketplace, Open VSX and the JetBrains Marketplace. The run submits rather
+  than publishes: JetBrains reviews every version by hand and lists it
+  normally within two business days.
+- Run workflow with **`none`** publishes the version already in `package.json`
+  to whichever registry still lacks it, commits nothing, and refuses a version
+  that was never released — the path for a registry that joined after a
+  release, rather than spending a version number to reach it.
 
 ## 0.3.2 — 2026-09-16
 
