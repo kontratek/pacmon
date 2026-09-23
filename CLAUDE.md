@@ -10,4 +10,6 @@
 
 Order of work: `docs/format.md` first, then code and `assets/AGENT-RULES.md`, then `CHANGELOG.md` under `Unreleased`. Unit tests check the vocabulary against `assets/AGENT-RULES.md` and lint the example repo.
 
+Anything a user would notice goes under `## Unreleased` in `CHANGELOG.md`, in the same commit that makes the change — release plumbing included, when it changes what ships. Every registry's release notes are that section, and a release that finds it empty stops there.
+
 Before committing: `pnpm lint`, `pnpm typecheck`, `pnpm test`. Integration tests: `pnpm run pretest:integration && pnpm run test:integration`.
