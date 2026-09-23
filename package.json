@@ -2,7 +2,7 @@
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Notes",
   "description": "Why each dependency exists, as a note next to it in package.json, Cargo.toml, pom.xml or build.gradle. Plain Markdown in your repo; AI agents read and write it too.",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "publisher": "kontra",
   "private": true,
   "license": "Apache-2.0",

@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.4.0 — 2026-09-23
+
 - **Pacmon reads `Cargo.toml`, `pom.xml` and Gradle build files, not only
   `package.json`.** A Rust, Maven or Gradle manifest gets what a
   `package.json` has, in VS Code and in the JetBrains plugin: the mark before
