@@ -4,7 +4,8 @@ enum class ManifestKind(val id: String) {
     NPM("npm"),
     CARGO("cargo"),
     MAVEN("maven"),
-    GRADLE("gradle");
+    GRADLE("gradle"),
+    MIX("mix");
 
     companion object {
         fun fromId(value: String?): ManifestKind? = entries.firstOrNull { it.id == value }
@@ -33,7 +34,7 @@ interface ManifestAdapter {
 }
 
 object ManifestRegistry {
-    val adapters: List<ManifestAdapter> = listOf(NpmManifestAdapter, CargoManifestAdapter, MavenManifestAdapter, GradleManifestAdapter)
+    val adapters: List<ManifestAdapter> = listOf(NpmManifestAdapter, CargoManifestAdapter, MavenManifestAdapter, GradleManifestAdapter, MixManifestAdapter)
 
     fun forFileName(fileName: String): ManifestAdapter? = adapters.firstOrNull { fileName in it.fileNames }
 

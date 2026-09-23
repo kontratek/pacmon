@@ -202,7 +202,7 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         assertEmpty(painter.getLineExtensions(project, packageJson, line))
     }
 
-    fun testCargoMavenAndGradleUseTheSameInlayLinkAndDecorationSurfaces() {
+    fun testEveryEcosystemUsesTheSameInlayLinkAndDecorationSurfaces() {
         val cargo = myFixture.tempDirFixture.createFile("Cargo.toml", "[dependencies]\nserde = \"1\"\n")
         myFixture.tempDirFixture.createFile(
             ".pacmon/cargo/DEPENDENCY-NOTES.md",
@@ -280,6 +280,35 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
             handler.getGotoDeclarationTargets(
                 myFixture.file.findElementAt(artifactOffset),
                 artifactOffset,
+                myFixture.editor,
+            )?.size,
+        )
+
+        val mix = myFixture.tempDirFixture.createFile(
+            "mix.exs",
+            "defmodule Demo.MixProject do\n  defp deps, do: [{:phoenix, \"~> 1.8\"}]\nend",
+        )
+        myFixture.tempDirFixture.createFile(
+            ".pacmon/mix/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: mix\nlang: en\n---\n# Dependency Notes\n\n## phoenix\n\nWeb framework\n",
+        )
+        myFixture.configureFromExistingVirtualFile(mix)
+        val mixDependency = DependencyPsi.all(myFixture.file).single()
+        service().setNoteButtons(listOf(NoteButtons.ICON_LEFT, NoteButtons.LINK))
+        assertEquals(listOf(mixDependency.iconRange.offset to false), collect(NoteButtons.ICON_LEFT).inline)
+        val mixLine = myFixture.editor.document.getLineNumber(mixDependency.primaryRange.offset)
+        assertEquals(
+            "   \u25AA Web framework",
+            PacmonLinePainter().getLineExtensions(project, mix, mixLine).single().text,
+        )
+        val mixOffset = myFixture.file.text.indexOf(":phoenix") + 2
+        val mixElement = myFixture.file.findElementAt(mixOffset) ?: myFixture.file
+        service().setNoteButtons(listOf(NoteButtons.LINK))
+        assertEquals(
+            1,
+            handler.getGotoDeclarationTargets(
+                mixElement,
+                mixOffset,
                 myFixture.editor,
             )?.size,
         )

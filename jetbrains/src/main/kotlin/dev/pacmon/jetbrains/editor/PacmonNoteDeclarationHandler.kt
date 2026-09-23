@@ -27,7 +27,9 @@ class PacmonNoteDeclarationHandler : GotoDeclarationHandler {
         editor: Editor?,
     ): Array<PsiElement>? {
         val element = sourceElement ?: return null
-        val file = element.containingFile ?: return null
+        // Plain-text manifests (including mix.exs when no Elixir plugin is
+        // installed) may hand the file itself to the declaration handler.
+        val file = (element as? PsiFile) ?: element.containingFile ?: return null
         if (!DependencyPsi.isManifest(file)) return null
         val project = element.project
         val service = project.getService(PacmonProjectService::class.java)

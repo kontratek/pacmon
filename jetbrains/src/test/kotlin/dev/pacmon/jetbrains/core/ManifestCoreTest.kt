@@ -9,7 +9,7 @@ class ManifestCoreTest {
     @Test
     fun `registry matches only supported manifests in priority order`() {
         assertEquals(
-            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle"),
+            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs"),
             ManifestRegistry.adapters.flatMap { it.fileNames },
         )
         assertEquals(ManifestKind.NPM, ManifestRegistry.forFileName("package.json")?.kind)
@@ -17,6 +17,7 @@ class ManifestCoreTest {
         assertEquals(ManifestKind.MAVEN, ManifestRegistry.forFileName("pom.xml")?.kind)
         assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle.kts")?.kind)
         assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle")?.kind)
+        assertEquals(ManifestKind.MIX, ManifestRegistry.forFileName("mix.exs")?.kind)
         assertNull(ManifestRegistry.forFileName("settings.gradle.kts"))
     }
 
@@ -138,6 +139,7 @@ class ManifestCoreTest {
         assertTrue(CargoManifestAdapter.extractDependencies("[dependencies\nserde = {").isEmpty())
         assertTrue(MavenManifestAdapter.extractDependencies("<project><dependencies><dependency>").isEmpty())
         assertTrue(GradleManifestAdapter.extractDependencies("dependencies { implementation(\"g:a:1\")").isEmpty())
+        assertTrue(MixManifestAdapter.extractDependencies("defp deps do [{:phoenix, \"~> 1.8\"}").isEmpty())
     }
 
     @Test
@@ -201,5 +203,68 @@ class ManifestCoreTest {
             }
         """.trimIndent()
         assertEquals(listOf("com.acme:bom"), GradleManifestAdapter.extractDependencies(text).map { it.noteKey })
+    }
+
+    @Test
+    fun `mix extracts literal source forms scopes ranges and deduplicates`() {
+        val text = """
+            defmodule Example.MixProject do
+              use Mix.Project
+              def project, do: [app: :example, deps: deps()]
+              defp deps do
+                [
+                  {:phoenix, "~> 1.8"},
+                  {:ecto_sql, "~> 3.13", only: [:dev, :test]},
+                  {:wallaby, "~> 0.30", only: :test},
+                  {:nerves_system, github: "nerves-project/system", targets: [:rpi3, :rpi4]},
+                  {:local_app, path: "../local_app"},
+                  {:accounts, in_umbrella: true},
+                  {:"quoted-dep", "~> 1.0"},
+                  {:wallaby, "~> 0.30", only: :test}
+                ]
+              end
+            end
+        """.trimIndent()
+        val dependencies = MixManifestAdapter.extractDependencies(text)
+        assertEquals(
+            listOf(
+                "deps:phoenix",
+                "deps:dev,test:ecto_sql",
+                "deps:test:wallaby",
+                "deps@rpi3,rpi4:nerves_system",
+                "deps:local_app",
+                "deps:accounts",
+                "deps:quoted-dep",
+            ),
+            dependencies.map { "${it.scope}:${it.noteKey}" },
+        )
+        val phoenix = dependencies.first()
+        assertEquals("phoenix", text.substring(phoenix.primaryRange.offset, phoenix.primaryRange.offset + phoenix.primaryRange.length))
+        assertEquals(":phoenix", text.substring(phoenix.sourceRanges.first().offset, phoenix.sourceRanges.first().offset + phoenix.sourceRanges.first().length))
+        assertEquals("{", text.substring(phoenix.iconRange.offset, phoenix.iconRange.offset + phoenix.iconRange.length))
+        assertEquals(phoenix, ManifestRegistry.dependencyAtOffset(dependencies, text.indexOf(":phoenix") + 2))
+    }
+
+    @Test
+    fun `mix supports inline lists and ignores dynamic and literal lookalikes`() {
+        val staticText = "def project, do: [deps: [{:jason, \"~> 1.4\"}]]\n" +
+            "defp deps(), do: [{:plug, git: \"https://example.test/plug.git\"}]"
+        assertEquals(listOf("jason", "plug"), MixManifestAdapter.extractDependencies(staticText).map { it.noteKey })
+
+        val dynamic = listOf(
+            "# deps: [{:commented, \"1\"}]",
+            "@deps [{:attribute, \"1\"}]",
+            "@doc \"deps: [{:string, \\\"1\\\"}]\"",
+            "@moduledoc \"\"\"",
+            "deps: [{:heredoc, \"1\"}]",
+            "\"\"\"",
+            "@pattern ~r/deps: \\[\\{:sigil, \"1\"\\}\\]/",
+            "defp deps do",
+            "  @deps ++ [{:concatenated, \"1\"}]",
+            "end",
+            "defp other, do: [{:other_helper, \"1\"}]",
+            "defp nested, do: [{:outer, custom: [only: :test], deps: [{:nested, \"1\"}]}]",
+        ).joinToString("\n")
+        assertTrue(MixManifestAdapter.extractDependencies(dynamic).isEmpty())
     }
 }
