@@ -117,7 +117,7 @@ async function manifestsForNotes(notesUri: vscode.Uri): Promise<vscode.Uri[]> {
     const adapter = manifestAdapterForKind(kind);
     const groups = await Promise.all(adapter.fileNames.map((fileName) => vscode.workspace.findFiles(
       new vscode.RelativePattern(folder, `**/${fileName}`),
-      '**/{node_modules,target,.gradle,_build,deps,.git}/**',
+      '**/{node_modules,target,.gradle,_build,deps,zig-pkg,.zig-cache,zig-cache,zig-out,.git}/**',
     )));
     const found = groups.flat();
     const matching: vscode.Uri[] = [];

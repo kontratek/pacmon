@@ -4,6 +4,7 @@ import { dependencyAtOffset, manifestAdapterForFileName } from '../../core/manif
 import { extractMavenDependencies } from '../../core/mavenManifest';
 import { extractGradleDependencies } from '../../core/gradleManifest';
 import { extractMixDependencies } from '../../core/mixManifest';
+import { extractZigDependencies } from '../../core/zig-manifest';
 
 describe('manifest adapters', () => {
   it('matches all supported manifest names', () => {
@@ -13,7 +14,104 @@ describe('manifest adapters', () => {
     expect(manifestAdapterForFileName('build.gradle')?.kind).toBe('gradle');
     expect(manifestAdapterForFileName('build.gradle.kts')?.kind).toBe('gradle');
     expect(manifestAdapterForFileName('mix.exs')?.kind).toBe('mix');
+    expect(manifestAdapterForFileName('build.zig.zon')?.kind).toBe('zig');
     expect(manifestAdapterForFileName('settings.gradle')).toBeUndefined();
+  });
+});
+
+describe('Zig dependencies', () => {
+  const zon = String.raw`.{
+  .name = .example,
+  .version = "0.1.0",
+  .dependencies = .{
+    .known_folders = .{
+      .url = "https://example.test/known-folders.tar.gz",
+      .hash = "known-folders-hash",
+    },
+    .local_utils = .{ .path = "../local-utils" },
+    .lazy_dep = .{
+      .url = "https://example.test/lazy.tar.gz",
+      .hash = "lazy-hash",
+      .lazy = true,
+    },
+    .@"quoted-dep" = .{ .path = "../quoted" },
+  },
+  .paths = .{ "build.zig", "src" },
+}`;
+
+  it('extracts URL, path, lazy and escaped direct dependencies', () => {
+    expect(extractZigDependencies(zon).map((dep) => `${dep.scope}:${dep.noteKey}`)).toEqual([
+      'dependencies:known_folders',
+      'dependencies:local_utils',
+      'dependencies:lazy_dep',
+      'dependencies:quoted-dep',
+    ]);
+  });
+
+  it('keeps dependency names clickable and anchors icons at the field dot', () => {
+    const deps = extractZigDependencies(zon);
+    const known = deps[0]!;
+    expect(zon.slice(known.primaryRange.offset, known.primaryRange.offset + known.primaryRange.length))
+      .toBe('known_folders');
+    expect(zon.slice(known.sourceRanges[0]!.offset, known.sourceRanges[0]!.offset + known.sourceRanges[0]!.length))
+      .toBe('known_folders');
+    expect(zon.slice(known.iconRange.offset, known.iconRange.offset + known.iconRange.length)).toBe('.');
+    expect(dependencyAtOffset(deps, known.primaryRange.offset + 2)?.noteKey).toBe('known_folders');
+
+    const quoted = deps[3]!;
+    expect(zon.slice(quoted.primaryRange.offset, quoted.primaryRange.offset + quoted.primaryRange.length))
+      .toBe('quoted-dep');
+    expect(zon.slice(quoted.sourceRanges[0]!.offset, quoted.sourceRanges[0]!.offset + quoted.sourceRanges[0]!.length))
+      .toBe('@"quoted-dep"');
+  });
+
+  it('ignores nested fields and fake declarations in comments and strings', () => {
+    const text = String.raw`.{
+      // .dependencies = .{ .commented = .{ .path = "x" } },
+      .description = ".dependencies = .{ .string = .{} }",
+      .dependencies = .{
+        .real = .{
+          .url = "https://example.test/.fake = .{}",
+          .hash = "hash",
+        },
+      },
+      .other = .{ .nested = .{ .path = "not-a-dependency" } },
+    }`;
+    expect(extractZigDependencies(text).map((dep) => dep.noteKey)).toEqual(['real']);
+  });
+
+  it('supports Zig string escapes in escaped identifiers and first duplicate wins', () => {
+    const text = String.raw`.{ .dependencies = .{
+      .@"quoted\x2ddep" = .{ .path = "a" },
+      .@"quoted-dep" = .{ .path = "b" },
+      .@"snowman\u{2603}" = .{ .path = "c" },
+    } }`;
+    expect(extractZigDependencies(text).map((dep) => dep.noteKey)).toEqual(['quoted-dep', 'snowman☃']);
+  });
+
+  it('keeps fields found before a malformed tail and handles empty or missing tables', () => {
+    expect(extractZigDependencies('.{ .dependencies = .{ .first = .{}, .broken = .{'))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ noteKey: 'first' }),
+        expect.objectContaining({ noteKey: 'broken' }),
+      ]));
+    expect(extractZigDependencies('.{ .dependencies = .{} }')).toEqual([]);
+    expect(extractZigDependencies('.{ .name = .none }')).toEqual([]);
+  });
+
+  it('accepts the legacy string package name used by older Zig manifests', () => {
+    const legacy = `.{
+      .name = "legacy-app",
+      .version = "0.1.0",
+      .dependencies = .{ .legacy_dep = .{ .path = "../legacy" } },
+    }`;
+    expect(extractZigDependencies(legacy).map((dep) => dep.noteKey)).toEqual(['legacy_dep']);
+  });
+
+  it('skips braces and dependency-like text in multiline string lines', () => {
+    const text = '.{\n  .description = \\\\ .dependencies = .{ .fake = .{} },\n'
+      + '  .dependencies = .{ .real = .{ .path = "../real" } },\n}';
+    expect(extractZigDependencies(text).map((dep) => dep.noteKey)).toEqual(['real']);
   });
 });
 

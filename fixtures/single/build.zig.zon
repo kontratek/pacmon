@@ -1,0 +1,21 @@
+.{
+    .name = .pacmon_fixture,
+    .version = "0.1.0",
+    .fingerprint = 0x123456789abcdef0,
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .known_folders = .{
+            .url = "https://example.test/known-folders.tar.gz",
+            .hash = "known-folders-hash",
+        },
+        .local_utils = .{
+            .path = "../local-utils",
+        },
+        .lazy_dep = .{
+            .url = "https://example.test/lazy-dep.tar.gz",
+            .hash = "lazy-dep-hash",
+            .lazy = true,
+        },
+    },
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
+}

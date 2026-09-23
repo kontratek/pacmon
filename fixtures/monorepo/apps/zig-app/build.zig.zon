@@ -1,0 +1,8 @@
+.{
+    .name = .zig_app,
+    .version = "0.1.0",
+    .dependencies = .{
+        .shared_zig = .{ .path = "../../vendor/shared-zig" },
+    },
+    .paths = .{ "build.zig", "build.zig.zon" },
+}

@@ -1,0 +1,8 @@
+.{
+    .name = .downloaded,
+    .version = "1.0.0",
+    .dependencies = .{
+        .downloaded_only = .{ .path = "../other-cache-entry" },
+    },
+    .paths = .{ "build.zig", "build.zig.zon" },
+}
