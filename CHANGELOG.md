@@ -7,6 +7,22 @@
 
 ## Unreleased
 
+- **A release submits the JetBrains plugin too.** The plugin was uploaded by
+  hand and kept a version number of its own: `build.gradle.kts` said 0.3.1
+  while the extension shipped 0.3.2. It now reads `package.json`, so the
+  Release workflow raises one version for the whole repository and the plugin
+  follows. Its "What's New" was a `<change-notes>` block written into
+  `plugin.xml` beside the real notes in this file, and went stale the way a
+  second copy does; it is now that version's section here, rendered to HTML at
+  build time. One version number and one set of notes serve the Visual Studio
+  Marketplace, Open VSX and the JetBrains Marketplace. The run submits rather
+  than publishes: JetBrains reviews every version by hand and lists it
+  normally within two business days.
+- Run workflow with **`none`** publishes the version already in `package.json`
+  to whichever registry still lacks it, commits nothing, and refuses a version
+  that was never released — the path for a registry that joined after a
+  release, rather than spending a version number to reach it.
+
 ## 0.3.2 — 2026-09-16
 
 - **Pacmon comes to JetBrains IDEs.** The `jetbrains/` module is a plugin
