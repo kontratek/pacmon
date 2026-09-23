@@ -7,6 +7,12 @@
 
 ## Unreleased
 
+- **Pacmon supports Elixir/Mix projects in VS Code and JetBrains.** Literal direct
+  dependencies in `mix.exs` get the same markers, hover, note editor and coverage
+  as the other manifests, with notes in `.pacmon/mix/DEPENDENCY-NOTES.md`.
+  Hex, Git, path and umbrella tuples are read statically; Pacmon never executes Mix
+  or project code, and dynamically assembled dependency lists are left alone.
+
 ## 0.4.0 — 2026-09-23
 
 - **Pacmon reads `Cargo.toml`, `pom.xml` and Gradle build files, not only

@@ -1,6 +1,6 @@
 # The dependency notes formats
 
-Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, and Gradle files use `dependency-notes/2`. See [Versioning](#versioning).
+Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, Gradle, and Mix files use `dependency-notes/2`. See [Versioning](#versioning).
 
 ## The notes file
 
@@ -10,8 +10,9 @@ The path identifies the ecosystem:
 - Cargo: `.pacmon/cargo/DEPENDENCY-NOTES.md`, beside `Cargo.toml`;
 - Maven: `.pacmon/maven/DEPENDENCY-NOTES.md`, beside `pom.xml`;
 - Gradle: `.pacmon/gradle/DEPENDENCY-NOTES.md`, beside `build.gradle` or `build.gradle.kts`.
+- Mix: `.pacmon/mix/DEPENDENCY-NOTES.md`, beside `mix.exs`.
 
-A manifest without its own notes file uses the closest ancestor notes file for the same ecosystem, up to the workspace root. npm, Cargo, Maven, and Gradle files never share notes.
+A manifest without its own notes file uses the closest ancestor notes file for the same ecosystem, up to the workspace root. npm, Cargo, Maven, Gradle, and Mix files never share notes.
 
 The file is UTF-8. Its line ending is CRLF if the file contains one CRLF, otherwise LF. A byte order mark at the start is accepted; a tool that rewrites the file drops it.
 
@@ -42,7 +43,7 @@ Human layer.
 
 The frontmatter, the header comment and the title have fixed content, given below. A tool that formats the file rewrites them. The introduction is written by people. A section has layers: one is written by people, one by AI agents.
 
-Cargo, Maven, and Gradle files use v2 frontmatter:
+Cargo, Maven, Gradle, and Mix files use v2 frontmatter:
 
 ```yaml
 ---
@@ -62,7 +63,7 @@ Version 1 defines `format` and `lang`. Version 2 also requires `ecosystem`.
 
 `format` names the version of these rules the file follows. Supported values are `dependency-notes/1` and `dependency-notes/2`. When the key is missing, the file is read as v1.
 
-`ecosystem` is required in v2 and is `cargo`, `maven`, or `gradle`. It must agree with the notes path.
+`ecosystem` is required in v2 and is `cargo`, `maven`, `gradle`, or `mix`. It must agree with the notes path.
 
 `lang` names the language the values are written in. Keys are always English. When the key is missing, the language is `en`.
 
@@ -70,7 +71,7 @@ Any other key is kept where it is and is not read.
 
 ## Header comment
 
-The header comment is the first HTML comment at the top of the file, after the frontmatter if there is one. Its text is fixed: v1 names `package.json`; v2 names the Cargo, Maven, or Gradle dependency manifest selected by `ecosystem`. It says who writes where and points AI agents to `.pacmon/AGENT-RULES.md`. A file's own commentary goes in the introduction, not in the header comment.
+The header comment is the first HTML comment at the top of the file, after the frontmatter if there is one. Its text is fixed: v1 names `package.json`; v2 names the Cargo, Maven, Gradle, or Mix dependency manifest selected by `ecosystem`. It says who writes where and points AI agents to `.pacmon/AGENT-RULES.md`. A file's own commentary goes in the introduction, not in the header comment.
 
 ## Title
 
@@ -90,8 +91,9 @@ A direct dependency is identified statically from its manifest. Its note key is 
 - Cargo: a key in a dependency, dev-dependency, build-dependency, or target-specific dependency table, not in `[workspace.dependencies]`. The note key is the local key; for a renamed dependency, that is the key and not its `package`.
 - Maven: a dependency under the project's or a profile's `dependencies`, not under dependency management or a plugin. The note key is `groupId:artifactId`.
 - Gradle: a static external module coordinate or a `libs.*` catalog alias used in a `dependencies` block, not a plugin, constraint, project dependency, file dependency, or catalog bundle. The note key is `group:name` without the version, or the alias as written, such as `libs.junit.jupiter`.
+- Mix: the first application atom in a literal dependency tuple inside `def/defp deps` or an inline `deps: [...]` list. Hex, Git, path and umbrella tuples share this rule; `{:phoenix, "~> 1.8"}` has the note key `phoenix`. Dynamically assembled lists are not evaluated.
 
-A v1/npm section matches after trimming, stripping one pair of surrounding quotes or backticks, and lower-casing. Cargo, Maven, and Gradle v2 keys preserve case after trimming and wrapper removal.
+A v1/npm section matches after trimming, stripping one pair of surrounding quotes or backticks, and lower-casing. Cargo, Maven, Gradle, and Mix v2 keys preserve case after trimming and wrapper removal.
 
 Each dependency has at most one section. Two sections with the same name are a mistake; the file does not say which one is wrong. Until it is fixed, tools read the first one in the file.
 
@@ -183,11 +185,11 @@ A tool that adds a section puts it at its sorted position when the file is sorte
 
 ## Changes
 
-- `dependency-notes/2` adds ecosystem-scoped Cargo, Maven, and Gradle notes while leaving npm v1 files in place.
+- `dependency-notes/2` adds ecosystem-scoped Cargo, Maven, Gradle, and Mix notes while leaving npm v1 files in place.
 
 ## Example
 
-A complete repository is in [`example-repo`](example-repo/): a `package.json` and the `.pacmon/DEPENDENCY-NOTES.md` that documents it. A Cargo, Maven, or Gradle file differs in its frontmatter, its header comment, and its note keys. One section:
+A complete repository is in [`example-repo`](example-repo/): a `package.json` and the `.pacmon/DEPENDENCY-NOTES.md` that documents it. A Cargo, Maven, Gradle, or Mix file differs in its frontmatter, its header comment, and its note keys. One section:
 
 ```md
 ## express
