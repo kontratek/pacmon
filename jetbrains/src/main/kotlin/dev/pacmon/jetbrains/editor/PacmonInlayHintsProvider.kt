@@ -24,7 +24,7 @@ import javax.swing.JPanel
 
 /**
  * Three of the five click targets the Pacmon tool window offers, all of them
- * inlays: the mark before the package name (`iconLeft`), the clickable line
+ * inlays: the mark at the dependency's manifest-specific anchor (`iconLeft`), the clickable line
  * above the dependency (`codelens`) and the words at the end of the line
  * (`inlayHint`). The other two are not inlays — `link` is a go-to-declaration
  * target in [PacmonNoteDeclarationHandler] and `lightbulb` an intention in
@@ -69,10 +69,11 @@ class PacmonInlayHintsProvider : InlayHintsProvider<NoSettings> {
                     val words = if (documented) "Edit note" else "Add note"
                     val open = { NoteEditor.open(file.project, dependency, editor) }
                     val nameStart = dependency.primaryRange.offset
+                    val iconStart = dependency.iconRange.offset
 
                     if (icon) {
                         sink.addInlineElement(
-                            nameStart,
+                            iconStart,
                             false,
                             clickable(factory.smallScaledIcon(PacmonIcons.forNote(documented)), open),
                             false,

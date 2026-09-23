@@ -74,6 +74,8 @@ export interface DependencyEntry {
   scope: string;
   /** Range used for line decorations and placement. */
   primaryRange: SourceRange;
+  /** Range before which the Pacmon icon is rendered. */
+  iconRange: SourceRange;
   /** Every source range that should respond to hover/navigation. */
   sourceRanges: readonly SourceRange[];
   /** @deprecated Compatibility alias for noteKey. */

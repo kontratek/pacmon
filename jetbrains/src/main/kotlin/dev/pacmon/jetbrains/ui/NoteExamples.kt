@@ -22,7 +22,7 @@ import javax.swing.JPanel
  * A sample `package.json` line showing what each choice actually does to it.
  *
  * This is the one thing the VS Code view is a webview for rather than a tree:
- * a label and a help line can describe a mark before the package name, but
+ * a label and a help line can describe a mark before the dependency, but
  * they cannot show you one. The samples here are the Swing answer to that —
  * drawn with the editor's own font and colors, so the mark, the underline and
  * the line above each look like the thing they stand for.

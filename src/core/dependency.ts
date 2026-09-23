@@ -6,12 +6,14 @@ export function dependencyEntry(
   primaryRange: SourceRange,
   sourceRanges: readonly SourceRange[] = [primaryRange],
   displayName = noteKey,
+  iconRange = primaryRange,
 ): DependencyEntry {
   return {
     noteKey,
     displayName,
     scope,
     primaryRange,
+    iconRange,
     sourceRanges,
     name: noteKey,
     section: scope,

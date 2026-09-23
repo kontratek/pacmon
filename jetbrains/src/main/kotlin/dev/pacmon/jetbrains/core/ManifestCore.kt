@@ -20,6 +20,7 @@ data class DependencyEntry(
     val scope: String,
     val primaryRange: SourceRange,
     val sourceRanges: List<SourceRange> = listOf(primaryRange),
+    val iconRange: SourceRange = primaryRange,
 )
 
 interface ManifestAdapter {
@@ -60,7 +61,8 @@ private fun dependencyEntry(
     primaryRange: SourceRange,
     sourceRanges: List<SourceRange> = listOf(primaryRange),
     displayName: String = noteKey,
-) = DependencyEntry(noteKey, displayName, scope, primaryRange, sourceRanges)
+    iconRange: SourceRange = primaryRange,
+) = DependencyEntry(noteKey, displayName, scope, primaryRange, sourceRanges, iconRange)
 
 object NpmManifestAdapter : ManifestAdapter {
     override val kind = ManifestKind.NPM
@@ -467,6 +469,7 @@ object MavenManifestAdapter : ManifestAdapter {
 
     private data class XmlNode(
         val name: String,
+        val openStart: Int,
         val openEnd: Int,
         var closeStart: Int,
         val children: MutableList<XmlNode> = mutableListOf(),
@@ -528,7 +531,7 @@ object MavenManifestAdapter : ManifestAdapter {
                 val selfClosing = Regex("/\\s*$").containsMatchIn(inside)
                 val rawName = firstToken(inside.replace(Regex("/\\s*$"), ""))
                 if (rawName.isNotEmpty()) {
-                    val node = XmlNode(localName(rawName), end + 1, end + 1)
+                    val node = XmlNode(localName(rawName), open, end + 1, end + 1)
                     stack.lastOrNull()?.children?.add(node) ?: roots.add(node)
                     if (!selfClosing) stack.add(node)
                 }
@@ -584,6 +587,7 @@ object MavenManifestAdapter : ManifestAdapter {
                 scope,
                 artifact.second,
                 listOf(group.second, artifact.second),
+                iconRange = SourceRange(dependency.openStart, 1),
             )
         }
     }

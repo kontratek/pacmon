@@ -58,6 +58,7 @@ not-direct = "1"
     const deps = extractCargoDependencies(cargo);
     const alias = deps.find((dep) => dep.noteKey === 'local')!;
     expect(cargo.slice(alias.primaryRange.offset, alias.primaryRange.offset + alias.primaryRange.length)).toBe('local');
+    expect(alias.iconRange).toEqual(alias.primaryRange);
     expect(dependencyAtOffset(deps, alias.primaryRange.offset + 1)?.noteKey).toBe('local');
   });
 
@@ -94,22 +95,26 @@ describe('pom.xml dependencies', () => {
     ]);
   });
 
-  it('makes groupId and artifactId hoverable and decorates artifactId', () => {
+  it('makes groupId and artifactId hoverable, decorates artifactId and anchors the icon at dependency', () => {
     const deps = extractMavenDependencies(pom);
     const slf4j = deps[0]!;
     expect(slf4j.sourceRanges).toHaveLength(2);
     expect(pom.slice(slf4j.primaryRange.offset, slf4j.primaryRange.offset + slf4j.primaryRange.length)).toBe('slf4j-api');
+    expect(slf4j.iconRange.offset).toBe(pom.indexOf('<dependency>'));
+    expect(pom.slice(slf4j.iconRange.offset, slf4j.iconRange.offset + slf4j.iconRange.length)).toBe('<');
     const groupOffset = pom.indexOf('org.slf4j');
     expect(dependencyAtOffset(deps, groupOffset + 1)?.noteKey).toBe('org.slf4j:slf4j-api');
+    expect(dependencyAtOffset(deps, slf4j.iconRange.offset)).toBeUndefined();
   });
 
-  it('decodes XML text while retaining source ranges', () => {
-    const xml = `<project><dependencies><dependency>
-      <groupId><![CDATA[org.example]]></groupId>
-      <artifactId>client&amp;api</artifactId>
-    </dependency></dependencies></project>`;
+  it('decodes namespaced XML with dependency attributes while retaining source ranges', () => {
+    const xml = `<m:project xmlns:m="urn:test"><m:dependencies><m:dependency optional="true">
+      <m:groupId><![CDATA[org.example]]></m:groupId>
+      <m:artifactId>client&amp;api</m:artifactId>
+    </m:dependency></m:dependencies></m:project>`;
     const dependency = extractMavenDependencies(xml)[0]!;
     expect(dependency.noteKey).toBe('org.example:client&api');
+    expect(dependency.iconRange.offset).toBe(xml.indexOf('<m:dependency optional="true">'));
     expect(xml.slice(dependency.primaryRange.offset, dependency.primaryRange.offset + dependency.primaryRange.length))
       .toBe('client&amp;api');
   });

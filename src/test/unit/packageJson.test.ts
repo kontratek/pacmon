@@ -32,6 +32,7 @@ describe('extractDeps', () => {
     const deps = extractDeps(pkg);
     const express = deps.find((d) => d.name === 'express')!;
     expect(pkg.slice(express.keyOffset, express.keyOffset + express.keyLength)).toBe('"express"');
+    expect(express.iconRange).toEqual(express.primaryRange);
   });
 
   it('depAtOffset hits within the key range only', () => {

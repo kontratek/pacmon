@@ -15,6 +15,7 @@ data class DependencyRef(
     val displayName: String get() = entry.displayName
     val section: String get() = entry.scope
     val primaryRange: SourceRange get() = entry.primaryRange
+    val iconRange: SourceRange get() = entry.iconRange
     val sourceRanges: List<SourceRange> get() = entry.sourceRanges
 }
 

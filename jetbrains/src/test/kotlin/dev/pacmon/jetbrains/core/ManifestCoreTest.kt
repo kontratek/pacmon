@@ -35,6 +35,7 @@ class ManifestCoreTest {
         )
         val vue = dependencies.first()
         assertEquals("\"vue\"", text.substring(vue.primaryRange.offset, vue.primaryRange.offset + vue.primaryRange.length))
+        assertEquals(vue.primaryRange, vue.iconRange)
         assertEquals(vue, ManifestRegistry.dependencyAtOffset(dependencies, vue.primaryRange.offset + 2))
     }
 
@@ -75,6 +76,7 @@ class ManifestCoreTest {
         assertEquals("target:cfg(windows)/dependencies", dependencies[7].scope)
         dependencies.forEach { dependency ->
             assertTrue(text.substring(dependency.primaryRange.offset, dependency.primaryRange.offset + dependency.primaryRange.length).isNotBlank())
+            assertEquals(dependency.primaryRange, dependency.iconRange)
         }
     }
 
@@ -84,7 +86,7 @@ class ManifestCoreTest {
             <?xml version="1.0"?>
             <m:project xmlns:m="urn:test">
               <m:dependencies>
-                <m:dependency>
+                <m:dependency optional="true">
                   <m:groupId>org.example</m:groupId>
                   <m:artifactId><![CDATA[core-lib]]></m:artifactId>
                 </m:dependency>
@@ -117,6 +119,12 @@ class ManifestCoreTest {
             dependencies.first().primaryRange.offset,
             dependencies.first().primaryRange.offset + dependencies.first().primaryRange.length,
         ))
+        assertEquals(text.indexOf("<m:dependency optional=\"true\">"), dependencies.first().iconRange.offset)
+        assertEquals("<", text.substring(
+            dependencies.first().iconRange.offset,
+            dependencies.first().iconRange.offset + dependencies.first().iconRange.length,
+        ))
+        assertNull(ManifestRegistry.dependencyAtOffset(dependencies, dependencies.first().iconRange.offset))
     }
 
     @Test

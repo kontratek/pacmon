@@ -93,7 +93,7 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         val dependency = DependencyPsi.all(myFixture.file).single()
 
         val icon = collect(NoteButtons.ICON_LEFT)
-        assertEquals(listOf(dependency.primaryRange.offset to false), icon.inline)
+        assertEquals(listOf(dependency.iconRange.offset to false), icon.inline)
         assertEquals(0, icon.blocks)
 
         val lens = collect(NoteButtons.CODE_LENS)
@@ -211,19 +211,33 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         myFixture.configureFromExistingVirtualFile(cargo)
         val cargoDependency = DependencyPsi.all(myFixture.file).single()
         service().setNoteButtons(listOf(NoteButtons.ICON_LEFT, NoteButtons.LINK))
-        assertEquals(listOf(cargoDependency.primaryRange.offset to false), collect(NoteButtons.ICON_LEFT).inline)
+        assertEquals(listOf(cargoDependency.iconRange.offset to false), collect(NoteButtons.ICON_LEFT).inline)
         val cargoLine = myFixture.editor.document.getLineNumber(cargoDependency.primaryRange.offset)
         assertEquals("   ▪ Serialization", PacmonLinePainter().getLineExtensions(project, cargo, cargoLine).single().text)
 
         val pom = myFixture.tempDirFixture.createFile(
             "pom.xml",
-            "<project><dependencies><dependency><groupId>org.example</groupId><artifactId>core</artifactId></dependency></dependencies></project>",
+            """
+            <project><dependencies>
+              <dependency>
+                <groupId>org.example</groupId>
+                <artifactId>core</artifactId>
+              </dependency>
+            </dependencies></project>
+            """.trimIndent(),
         )
         myFixture.tempDirFixture.createFile(
             ".pacmon/maven/DEPENDENCY-NOTES.md",
             "---\nformat: dependency-notes/2\necosystem: maven\nlang: en\n---\n# Dependency Notes\n\n## org.example:core\n\nCore library\n",
         )
         myFixture.configureFromExistingVirtualFile(pom)
+        val mavenDependency = DependencyPsi.all(myFixture.file).single()
+        assertEquals(myFixture.file.text.indexOf("<dependency>"), mavenDependency.iconRange.offset)
+        assertEquals(listOf(mavenDependency.iconRange.offset to false), collect(NoteButtons.ICON_LEFT).inline)
+        assertTrue(
+            myFixture.editor.document.getLineNumber(mavenDependency.iconRange.offset) !=
+                myFixture.editor.document.getLineNumber(mavenDependency.primaryRange.offset),
+        )
         val handler = PacmonNoteDeclarationHandler()
         service().setNoteButtons(listOf(NoteButtons.LINK))
         for (value in listOf("org.example", "core")) {

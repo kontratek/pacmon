@@ -92,7 +92,7 @@ export const S = {
     'Which layer of a note shows next to the dependency and leads its hover. Every note has two: what people write under the heading, and the “Agent notes” block AI agents fill in. The hover always shows both.',
   buttonLabel: (id: string): string =>
     (({
-      iconLeft: 'Icon before the name',
+      iconLeft: 'Icon before the dependency',
       link: 'The package name',
       codelens: 'Line above the dependency',
       inlayHint: 'Chip at end of line',
@@ -112,7 +112,7 @@ export const S = {
   buttonHelp: (id: string): string =>
     (({
       iconLeft:
-        'The Pacmon mark before the name — filled when the dependency has a note, hollow when it does not. The mouse turns into a hand over it.',
+        'The Pacmon mark before the dependency — filled when it has a note, hollow when it does not. The mouse turns into a hand over it.',
       link: 'The package name itself opens its note. Adds nothing to the file.',
       codelens: 'Unmissable — and it roughly doubles the apparent height of the manifest.',
       inlayHint: 'Spelled out at the end of the line, where it competes with the note preview.',

@@ -14,8 +14,9 @@ import { S } from './strings';
  *
  * ON BY DEFAULT — the pair that won the 2026-09-04 comparison:
  *
- *   iconLeft  the Pacmon mark just before the package name — filled when the
- *             dependency has a note, hollow when it does not — with the words
+ *   iconLeft  the Pacmon mark at the dependency's manifest-specific anchor —
+ *             before the name in npm/Cargo and before `<dependency>` in Maven;
+ *             filled when it has a note, hollow when it does not — with the words
  *             in the hover. A DECORATION, not an inlay hint: only decorations
  *             expose `cursor`, so only they can turn the mouse into a hand,
  *             and the styling is ours. Like an inlay hint it is injected into
@@ -237,7 +238,7 @@ export class NoteButtons implements vscode.Disposable {
     if (!isManifest(doc.uri)) return;
     const marks = await this.guard('iconLeft', doc, (deps, has) =>
       deps.map((d) => {
-        const keyPos = doc.positionAt(d.primaryRange.offset);
+        const iconPos = doc.positionAt(d.iconRange.offset);
         const documented = has(d);
         const hover = new vscode.MarkdownString(undefined, true);
         hover.isTrusted = { enabledCommands: ['pacmon.addOrEditNote'] };
@@ -248,9 +249,9 @@ export class NoteButtons implements vscode.Disposable {
         return {
           documented,
           option: {
-            // One character wide: the opening quote of the key. The mark is
-            // rendered just before it, and the hand cursor covers both.
-            range: new vscode.Range(keyPos, keyPos.translate(0, 1)),
+            // One character wide: the manifest-specific icon anchor. The mark
+            // is rendered just before it, and the hand cursor covers both.
+            range: new vscode.Range(iconPos, iconPos.translate(0, 1)),
             hoverMessage: hover,
           } satisfies vscode.DecorationOptions,
         };
@@ -289,9 +290,9 @@ export class NoteButtons implements vscode.Disposable {
       if (!isManifest(doc.uri)) return;
 
       const deps = this.store.depsForDocument(doc);
-      const dep = deps.find((d) => doc.positionAt(d.primaryRange.offset).line === sel.active.line);
+      const dep = deps.find((d) => doc.positionAt(d.iconRange.offset).line === sel.active.line);
       if (!dep) return;
-      if (sel.active.character > doc.positionAt(dep.primaryRange.offset).character) return;
+      if (sel.active.character > doc.positionAt(dep.iconRange.offset).character) return;
 
       await vscode.commands.executeCommand('pacmon.addOrEditNote', dep.noteKey);
     } catch (err) {

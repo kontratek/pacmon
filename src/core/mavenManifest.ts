@@ -3,6 +3,7 @@ import type { DependencyEntry, SourceRange } from './model';
 
 interface XmlNode {
   name: string;
+  openStart: number;
   openEnd: number;
   closeStart: number;
   children: XmlNode[];
@@ -64,7 +65,13 @@ function parseXml(text: string): XmlNode[] {
       const selfClosing = /\/\s*$/.test(inside);
       const rawName = inside.replace(/\/\s*$/, '').split(/\s/, 1)[0] ?? '';
       if (rawName !== '') {
-        const node: XmlNode = { name: localName(rawName), openEnd: end + 1, closeStart: end + 1, children: [] };
+        const node: XmlNode = {
+          name: localName(rawName),
+          openStart: open,
+          openEnd: end + 1,
+          closeStart: end + 1,
+          children: [],
+        };
         const parent = stack[stack.length - 1];
         if (parent) parent.children.push(node);
         else roots.push(node);
@@ -121,7 +128,8 @@ function dependenciesFrom(
     const declaredScope = valueAndRange(text, child(dependency, 'scope'))?.value ?? 'compile';
     const scope = scopePrefix ? `${scopePrefix}/${declaredScope}` : declaredScope;
     const noteKey = `${group.value}:${artifact.value}`;
-    out.push(dependencyEntry(noteKey, scope, artifact.range, [group.range, artifact.range]));
+    const iconRange = { offset: dependency.openStart, length: 1 };
+    out.push(dependencyEntry(noteKey, scope, artifact.range, [group.range, artifact.range], noteKey, iconRange));
   }
   return out;
 }

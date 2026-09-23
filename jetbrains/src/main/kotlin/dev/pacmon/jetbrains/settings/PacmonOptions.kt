@@ -24,7 +24,7 @@ object NoteButtons {
     val DEFAULT = listOf(ICON_LEFT, LINK)
 
     fun label(id: String): String = when (id) {
-        ICON_LEFT -> "Icon before the name"
+        ICON_LEFT -> "Icon before the dependency"
         LINK -> "The package name"
         CODE_LENS -> "Line above the dependency"
         INLAY_HINT -> "Chip at end of line"
@@ -40,7 +40,7 @@ object NoteButtons {
 
     fun help(id: String): String = when (id) {
         ICON_LEFT ->
-            "The Pacmon mark before the name — filled when the dependency has a note, " +
+            "The Pacmon mark before the dependency — filled when it has a note, " +
                 "hollow when it does not. The mouse turns into a hand over it."
         LINK -> "The package name itself opens its note. Adds nothing to the file."
         CODE_LENS -> "Unmissable — and it roughly doubles the apparent height of the manifest."
