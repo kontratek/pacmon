@@ -23,16 +23,23 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             "build.gradle.kts",
             "dependencies { implementation(\"g:a:1\") }",
         )
+        val mix = myFixture.tempDirFixture.createFile(
+            "mix.exs",
+            "defmodule Demo.MixProject do\n  defp deps, do: [{:phoenix, \"~> 1.8\"}]\nend",
+        )
         myFixture.tempDirFixture.createFile(".pacmon/DEPENDENCY-NOTES.md", "## vue\n\nnpm\n")
         myFixture.tempDirFixture.createFile(".pacmon/cargo/DEPENDENCY-NOTES.md", "## serde\n\ncargo\n")
         myFixture.tempDirFixture.createFile(".pacmon/maven/DEPENDENCY-NOTES.md", "## g:a\n\nmaven\n")
         myFixture.tempDirFixture.createFile(".pacmon/gradle/DEPENDENCY-NOTES.md", "## g:a\n\ngradle\n")
+        myFixture.tempDirFixture.createFile(".pacmon/mix/DEPENDENCY-NOTES.md", "## phoenix\n\nmix\n")
 
         assertTrue(service().resolveNotesFile(npm)!!.path.endsWith(".pacmon/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(cargo)!!.path.endsWith(".pacmon/cargo/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(maven)!!.path.endsWith(".pacmon/maven/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(gradle)!!.path.endsWith(".pacmon/gradle/DEPENDENCY-NOTES.md"))
+        assertTrue(service().resolveNotesFile(mix)!!.path.endsWith(".pacmon/mix/DEPENDENCY-NOTES.md"))
         assertEquals("cargo", service().noteFor(cargo, "serde")?.layers?.human)
+        assertEquals("mix", service().noteFor(mix, "phoenix")?.layers?.human)
         assertNull(service().noteFor(cargo, "vue"))
     }
 
@@ -59,6 +66,11 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             "dependencies { implementation 'g:a:1' }",
         )
         val gradleNotes = service().saveNoteLayers(gradle, "g:a", "Library", "")
+        val mix = myFixture.tempDirFixture.createFile(
+            "mix.exs",
+            "defmodule Demo.MixProject do\n  defp deps, do: [{:phoenix, \"~> 1.8\"}]\nend",
+        )
+        val mixNotes = service().saveNoteLayers(mix, "phoenix", "Framework", "")
 
         assertTrue(cargoNotes.path.endsWith(".pacmon/cargo/DEPENDENCY-NOTES.md"))
         assertTrue(String(cargoNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: cargo"))
@@ -66,6 +78,8 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         assertTrue(String(mavenNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: maven"))
         assertTrue(gradleNotes.path.endsWith(".pacmon/gradle/DEPENDENCY-NOTES.md"))
         assertTrue(String(gradleNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: gradle"))
+        assertTrue(mixNotes.path.endsWith(".pacmon/mix/DEPENDENCY-NOTES.md"))
+        assertTrue(String(mixNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: mix"))
         assertNull(cargo.parent.findChild(".pacmon")?.findChild("DEPENDENCY-NOTES.md"))
     }
 
@@ -97,6 +111,13 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         myFixture.tempDirFixture.createFile("crates/a/Cargo.toml", "[dependencies]\nserde = \"1\"")
         myFixture.tempDirFixture.createFile("crates/b/Cargo.toml", "[dependencies]\ntokio = \"1\"")
         assertEquals(setOf("serde", "tokio"), service().dependenciesForNotes(notes).map { it.name }.toSet())
+    }
+
+    fun testSharedAncestorNotesSeeAllResolvingUmbrellaMixManifests() {
+        val notes = myFixture.tempDirFixture.createFile(".pacmon/mix/DEPENDENCY-NOTES.md", "## phoenix\n\nFramework\n")
+        myFixture.tempDirFixture.createFile("apps/web/mix.exs", "defp deps, do: [{:phoenix, \"~> 1.8\"}]")
+        myFixture.tempDirFixture.createFile("apps/accounts/mix.exs", "defp deps, do: [{:ecto_sql, \"~> 3.13\"}]")
+        assertEquals(setOf("phoenix", "ecto_sql"), service().dependenciesForNotes(notes).map { it.name }.toSet())
     }
 
     fun testManifestWatcherInvalidatesTheWorkspaceIndex() {

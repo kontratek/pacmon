@@ -3,6 +3,7 @@ import { extractCargoDependencies } from '../../core/cargoManifest';
 import { dependencyAtOffset, manifestAdapterForFileName } from '../../core/manifest';
 import { extractMavenDependencies } from '../../core/mavenManifest';
 import { extractGradleDependencies } from '../../core/gradleManifest';
+import { extractMixDependencies } from '../../core/mixManifest';
 
 describe('manifest adapters', () => {
   it('matches all supported manifest names', () => {
@@ -11,7 +12,84 @@ describe('manifest adapters', () => {
     expect(manifestAdapterForFileName('pom.xml')?.kind).toBe('maven');
     expect(manifestAdapterForFileName('build.gradle')?.kind).toBe('gradle');
     expect(manifestAdapterForFileName('build.gradle.kts')?.kind).toBe('gradle');
+    expect(manifestAdapterForFileName('mix.exs')?.kind).toBe('mix');
     expect(manifestAdapterForFileName('settings.gradle')).toBeUndefined();
+  });
+});
+
+describe('Mix dependencies', () => {
+  const mix = String.raw`defmodule Example.MixProject do
+  use Mix.Project
+
+  def project do
+    [app: :example, deps: deps()]
+  end
+
+  defp deps do
+    [
+      {:phoenix, "~> 1.8"},
+      {:ecto_sql, "~> 3.13", only: [:dev, :test]},
+      {:wallaby, "~> 0.30", only: :test},
+      {:nerves_system, github: "nerves-project/system", targets: [:rpi3, :rpi4]},
+      {:local_app, path: "../local_app"},
+      {:accounts, in_umbrella: true},
+      {:"quoted-dep", "~> 1.0"},
+      {:wallaby, "~> 0.30", only: :test}
+    ]
+  end
+end`;
+
+  it('extracts literal Hex, Git, path and umbrella tuples with environment and target scopes', () => {
+    expect(extractMixDependencies(mix).map((dep) => `${dep.scope}:${dep.noteKey}`)).toEqual([
+      'deps:phoenix',
+      'deps:dev,test:ecto_sql',
+      'deps:test:wallaby',
+      'deps@rpi3,rpi4:nerves_system',
+      'deps:local_app',
+      'deps:accounts',
+      'deps:quoted-dep',
+    ]);
+  });
+
+  it('supports inline project lists and expression-bodied deps functions', () => {
+    const text = `def project, do: [app: :demo, deps: [{:jason, "~> 1.4"}]]\n`
+      + `defp deps(), do: [{:plug, git: "https://example.test/plug.git"}]`;
+    expect(extractMixDependencies(text).map((dep) => dep.noteKey)).toEqual(['jason', 'plug']);
+  });
+
+  it('keeps atom ranges clickable and anchors the icon at the tuple', () => {
+    const dependencies = extractMixDependencies(mix);
+    const phoenix = dependencies[0]!;
+    expect(mix.slice(phoenix.primaryRange.offset, phoenix.primaryRange.offset + phoenix.primaryRange.length)).toBe('phoenix');
+    expect(mix.slice(phoenix.sourceRanges[0]!.offset, phoenix.sourceRanges[0]!.offset + phoenix.sourceRanges[0]!.length)).toBe(':phoenix');
+    expect(mix.slice(phoenix.iconRange.offset, phoenix.iconRange.offset + phoenix.iconRange.length)).toBe('{');
+    expect(dependencyAtOffset(dependencies, mix.indexOf(':phoenix') + 2)?.noteKey).toBe('phoenix');
+
+    const quoted = dependencies.find((dep) => dep.noteKey === 'quoted-dep')!;
+    expect(mix.slice(quoted.primaryRange.offset, quoted.primaryRange.offset + quoted.primaryRange.length)).toBe('quoted-dep');
+    expect(mix.slice(quoted.sourceRanges[0]!.offset, quoted.sourceRanges[0]!.offset + quoted.sourceRanges[0]!.length)).toBe(':"quoted-dep"');
+  });
+
+  it('ignores dynamic dependencies and fake tuples in comments, strings, heredocs and sigils', () => {
+    const text = String.raw`
+      # deps: [{:commented, "1"}]
+      @deps [{:attribute, "1"}]
+      @doc "deps: [{:string, \"1\"}]"
+      @moduledoc """
+      deps: [{:heredoc, "1"}]
+      """
+      @pattern ~r/deps: \[\{:sigil, "1"\}\]/
+      defp deps do
+        @deps ++ [{:concatenated, "1"}]
+      end
+      defp other, do: [{:other_helper, "1"}]
+      defp nested, do: [{:outer, custom: [only: :test], deps: [{:nested, "1"}]}]
+    `;
+    expect(extractMixDependencies(text)).toEqual([]);
+  });
+
+  it('fails safely on malformed dependency lists', () => {
+    expect(extractMixDependencies('defp deps do [{:phoenix, "~> 1.8"}')).toEqual([]);
   });
 });
 

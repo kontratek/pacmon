@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Notes",
-  "description": "Why each dependency exists, as a note next to it in package.json, Cargo.toml, pom.xml or build.gradle. Plain Markdown in your repo; AI agents read and write it too.",
+  "description": "Why each dependency exists, as a note next to package.json, Cargo.toml, pom.xml, build.gradle or mix.exs. Plain Markdown in your repo; AI agents read and write it too.",
   "version": "0.4.0",
   "publisher": "kontra",
   "private": true,
@@ -33,6 +33,9 @@
     "Kotlin",
     "Maven",
     "Gradle",
+    "Elixir",
+    "Mix",
+    "Hex",
     "documentation",
     "notes",
     "dependency management"
@@ -42,14 +45,17 @@
     "onLanguage:jsonc",
     "onLanguage:toml",
     "onLanguage:xml",
+    "onLanguage:elixir",
     "workspaceContains:**/.pacmon/DEPENDENCY-NOTES.md",
     "workspaceContains:**/.pacmon/cargo/DEPENDENCY-NOTES.md",
     "workspaceContains:**/.pacmon/maven/DEPENDENCY-NOTES.md",
     "workspaceContains:**/.pacmon/gradle/DEPENDENCY-NOTES.md",
+    "workspaceContains:**/.pacmon/mix/DEPENDENCY-NOTES.md",
     "workspaceContains:**/Cargo.toml",
     "workspaceContains:**/pom.xml",
     "workspaceContains:**/build.gradle",
     "workspaceContains:**/build.gradle.kts",
+    "workspaceContains:**/mix.exs",
     "onView:pacmon.settings"
   ],
   "main": "./dist/extension.js",
@@ -126,7 +132,7 @@
       "editor/context": [
         {
           "command": "pacmon.addOrEditNote",
-          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml || resourceFilename == build.gradle || resourceFilename == build.gradle.kts) && editorTextFocus",
+          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml || resourceFilename == build.gradle || resourceFilename == build.gradle.kts || resourceFilename == mix.exs) && editorTextFocus",
           "group": "1_modification@100"
         }
       ],

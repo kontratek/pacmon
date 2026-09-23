@@ -95,6 +95,16 @@ class DependencyPsiTest : BasePlatformTestCase() {
         )
     }
 
+    fun testFindsMixDependencyFromAtomRangeWithoutElixirPsi() {
+        val file = myFixture.configureByText(
+            "mix.exs",
+            "defmodule Demo.MixProject do\n  defp deps, do: [{:phoenix, \"~> 1.8\"}]\nend",
+        )
+        assertEquals(listOf("phoenix"), DependencyPsi.all(file).map { it.name })
+        assertEquals("phoenix", DependencyPsi.atOffset(file, file.text.indexOf(":phoenix") + 2)?.name)
+        assertNull(DependencyPsi.atOffset(file, file.text.indexOf("~>")))
+    }
+
     fun testUsesDifferentIconsForDocumentedAndUndocumentedDependencies() {
         assertSame(PacmonIcons.Documented, PacmonIcons.forNote(true))
         assertSame(PacmonIcons.Undocumented, PacmonIcons.forNote(false))
