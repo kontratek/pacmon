@@ -66,7 +66,7 @@ export const S = {
   viewGroupActions: 'Actions',
   viewOpenNotes: (fileName: string) => `Open ${fileName}`,
   viewOpenPackage: 'Open dependency manifest',
-  viewOpenPackageHelp: 'The package.json, Cargo.toml, pom.xml, or Gradle build file these notes describe.',
+  viewOpenPackageHelp: 'The package.json, Cargo.toml, pom.xml, Gradle build file, or mix.exs these notes describe.',
   viewSearch: 'Search dependencies…',
   viewSearchHelp: 'Every dependency in one list, documented or not — pick one to open its note.',
   viewGroupCoverage: 'Coverage',

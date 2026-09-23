@@ -20,6 +20,7 @@ import { addOrEditNote } from './commands/addOrEditNote';
 import { setupAiInstructions } from './commands/aiSetup';
 import { showCoverage } from './commands/coverage';
 import { normalizeNotesFile, openManifest, openNotesFile, toggleDecorations } from './commands/simple';
+import { MANIFEST_ADAPTERS } from '../core/manifest';
 
 export function activate(context: vscode.ExtensionContext): void {
   setExtensionRoot(context.extensionUri);
@@ -78,11 +79,9 @@ export function activate(context: vscode.ExtensionContext): void {
     w.onDidDelete(onAny);
     context.subscriptions.push(w);
   };
-  registerWatcher('**/package.json');
-  registerWatcher('**/Cargo.toml');
-  registerWatcher('**/pom.xml');
-  registerWatcher('**/build.gradle.kts');
-  registerWatcher('**/build.gradle');
+  for (const adapter of MANIFEST_ADAPTERS) {
+    for (const fileName of adapter.fileNames) registerWatcher(`**/${fileName}`);
+  }
   registerWatcher(NOTES_GLOB);
 
   context.subscriptions.push(

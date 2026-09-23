@@ -168,13 +168,55 @@ suite('pacmon integration', () => {
     }
   });
 
+  test('mix.exs atoms use the Mix notes namespace', async () => {
+    const manifest = fixtureUri('mix.exs');
+    const doc = await vscode.workspace.openTextDocument(manifest);
+    await vscode.window.showTextDocument(doc);
+    const offset = doc.getText().indexOf(':phoenix');
+    const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+      'vscode.executeHoverProvider',
+      manifest,
+      doc.positionAt(offset + 2),
+    );
+    const text = (hovers ?? []).flatMap((hover) => hover.contents)
+      .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+    assert.ok(text.includes('HTTP and realtime application framework'), `Mix note missing, got: ${text}`);
+    assert.ok(text.includes('.pacmon/mix/DEPENDENCY-NOTES.md'));
+  });
+
+  test('the first Mix note creates a v2 Mix notes file', async function () {
+    this.timeout(20000);
+    const notes = fixtureUri('.pacmon', 'mix', 'DEPENDENCY-NOTES.md');
+    const original = await vscode.workspace.fs.readFile(notes);
+    try {
+      await vscode.workspace.fs.delete(notes);
+      await sleep(500);
+      const manifest = fixtureUri('mix.exs');
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(manifest));
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'wallaby', 'Browser integration tests.');
+      const text = await poll(async () => {
+        try {
+          const value = await readText(notes);
+          return value.includes('## wallaby') ? value : undefined;
+        } catch {
+          return undefined;
+        }
+      });
+      assert.ok(text.includes('format: dependency-notes/2\necosystem: mix\nlang: en'));
+      assert.ok(text.includes('Browser integration tests.'));
+    } finally {
+      await vscode.workspace.fs.writeFile(notes, original);
+    }
+  });
+
   test('writing a Cargo note does not change other ecosystem notes', async function () {
     this.timeout(15000);
     const cargoNotes = fixtureUri('.pacmon', 'cargo', 'DEPENDENCY-NOTES.md');
     const npmNotes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const mavenNotes = fixtureUri('.pacmon', 'maven', 'DEPENDENCY-NOTES.md');
     const gradleNotes = fixtureUri('.pacmon', 'gradle', 'DEPENDENCY-NOTES.md');
-    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes];
+    const mixNotes = fixtureUri('.pacmon', 'mix', 'DEPENDENCY-NOTES.md');
+    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes, mixNotes];
     const originals = await Promise.all(notesFiles.map((uri) => vscode.workspace.fs.readFile(uri)));
     try {
       const cargo = fixtureUri('Cargo.toml');
@@ -188,6 +230,7 @@ suite('pacmon integration', () => {
       assert.strictEqual(await readText(npmNotes), new TextDecoder().decode(originals[1]!));
       assert.strictEqual(await readText(mavenNotes), new TextDecoder().decode(originals[2]!));
       assert.strictEqual(await readText(gradleNotes), new TextDecoder().decode(originals[3]!));
+      assert.strictEqual(await readText(mixNotes), new TextDecoder().decode(originals[4]!));
     } finally {
       await Promise.all(notesFiles.map((uri, index) =>
         vscode.workspace.fs.writeFile(uri, originals[index]!),
