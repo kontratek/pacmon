@@ -33,7 +33,7 @@ object NotesCore {
     fun notesRelativePath(ecosystem: ManifestKind): String = ManifestRegistry.forKind(ecosystem).notesRelativePath
 
     fun formatCommentLines(ecosystem: ManifestKind?): List<String> = when (ecosystem) {
-        ManifestKind.CARGO, ManifestKind.MAVEN -> listOf(
+        ManifestKind.CARGO, ManifestKind.MAVEN, ManifestKind.GRADLE -> listOf(
             "<!-- Each \"## name\" below is a package from the ${ecosystem.id} dependency manifest.",
             "  The text under it is written by people. \"$AGENT_NOTES_HEADING\" and everything below",
             "  it is written by AI agents — rules in $AGENT_RULES_RELATIVE_PATH. -->",
@@ -374,7 +374,7 @@ object NotesCore {
             model.frontmatter.formatVersion == FORMAT_VERSION_V2 -> model.frontmatter.ecosystem
             else -> null
         }
-        val defaults = if (desired == ManifestKind.CARGO || desired == ManifestKind.MAVEN) {
+        val defaults = if (desired != null && desired != ManifestKind.NPM) {
             listOf("format: $FORMAT_VERSION_V2", "ecosystem: ${desired.id}", "lang: en")
         } else {
             listOf("format: $FORMAT_VERSION", "lang: en")

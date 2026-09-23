@@ -2,9 +2,9 @@
 
 **Your dependency manifest says what you depend on. Pacmon adds why.**
 
-Every dependency gets a short note: why it is here, what must not change, what to check before an upgrade. The note shows in `package.json`, `Cargo.toml`, or Maven `pom.xml` on hover, and you write it from there.
+Every dependency gets a short note: why it is here, what must not change, what to check before an upgrade. The note shows in `package.json`, `Cargo.toml`, Maven `pom.xml`, or `build.gradle(.kts)` on hover, and you write it from there.
 
-Notes are plain Markdown under `.pacmon/`: npm uses `DEPENDENCY-NOTES.md`, Rust uses `cargo/DEPENDENCY-NOTES.md`, and Maven uses `maven/DEPENDENCY-NOTES.md`. No database, service, or account is involved. AI coding agents read the same files before they touch a package.
+Notes are plain Markdown under `.pacmon/`: npm uses `DEPENDENCY-NOTES.md`, Rust uses `cargo/DEPENDENCY-NOTES.md`, Maven uses `maven/DEPENDENCY-NOTES.md`, and Gradle uses `gradle/DEPENDENCY-NOTES.md`. No database, service, or account is involved. AI coding agents read the same files before they touch a package.
 
 ![Pacmon in VS Code: a preview after each dependency in package.json, the note on hover, and a note written from the side panel](docs/media/demo.gif)
 
@@ -38,7 +38,7 @@ generated, and nothing is cached anywhere else.
 
 ## Features
 
-- Hover a dependency in `package.json`, `Cargo.toml`, or `pom.xml` to read its note.
+- Hover a dependency in `package.json`, `Cargo.toml`, `pom.xml`, or `build.gradle(.kts)` to read its note.
 - The first line of the note shows at the end of the dependency line.
 - A mark before each package name: filled when it has a note, hollow when it does not.
 - Write a note from the manifest: in a side panel, a peek editor, or an input box.
@@ -48,7 +48,7 @@ generated, and nothing is cached anywhere else.
 ## Getting started
 
 1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon), [Open VSX](https://open-vsx.org/extension/kontra/pacmon), or the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34295-pacmon).
-2. Open a `package.json`, `Cargo.toml`, or Maven `pom.xml`. A hollow mark appears before every supported direct dependency that has no note yet.
+2. Open a `package.json`, `Cargo.toml`, Maven `pom.xml`, `build.gradle`, or `build.gradle.kts`. A hollow mark appears before every supported direct dependency that has no note yet.
 3. Right-click a dependency and choose **Pacmon: Add/Edit Dependency Note**, or click the mark. Write one line.
 4. The note now shows on hover and at the end of the line. Pacmon created the ecosystem-specific notes file and `.pacmon/AGENT-RULES.md`; commit them with the manifest.
 
@@ -76,11 +76,11 @@ The **Pacmon** view in the activity bar switches these without opening the setti
 
 ## Requirements
 
-VS Code 1.100 or newer, or a compatible JetBrains IDE. Nothing else: Pacmon reads and writes files in your workspace and makes no network requests. Rust, TOML, and Maven IDE plugins are optional. It also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
+VS Code 1.100 or newer, or a compatible JetBrains IDE. Nothing else: Pacmon reads and writes files in your workspace and makes no network requests. Rust, TOML, Maven, Groovy, Kotlin, and Gradle IDE plugins are optional. It also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
 
 ## Format reference
 
-Existing npm notes use `dependency-notes/1`; Cargo and Maven notes use `dependency-notes/2`. The reference is [`docs/format.md`](docs/format.md).
+Existing npm notes use `dependency-notes/1`; Cargo, Maven, and Gradle notes use `dependency-notes/2`. The reference is [`docs/format.md`](docs/format.md).
 
 ## Contributing and license
 

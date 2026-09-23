@@ -8,11 +8,16 @@ import org.junit.Test
 class ManifestCoreTest {
     @Test
     fun `registry matches only supported manifests in priority order`() {
-        assertEquals(listOf("package.json", "Cargo.toml", "pom.xml"), ManifestRegistry.adapters.map { it.fileName })
+        assertEquals(
+            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle"),
+            ManifestRegistry.adapters.flatMap { it.fileNames },
+        )
         assertEquals(ManifestKind.NPM, ManifestRegistry.forFileName("package.json")?.kind)
         assertEquals(ManifestKind.CARGO, ManifestRegistry.forFileName("Cargo.toml")?.kind)
         assertEquals(ManifestKind.MAVEN, ManifestRegistry.forFileName("pom.xml")?.kind)
-        assertNull(ManifestRegistry.forFileName("build.gradle.kts"))
+        assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle.kts")?.kind)
+        assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle")?.kind)
+        assertNull(ManifestRegistry.forFileName("settings.gradle.kts"))
     }
 
     @Test
@@ -132,5 +137,69 @@ class ManifestCoreTest {
         assertTrue(NpmManifestAdapter.extractDependencies("{\"dependencies\": {").isEmpty())
         assertTrue(CargoManifestAdapter.extractDependencies("[dependencies\nserde = {").isEmpty())
         assertTrue(MavenManifestAdapter.extractDependencies("<project><dependencies><dependency>").isEmpty())
+        assertTrue(GradleManifestAdapter.extractDependencies("dependencies { implementation(\"g:a:1\")").isEmpty())
+    }
+
+    @Test
+    fun `gradle extracts static module map platform alias and add declarations`() {
+        val text = """
+            plugins { id("java") }
+            dependencies {
+                val example = "ignored:string:1"
+                // implementation("ignored:comment:1")
+                implementation("com.google.guava:guava:33.4.0-jre")
+                testImplementation 'org.junit.jupiter:junit-jupiter:5.12.0'
+                api(group = "org.slf4j", name = "slf4j-api", version = version)
+                runtimeOnly group: 'org.postgresql', name: 'postgresql', version: pgVersion
+                implementation(platform("org.springframework.boot:spring-boot-dependencies:3.5.0"))
+                implementation(libs.jackson.databind)
+                add("integrationTestImplementation", "org.assertj:assertj-core:3.27.3")
+                "customRuntime"("com.acme:tool:1")
+                constraints { implementation("ignored:constraint:1") }
+                implementation(project(":local"))
+                runtimeOnly(files("libs/local.jar"))
+                runtimeOnly(files("C:/libs/local.jar"))
+                implementation(libs.bundles.testing)
+            }
+            buildscript { dependencies { classpath("ignored:plugin:1") } }
+        """.trimIndent()
+        val dependencies = GradleManifestAdapter.extractDependencies(text)
+        assertEquals(
+            listOf(
+                "implementation:com.google.guava:guava",
+                "testImplementation:org.junit.jupiter:junit-jupiter",
+                "api:org.slf4j:slf4j-api",
+                "runtimeOnly:org.postgresql:postgresql",
+                "implementation:org.springframework.boot:spring-boot-dependencies",
+                "implementation:libs.jackson.databind",
+                "integrationTestImplementation:org.assertj:assertj-core",
+                "customRuntime:com.acme:tool",
+            ),
+            dependencies.map { "${it.scope}:${it.noteKey}" },
+        )
+        val guava = dependencies.first()
+        assertEquals("guava", text.substring(guava.primaryRange.offset, guava.primaryRange.offset + guava.primaryRange.length))
+        assertEquals(
+            "implementation",
+            text.substring(guava.iconRange.offset, guava.iconRange.offset + guava.iconRange.length),
+        )
+        assertEquals(
+            listOf("com.google.guava", "guava"),
+            guava.sourceRanges.map { text.substring(it.offset, it.offset + it.length) },
+        )
+    }
+
+    @Test
+    fun `gradle handles multiline wrappers`() {
+        val text = """
+            dependencies {
+                implementation(
+                    enforcedPlatform(
+                        "com.acme:bom:1"
+                    )
+                )
+            }
+        """.trimIndent()
+        assertEquals(listOf("com.acme:bom"), GradleManifestAdapter.extractDependencies(text).map { it.noteKey })
     }
 }

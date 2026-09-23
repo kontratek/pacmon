@@ -7,6 +7,12 @@
 
 ## Unreleased
 
+- **Gradle dependency notes now work in VS Code and JetBrains IDEs.** Pacmon
+  reads static external module declarations from `build.gradle` and
+  `build.gradle.kts`, including map notation, platforms, custom configurations
+  and `libs.*` catalog aliases, and keeps their notes in
+  `.pacmon/gradle/DEPENDENCY-NOTES.md` without running Gradle.
+
 - **Cargo and Maven dependency notes now work in JetBrains IDEs.** Pacmon's
   hover, navigation, note markers, editor actions, coverage, dashboard and
   live note validation now support `Cargo.toml` and Maven `pom.xml` alongside

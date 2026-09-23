@@ -20,8 +20,9 @@ object AiInstructions {
     fun block(): String = listOf(
         BLOCK_START,
         "Dependency notes live in `${NotesCore.NOTES_RELATIVE_PATH}` for npm, " +
-            "`.pacmon/cargo/${NotesCore.NOTES_FILE_NAME}` for Rust, and " +
-            "`.pacmon/maven/${NotesCore.NOTES_FILE_NAME}` for Maven; people write below `## <package>`, " +
+            "`.pacmon/cargo/${NotesCore.NOTES_FILE_NAME}` for Rust, " +
+            "`.pacmon/maven/${NotesCore.NOTES_FILE_NAME}` for Maven, and " +
+            "`.pacmon/gradle/${NotesCore.NOTES_FILE_NAME}` for Gradle; people write below `## <package>`, " +
             "agents under `${NotesCore.AGENT_NOTES_HEADING}`.",
         "Rules and the field list are in `${NotesCore.AGENT_RULES_RELATIVE_PATH}`; read a package's section " +
             "before adding, bumping or removing it.",

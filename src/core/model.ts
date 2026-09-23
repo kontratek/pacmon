@@ -57,7 +57,7 @@ export interface NotesFileModel {
   problems: NotesProblem[];
 }
 
-export type ManifestKind = 'npm' | 'cargo' | 'maven';
+export type ManifestKind = 'npm' | 'cargo' | 'maven' | 'gradle';
 
 export interface SourceRange {
   offset: number;

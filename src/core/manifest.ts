@@ -2,11 +2,13 @@ import type { DependencyEntry, ManifestKind } from './model';
 import { extractCargoDependencies } from './cargoManifest';
 import { extractMavenDependencies } from './mavenManifest';
 import { extractNpmDependencies } from './packageJson';
+import { extractGradleDependencies } from './gradleManifest';
 export { dependencyAtOffset } from './dependency';
 
 export interface ManifestAdapter {
   kind: ManifestKind;
-  fileName: string;
+  /** Supported names in default-selection order. */
+  fileNames: readonly string[];
   notesRelativePath: string;
   extractDependencies(text: string): DependencyEntry[];
   normalizeNoteKey(raw: string): string;
@@ -22,29 +24,36 @@ function tolerantKey(raw: string): string {
 export const MANIFEST_ADAPTERS: readonly ManifestAdapter[] = [
   {
     kind: 'npm',
-    fileName: 'package.json',
+    fileNames: ['package.json'],
     notesRelativePath: '.pacmon/DEPENDENCY-NOTES.md',
     extractDependencies: extractNpmDependencies,
     normalizeNoteKey: (raw) => tolerantKey(raw).toLowerCase(),
   },
   {
     kind: 'cargo',
-    fileName: 'Cargo.toml',
+    fileNames: ['Cargo.toml'],
     notesRelativePath: '.pacmon/cargo/DEPENDENCY-NOTES.md',
     extractDependencies: extractCargoDependencies,
     normalizeNoteKey: tolerantKey,
   },
   {
     kind: 'maven',
-    fileName: 'pom.xml',
+    fileNames: ['pom.xml'],
     notesRelativePath: '.pacmon/maven/DEPENDENCY-NOTES.md',
     extractDependencies: extractMavenDependencies,
+    normalizeNoteKey: tolerantKey,
+  },
+  {
+    kind: 'gradle',
+    fileNames: ['build.gradle.kts', 'build.gradle'],
+    notesRelativePath: '.pacmon/gradle/DEPENDENCY-NOTES.md',
+    extractDependencies: extractGradleDependencies,
     normalizeNoteKey: tolerantKey,
   },
 ];
 
 export function manifestAdapterForFileName(fileName: string): ManifestAdapter | undefined {
-  return MANIFEST_ADAPTERS.find((adapter) => adapter.fileName === fileName);
+  return MANIFEST_ADAPTERS.find((adapter) => adapter.fileNames.includes(fileName));
 }
 
 export function manifestAdapterForKind(kind: ManifestKind): ManifestAdapter {

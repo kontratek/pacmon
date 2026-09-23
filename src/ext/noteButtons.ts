@@ -15,7 +15,8 @@ import { S } from './strings';
  * ON BY DEFAULT — the pair that won the 2026-09-04 comparison:
  *
  *   iconLeft  the Pacmon mark at the dependency's manifest-specific anchor —
- *             before the name in npm/Cargo and before `<dependency>` in Maven;
+ *             before the name in npm/Cargo, before `<dependency>` in Maven,
+ *             and before the configuration call in Gradle;
  *             filled when it has a note, hollow when it does not — with the words
  *             in the hover. A DECORATION, not an inlay hint: only decorations
  *             expose `cursor`, so only they can turn the mouse into a hand,

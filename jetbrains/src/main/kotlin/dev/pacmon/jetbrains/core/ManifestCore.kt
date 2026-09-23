@@ -3,7 +3,8 @@ package dev.pacmon.jetbrains.core
 enum class ManifestKind(val id: String) {
     NPM("npm"),
     CARGO("cargo"),
-    MAVEN("maven");
+    MAVEN("maven"),
+    GRADLE("gradle");
 
     companion object {
         fun fromId(value: String?): ManifestKind? = entries.firstOrNull { it.id == value }
@@ -25,16 +26,16 @@ data class DependencyEntry(
 
 interface ManifestAdapter {
     val kind: ManifestKind
-    val fileName: String
+    val fileNames: List<String>
     val notesRelativePath: String
     fun extractDependencies(text: String): List<DependencyEntry>
     fun normalizeNoteKey(raw: String): String
 }
 
 object ManifestRegistry {
-    val adapters: List<ManifestAdapter> = listOf(NpmManifestAdapter, CargoManifestAdapter, MavenManifestAdapter)
+    val adapters: List<ManifestAdapter> = listOf(NpmManifestAdapter, CargoManifestAdapter, MavenManifestAdapter, GradleManifestAdapter)
 
-    fun forFileName(fileName: String): ManifestAdapter? = adapters.firstOrNull { it.fileName == fileName }
+    fun forFileName(fileName: String): ManifestAdapter? = adapters.firstOrNull { fileName in it.fileNames }
 
     fun forKind(kind: ManifestKind): ManifestAdapter = adapters.first { it.kind == kind }
 
@@ -51,11 +52,11 @@ object ManifestRegistry {
 
     fun normalizeName(raw: String, ecosystem: ManifestKind?): String {
         val value = stripName(raw)
-        return if (ecosystem == ManifestKind.CARGO || ecosystem == ManifestKind.MAVEN) value else value.lowercase()
+        return if (ecosystem != null && ecosystem != ManifestKind.NPM) value else value.lowercase()
     }
 }
 
-private fun dependencyEntry(
+internal fun dependencyEntry(
     noteKey: String,
     scope: String,
     primaryRange: SourceRange,
@@ -66,7 +67,7 @@ private fun dependencyEntry(
 
 object NpmManifestAdapter : ManifestAdapter {
     override val kind = ManifestKind.NPM
-    override val fileName = "package.json"
+    override val fileNames = listOf("package.json")
     override val notesRelativePath = ".pacmon/DEPENDENCY-NOTES.md"
     override fun normalizeNoteKey(raw: String): String = ManifestRegistry.stripName(raw).lowercase()
 
@@ -236,7 +237,7 @@ private class JsonReader(private val text: String) {
 
 object CargoManifestAdapter : ManifestAdapter {
     override val kind = ManifestKind.CARGO
-    override val fileName = "Cargo.toml"
+    override val fileNames = listOf("Cargo.toml")
     override val notesRelativePath = ".pacmon/cargo/DEPENDENCY-NOTES.md"
     override fun normalizeNoteKey(raw: String): String = ManifestRegistry.stripName(raw)
 
@@ -463,7 +464,7 @@ object CargoManifestAdapter : ManifestAdapter {
 
 object MavenManifestAdapter : ManifestAdapter {
     override val kind = ManifestKind.MAVEN
-    override val fileName = "pom.xml"
+    override val fileNames = listOf("pom.xml")
     override val notesRelativePath = ".pacmon/maven/DEPENDENCY-NOTES.md"
     override fun normalizeNoteKey(raw: String): String = ManifestRegistry.stripName(raw)
 

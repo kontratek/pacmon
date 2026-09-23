@@ -151,12 +151,31 @@ suite('pacmon integration', () => {
     }
   });
 
-  test('writing a Cargo note does not change npm or Maven notes', async function () {
+  test('Gradle coordinates and catalog aliases use the Gradle notes namespace', async () => {
+    const manifest = fixtureUri('build.gradle.kts');
+    const doc = await vscode.workspace.openTextDocument(manifest);
+    await vscode.window.showTextDocument(doc);
+    for (const token of ['slf4j-api', 'libs.junit.jupiter']) {
+      const offset = doc.getText().indexOf(token);
+      const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+        'vscode.executeHoverProvider',
+        manifest,
+        doc.positionAt(offset + 1),
+      );
+      const text = (hovers ?? []).flatMap((hover) => hover.contents)
+        .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+      assert.ok(text.includes('.pacmon/gradle/DEPENDENCY-NOTES.md'), `Gradle path missing on ${token}: ${text}`);
+    }
+  });
+
+  test('writing a Cargo note does not change other ecosystem notes', async function () {
     this.timeout(15000);
     const cargoNotes = fixtureUri('.pacmon', 'cargo', 'DEPENDENCY-NOTES.md');
     const npmNotes = fixtureUri('.pacmon', 'DEPENDENCY-NOTES.md');
     const mavenNotes = fixtureUri('.pacmon', 'maven', 'DEPENDENCY-NOTES.md');
-    const originals = await Promise.all([cargoNotes, npmNotes, mavenNotes].map((uri) => vscode.workspace.fs.readFile(uri)));
+    const gradleNotes = fixtureUri('.pacmon', 'gradle', 'DEPENDENCY-NOTES.md');
+    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes];
+    const originals = await Promise.all(notesFiles.map((uri) => vscode.workspace.fs.readFile(uri)));
     try {
       const cargo = fixtureUri('Cargo.toml');
       await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(cargo));
@@ -168,8 +187,9 @@ suite('pacmon integration', () => {
       assert.ok(updated.includes('Application error context.'));
       assert.strictEqual(await readText(npmNotes), new TextDecoder().decode(originals[1]!));
       assert.strictEqual(await readText(mavenNotes), new TextDecoder().decode(originals[2]!));
+      assert.strictEqual(await readText(gradleNotes), new TextDecoder().decode(originals[3]!));
     } finally {
-      await Promise.all([cargoNotes, npmNotes, mavenNotes].map((uri, index) =>
+      await Promise.all(notesFiles.map((uri, index) =>
         vscode.workspace.fs.writeFile(uri, originals[index]!),
       ));
     }

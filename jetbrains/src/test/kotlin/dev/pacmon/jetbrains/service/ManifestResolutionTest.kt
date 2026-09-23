@@ -12,20 +12,26 @@ class ManifestResolutionTest : BasePlatformTestCase() {
 
     private fun service() = project.getService(PacmonProjectService::class.java)
 
-    fun testThreeManifestsResolveOnlyTheirOwnNotesNamespace() {
+    fun testManifestsResolveOnlyTheirOwnNotesNamespace() {
         val npm = myFixture.tempDirFixture.createFile("package.json", """{"dependencies":{"vue":"3"}}""")
         val cargo = myFixture.tempDirFixture.createFile("Cargo.toml", "[dependencies]\nserde = \"1\"")
         val maven = myFixture.tempDirFixture.createFile(
             "pom.xml",
             "<project><dependencies><dependency><groupId>g</groupId><artifactId>a</artifactId></dependency></dependencies></project>",
         )
+        val gradle = myFixture.tempDirFixture.createFile(
+            "build.gradle.kts",
+            "dependencies { implementation(\"g:a:1\") }",
+        )
         myFixture.tempDirFixture.createFile(".pacmon/DEPENDENCY-NOTES.md", "## vue\n\nnpm\n")
         myFixture.tempDirFixture.createFile(".pacmon/cargo/DEPENDENCY-NOTES.md", "## serde\n\ncargo\n")
         myFixture.tempDirFixture.createFile(".pacmon/maven/DEPENDENCY-NOTES.md", "## g:a\n\nmaven\n")
+        myFixture.tempDirFixture.createFile(".pacmon/gradle/DEPENDENCY-NOTES.md", "## g:a\n\ngradle\n")
 
         assertTrue(service().resolveNotesFile(npm)!!.path.endsWith(".pacmon/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(cargo)!!.path.endsWith(".pacmon/cargo/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(maven)!!.path.endsWith(".pacmon/maven/DEPENDENCY-NOTES.md"))
+        assertTrue(service().resolveNotesFile(gradle)!!.path.endsWith(".pacmon/gradle/DEPENDENCY-NOTES.md"))
         assertEquals("cargo", service().noteFor(cargo, "serde")?.layers?.human)
         assertNull(service().noteFor(cargo, "vue"))
     }
@@ -40,7 +46,7 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         assertEquals(rootNotes.path, service().resolveNotesFile(cargo)?.path)
     }
 
-    fun testSavingCargoAndMavenNotesCreatesV2Frontmatter() {
+    fun testSavingEcosystemNotesCreatesV2Frontmatter() {
         val cargo = myFixture.tempDirFixture.createFile("Cargo.toml", "[dependencies]\nserde = \"1\"")
         val maven = myFixture.tempDirFixture.createFile(
             "pom.xml",
@@ -48,11 +54,18 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         )
         val cargoNotes = service().saveNoteLayers(cargo, "serde", "Serialization", "")
         val mavenNotes = service().saveNoteLayers(maven, "g:a", "Library", "")
+        val gradle = myFixture.tempDirFixture.createFile(
+            "build.gradle",
+            "dependencies { implementation 'g:a:1' }",
+        )
+        val gradleNotes = service().saveNoteLayers(gradle, "g:a", "Library", "")
 
         assertTrue(cargoNotes.path.endsWith(".pacmon/cargo/DEPENDENCY-NOTES.md"))
         assertTrue(String(cargoNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: cargo"))
         assertTrue(mavenNotes.path.endsWith(".pacmon/maven/DEPENDENCY-NOTES.md"))
         assertTrue(String(mavenNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: maven"))
+        assertTrue(gradleNotes.path.endsWith(".pacmon/gradle/DEPENDENCY-NOTES.md"))
+        assertTrue(String(gradleNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: gradle"))
         assertNull(cargo.parent.findChild(".pacmon")?.findChild("DEPENDENCY-NOTES.md"))
     }
 
@@ -66,6 +79,17 @@ class ManifestResolutionTest : BasePlatformTestCase() {
 
         myFixture.configureFromExistingVirtualFile(cargo)
         assertEquals(cargo.path, service().defaultManifest()?.path)
+    }
+
+    fun testGradleNotesPreferKotlinThenGroovyManifestBesideThem() {
+        val notes = myFixture.tempDirFixture.createFile(
+            ".pacmon/gradle/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: gradle\n---\n# Dependency Notes\n",
+        )
+        val groovy = myFixture.tempDirFixture.createFile("build.gradle", "dependencies {}")
+        assertEquals(groovy.path, service().manifestBesideNotes(notes)?.path)
+        val kotlin = myFixture.tempDirFixture.createFile("build.gradle.kts", "dependencies {}")
+        assertEquals(kotlin.path, service().manifestBesideNotes(notes)?.path)
     }
 
     fun testSharedAncestorNotesSeeAllResolvingCargoManifests() {

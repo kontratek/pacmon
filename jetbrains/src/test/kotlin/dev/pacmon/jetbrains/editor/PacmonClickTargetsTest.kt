@@ -202,7 +202,7 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         assertEmpty(painter.getLineExtensions(project, packageJson, line))
     }
 
-    fun testCargoAndMavenUseTheSameInlayLinkAndDecorationSurfaces() {
+    fun testCargoMavenAndGradleUseTheSameInlayLinkAndDecorationSurfaces() {
         val cargo = myFixture.tempDirFixture.createFile("Cargo.toml", "[dependencies]\nserde = \"1\"\n")
         myFixture.tempDirFixture.createFile(
             ".pacmon/cargo/DEPENDENCY-NOTES.md",
@@ -251,5 +251,37 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
                 )?.size,
             )
         }
+
+        val gradle = myFixture.tempDirFixture.createFile(
+            "build.gradle.kts",
+            """
+            dependencies {
+                implementation("org.slf4j:slf4j-api:2.0.17")
+            }
+            """.trimIndent(),
+        )
+        myFixture.tempDirFixture.createFile(
+            ".pacmon/gradle/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: gradle\nlang: en\n---\n# Dependency Notes\n\n## org.slf4j:slf4j-api\n\nLogging facade\n",
+        )
+        myFixture.configureFromExistingVirtualFile(gradle)
+        val gradleDependency = DependencyPsi.all(myFixture.file).single()
+        assertEquals(myFixture.file.text.indexOf("implementation"), gradleDependency.iconRange.offset)
+        assertEquals(listOf(gradleDependency.iconRange.offset to false), collect(NoteButtons.ICON_LEFT).inline)
+        val gradleLine = myFixture.editor.document.getLineNumber(gradleDependency.primaryRange.offset)
+        assertEquals(
+            "   \u25AA Logging facade",
+            PacmonLinePainter().getLineExtensions(project, gradle, gradleLine).single().text,
+        )
+        service().setNoteButtons(listOf(NoteButtons.LINK))
+        val artifactOffset = myFixture.file.text.indexOf("slf4j-api") + 1
+        assertEquals(
+            1,
+            handler.getGotoDeclarationTargets(
+                myFixture.file.findElementAt(artifactOffset),
+                artifactOffset,
+                myFixture.editor,
+            )?.size,
+        )
     }
 }

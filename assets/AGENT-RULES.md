@@ -6,7 +6,7 @@
 
 ## Before you touch a dependency
 
-Its notes are beside the manifest you are changing: npm uses `.pacmon/DEPENDENCY-NOTES.md`, Rust uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, and Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`. In a monorepo, use the nearest matching ecosystem file walking up. Read the introduction and then the package's `## <name>` section.
+Its notes are beside the manifest you are changing: npm uses `.pacmon/DEPENDENCY-NOTES.md`, Rust uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`, and Gradle uses `.pacmon/gradle/DEPENDENCY-NOTES.md`. In a monorepo, use the nearest matching ecosystem file walking up. Read the introduction and then the package's `## <name>` section.
 
 - **Adding a package:** open its section in the same commit, with at least `purpose:`. Say what you considered and why this one, in `alternatives:` or `log:`.
 - **Upgrading:** read its `constraint:` and `verify:` lines, then run what `verify:` says. Log the attempt with its outcome even if you reverted it — the next agent must not repeat it.

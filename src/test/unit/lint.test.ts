@@ -48,6 +48,8 @@ describe('lintNotes — frontmatter and title', () => {
     ).filter((finding) => finding.kind === 'wrongEcosystem')).toEqual([
       { kind: 'wrongEcosystem', line: 0, actual: 'cargo', expected: 'maven' },
     ]);
+    expect(parseNotes('---\nformat: dependency-notes/2\necosystem: gradle\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
+      .toBe('gradle');
   });
 
   it('wants exactly one title, worded "# Dependency Notes"', () => {

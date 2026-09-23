@@ -81,6 +81,8 @@ export function activate(context: vscode.ExtensionContext): void {
   registerWatcher('**/package.json');
   registerWatcher('**/Cargo.toml');
   registerWatcher('**/pom.xml');
+  registerWatcher('**/build.gradle.kts');
+  registerWatcher('**/build.gradle');
   registerWatcher(NOTES_GLOB);
 
   context.subscriptions.push(

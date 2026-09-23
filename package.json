@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Notes",
-  "description": "Why each dependency exists, as a note next to package.json, Cargo.toml, or pom.xml. Plain Markdown in your repo; AI agents read and write it too.",
+  "description": "Why each dependency exists, as a note next to package.json, Cargo.toml, pom.xml, or a Gradle build file. Plain Markdown in your repo; AI agents read and write it too.",
   "version": "0.3.2",
   "publisher": "kontra",
   "private": true,
@@ -25,8 +25,11 @@
     "package.json",
     "Cargo.toml",
     "pom.xml",
+    "build.gradle",
+    "build.gradle.kts",
     "Rust",
     "Maven",
+    "Gradle",
     "documentation",
     "notes",
     "dependency management"
@@ -39,8 +42,11 @@
     "workspaceContains:**/.pacmon/DEPENDENCY-NOTES.md",
     "workspaceContains:**/.pacmon/cargo/DEPENDENCY-NOTES.md",
     "workspaceContains:**/.pacmon/maven/DEPENDENCY-NOTES.md",
+    "workspaceContains:**/.pacmon/gradle/DEPENDENCY-NOTES.md",
     "workspaceContains:**/Cargo.toml",
     "workspaceContains:**/pom.xml",
+    "workspaceContains:**/build.gradle",
+    "workspaceContains:**/build.gradle.kts",
     "onView:pacmon.settings"
   ],
   "main": "./dist/extension.js",
@@ -117,7 +123,7 @@
       "editor/context": [
         {
           "command": "pacmon.addOrEditNote",
-          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml) && editorTextFocus",
+          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml || resourceFilename == build.gradle || resourceFilename == build.gradle.kts) && editorTextFocus",
           "group": "1_modification@100"
         }
       ],
@@ -231,7 +237,7 @@
               "lightbulb"
             ],
             "enumDescriptions": [
-              "The Pacmon mark just before the package name — filled when the dependency has a note, hollow when it does not — with the words in the hover. Plain click, and the mouse turns into a hand over it.",
+              "The Pacmon mark at the start of the dependency declaration — filled when the dependency has a note, hollow when it does not — with the words in the hover. Plain click, and the mouse turns into a hand over it.",
               "The package name itself opens its note on Ctrl+click. Adds nothing to the file.",
               "A clickable line above each dependency. Unmissable, and it roughly doubles the apparent height of the manifest.",
               "The words spelled out at the end of the line, where they compete with the note preview. Needs Ctrl+click.",

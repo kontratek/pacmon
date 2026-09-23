@@ -71,6 +71,30 @@ class DependencyPsiTest : BasePlatformTestCase() {
         assertEquals("org.example:core", DependencyPsi.atOffset(file, file.text.indexOf("core") + 1)?.name)
     }
 
+    fun testFindsGradleDependencyFromCoordinatesAndCatalogAlias() {
+        val file = myFixture.configureByText(
+            "build.gradle.kts",
+            """
+            dependencies {
+                implementation("org.slf4j:slf4j-api:2.0.17")
+                testImplementation(libs.junit.jupiter)
+            }
+            """.trimIndent(),
+        )
+        assertEquals(
+            listOf("org.slf4j:slf4j-api", "libs.junit.jupiter"),
+            DependencyPsi.all(file).map { it.name },
+        )
+        assertEquals(
+            "org.slf4j:slf4j-api",
+            DependencyPsi.atOffset(file, file.text.indexOf("slf4j-api") + 2)?.name,
+        )
+        assertEquals(
+            "libs.junit.jupiter",
+            DependencyPsi.atOffset(file, file.text.indexOf("libs.junit") + 2)?.name,
+        )
+    }
+
     fun testUsesDifferentIconsForDocumentedAndUndocumentedDependencies() {
         assertSame(PacmonIcons.Documented, PacmonIcons.forNote(true))
         assertSame(PacmonIcons.Undocumented, PacmonIcons.forNote(false))

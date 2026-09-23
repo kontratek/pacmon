@@ -36,18 +36,19 @@ export function notesUriIn(dir: vscode.Uri, kind: ManifestKind = 'npm'): vscode.
 
 export function notesKind(uri: vscode.Uri): ManifestKind | undefined {
   const normalized = uri.path.replace(/\\/g, '/');
-  if (normalized.endsWith('/.pacmon/DEPENDENCY-NOTES.md')) return 'npm';
-  if (normalized.endsWith('/.pacmon/cargo/DEPENDENCY-NOTES.md')) return 'cargo';
-  if (normalized.endsWith('/.pacmon/maven/DEPENDENCY-NOTES.md')) return 'maven';
-  return undefined;
+  return MANIFEST_ADAPTERS.find((adapter) => normalized.endsWith(`/${adapter.notesRelativePath}`))?.kind;
 }
 
 /** The manifest beside the directory that owns a notes file. */
-export function manifestForNotes(notesUri: vscode.Uri): vscode.Uri | undefined {
+export function manifestsBesideNotes(notesUri: vscode.Uri): vscode.Uri[] {
   const kind = notesKind(notesUri);
-  if (!kind) return undefined;
+  if (!kind) return [];
   const levels = kind === 'npm' ? ['..', '..'] : ['..', '..', '..'];
-  return vscode.Uri.joinPath(notesUri, ...levels, manifestAdapterForKind(kind).fileName);
+  return manifestAdapterForKind(kind).fileNames.map((fileName) => vscode.Uri.joinPath(notesUri, ...levels, fileName));
+}
+
+export function manifestForNotes(notesUri: vscode.Uri): vscode.Uri | undefined {
+  return manifestsBesideNotes(notesUri)[0];
 }
 
 /** Backward-compatible npm-only name. */
@@ -94,8 +95,10 @@ export async function defaultManifest(store: {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) return undefined;
   for (const adapter of MANIFEST_ADAPTERS) {
-    const candidate = vscode.Uri.joinPath(folder.uri, adapter.fileName);
-    if ((await store.getText(candidate)) !== undefined) return candidate;
+    for (const fileName of adapter.fileNames) {
+      const candidate = vscode.Uri.joinPath(folder.uri, fileName);
+      if ((await store.getText(candidate)) !== undefined) return candidate;
+    }
   }
   return undefined;
 }
@@ -112,17 +115,21 @@ async function manifestsForNotes(notesUri: vscode.Uri): Promise<vscode.Uri[]> {
     const folder = vscode.workspace.getWorkspaceFolder(notesUri);
     if (!kind || !folder) return [];
     const adapter = manifestAdapterForKind(kind);
-    const found = await vscode.workspace.findFiles(
-      new vscode.RelativePattern(folder, `**/${adapter.fileName}`),
-      '**/{node_modules,target,.git}/**',
-    );
+    const groups = await Promise.all(adapter.fileNames.map((fileName) => vscode.workspace.findFiles(
+      new vscode.RelativePattern(folder, `**/${fileName}`),
+      '**/{node_modules,target,.gradle,.git}/**',
+    )));
+    const found = groups.flat();
     const matching: vscode.Uri[] = [];
     for (const uri of found) {
       const resolved = await resolveNotesFileFor(uri);
       if (resolved?.toString() === key) matching.push(uri);
     }
-    const sibling = manifestForNotes(notesUri);
-    if (matching.length === 0 && sibling && (await exists(sibling))) matching.push(sibling);
+    if (matching.length === 0) {
+      for (const sibling of manifestsBesideNotes(notesUri)) {
+        if (await exists(sibling)) matching.push(sibling);
+      }
+    }
     return matching;
   })();
   manifestsForNotesCache.set(key, pending);

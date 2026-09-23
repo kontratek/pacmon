@@ -353,6 +353,12 @@ class PacmonProjectService(private val project: Project) :
         }?.kind
     }
 
+    fun manifestBesideNotes(file: VirtualFile): VirtualFile? {
+        val kind = notesKind(file) ?: return null
+        val owner = if (kind == ManifestKind.NPM) file.parent?.parent else file.parent?.parent?.parent
+        return ManifestRegistry.forKind(kind).fileNames.firstNotNullOfOrNull { owner?.findChild(it) }
+    }
+
     fun dependenciesForNotes(notesFile: VirtualFile): List<DependencyRef> {
         val kind = notesKind(notesFile) ?: return emptyList()
         val key = notesFile.path.replace('\\', '/')
@@ -363,10 +369,12 @@ class PacmonProjectService(private val project: Project) :
     private fun manifests(kind: ManifestKind): List<VirtualFile> = manifestIndex.getOrPut(kind) {
         val adapter = ManifestRegistry.forKind(kind)
         ReadAction.compute<List<VirtualFile>, RuntimeException> {
-            FilenameIndex.getVirtualFilesByName(
-                adapter.fileName,
-                GlobalSearchScope.projectScope(project),
-            ).filter { !it.isDirectory }
+            adapter.fileNames.flatMap { fileName ->
+                FilenameIndex.getVirtualFilesByName(
+                    fileName,
+                    GlobalSearchScope.projectScope(project),
+                )
+            }.filter { !it.isDirectory }.distinctBy { it.path }
         }
     }
 
@@ -379,7 +387,9 @@ class PacmonProjectService(private val project: Project) :
         if (selected != null) return selected.also(::rememberManifest)
         lastManifest?.takeIf { it.isValid }?.let { return it }
         for (root in manifestRoots()) {
-            ManifestRegistry.adapters.firstNotNullOfOrNull { root.findChild(it.fileName) }?.let { return it }
+            ManifestRegistry.adapters.firstNotNullOfOrNull { adapter ->
+                adapter.fileNames.firstNotNullOfOrNull(root::findChild)
+            }?.let { return it }
         }
         return null
     }
@@ -391,7 +401,8 @@ class PacmonProjectService(private val project: Project) :
     private fun isRelevantPath(path: String): Boolean {
         val normalized = path.replace('\\', '/')
         return ManifestRegistry.adapters.any {
-            normalized.endsWith("/${it.fileName}") || normalized.endsWith("/${it.notesRelativePath}")
+            it.fileNames.any { fileName -> normalized.endsWith("/$fileName") } ||
+                normalized.endsWith("/${it.notesRelativePath}")
         }
     }
 }

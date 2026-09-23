@@ -40,7 +40,9 @@ object PacmonCommands {
 
     /** The mirror of [openNotesFile]: the manifest the notes describe. */
     fun openManifest(project: Project, manifest: VirtualFile? = null) {
+        val selected = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
         val file = manifest?.takeIf { it.isValid && ManifestRegistry.forFileName(it.name) != null }
+            ?: selected?.let { service(project).manifestBesideNotes(it) }
             ?: service(project).defaultManifest()
         if (file == null) {
             Messages.showInfoMessage(project, "No supported dependency manifest found in this project.", "Pacmon")
