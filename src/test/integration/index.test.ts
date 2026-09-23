@@ -184,6 +184,22 @@ suite('pacmon integration', () => {
     assert.ok(text.includes('.pacmon/mix/DEPENDENCY-NOTES.md'));
   });
 
+  test('build.zig.zon fields use the Zig notes namespace', async () => {
+    const manifest = fixtureUri('build.zig.zon');
+    const doc = await vscode.workspace.openTextDocument(manifest);
+    await vscode.window.showTextDocument(doc);
+    const offset = doc.getText().indexOf('.known_folders');
+    const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+      'vscode.executeHoverProvider',
+      manifest,
+      doc.positionAt(offset + 2),
+    );
+    const text = (hovers ?? []).flatMap((hover) => hover.contents)
+      .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+    assert.ok(text.includes('Cross-platform user directory discovery'), `Zig note missing, got: ${text}`);
+    assert.ok(text.includes('.pacmon/zig/DEPENDENCY-NOTES.md'));
+  });
+
   test('the first Mix note creates a v2 Mix notes file', async function () {
     this.timeout(20000);
     const notes = fixtureUri('.pacmon', 'mix', 'DEPENDENCY-NOTES.md');
@@ -209,6 +225,31 @@ suite('pacmon integration', () => {
     }
   });
 
+  test('the first Zig note creates a v2 Zig notes file', async function () {
+    this.timeout(20000);
+    const notes = fixtureUri('.pacmon', 'zig', 'DEPENDENCY-NOTES.md');
+    const original = await vscode.workspace.fs.readFile(notes);
+    try {
+      await vscode.workspace.fs.delete(notes);
+      await sleep(500);
+      const manifest = fixtureUri('build.zig.zon');
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(manifest));
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'local_utils', 'Local Zig utilities.');
+      const text = await poll(async () => {
+        try {
+          const value = await readText(notes);
+          return value.includes('## local_utils') ? value : undefined;
+        } catch {
+          return undefined;
+        }
+      });
+      assert.ok(text.includes('format: dependency-notes/2\necosystem: zig\nlang: en'));
+      assert.ok(text.includes('Local Zig utilities.'));
+    } finally {
+      await vscode.workspace.fs.writeFile(notes, original);
+    }
+  });
+
   test('writing a Cargo note does not change other ecosystem notes', async function () {
     this.timeout(15000);
     const cargoNotes = fixtureUri('.pacmon', 'cargo', 'DEPENDENCY-NOTES.md');
@@ -216,7 +257,8 @@ suite('pacmon integration', () => {
     const mavenNotes = fixtureUri('.pacmon', 'maven', 'DEPENDENCY-NOTES.md');
     const gradleNotes = fixtureUri('.pacmon', 'gradle', 'DEPENDENCY-NOTES.md');
     const mixNotes = fixtureUri('.pacmon', 'mix', 'DEPENDENCY-NOTES.md');
-    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes, mixNotes];
+    const zigNotes = fixtureUri('.pacmon', 'zig', 'DEPENDENCY-NOTES.md');
+    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes, mixNotes, zigNotes];
     const originals = await Promise.all(notesFiles.map((uri) => vscode.workspace.fs.readFile(uri)));
     try {
       const cargo = fixtureUri('Cargo.toml');
@@ -231,6 +273,7 @@ suite('pacmon integration', () => {
       assert.strictEqual(await readText(mavenNotes), new TextDecoder().decode(originals[2]!));
       assert.strictEqual(await readText(gradleNotes), new TextDecoder().decode(originals[3]!));
       assert.strictEqual(await readText(mixNotes), new TextDecoder().decode(originals[4]!));
+      assert.strictEqual(await readText(zigNotes), new TextDecoder().decode(originals[5]!));
     } finally {
       await Promise.all(notesFiles.map((uri, index) =>
         vscode.workspace.fs.writeFile(uri, originals[index]!),

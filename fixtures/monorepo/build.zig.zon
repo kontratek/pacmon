@@ -1,0 +1,8 @@
+.{
+    .name = .pacmon_root,
+    .version = "0.1.0",
+    .dependencies = .{
+        .root_zig = .{ .path = "vendor/root-zig" },
+    },
+    .paths = .{ "build.zig", "build.zig.zon" },
+}

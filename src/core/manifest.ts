@@ -4,6 +4,7 @@ import { extractMavenDependencies } from './mavenManifest';
 import { extractNpmDependencies } from './packageJson';
 import { extractGradleDependencies } from './gradleManifest';
 import { extractMixDependencies } from './mixManifest';
+import { extractZigDependencies } from './zig-manifest';
 export { dependencyAtOffset } from './dependency';
 
 export interface ManifestAdapter {
@@ -56,6 +57,13 @@ export const MANIFEST_ADAPTERS: readonly ManifestAdapter[] = [
     fileNames: ['mix.exs'],
     notesRelativePath: '.pacmon/mix/DEPENDENCY-NOTES.md',
     extractDependencies: extractMixDependencies,
+    normalizeNoteKey: tolerantKey,
+  },
+  {
+    kind: 'zig',
+    fileNames: ['build.zig.zon'],
+    notesRelativePath: '.pacmon/zig/DEPENDENCY-NOTES.md',
+    extractDependencies: extractZigDependencies,
     normalizeNoteKey: tolerantKey,
   },
 ];

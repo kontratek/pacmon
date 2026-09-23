@@ -54,6 +54,10 @@ describe('template: frontmatter and header', () => {
     expect(mix).toContain('ecosystem: mix');
     expect(mix).toContain('mix dependency manifest');
     expect(normalizeText(mix)).toBe(mix);
+    const zig = newNotesFileContent('\n', 'known_folders', 'Platform directories.', 'zig');
+    expect(zig).toContain('ecosystem: zig');
+    expect(zig).toContain('zig dependency manifest');
+    expect(normalizeText(zig)).toBe(zig);
   });
 });
 
@@ -74,6 +78,7 @@ describe('template: pointer block for the user’s agent files', () => {
     expect(text).toContain('### Agent notes');
     expect(text).toContain('status: removed');
     expect(text).toContain('.pacmon/mix/DEPENDENCY-NOTES.md');
+    expect(text).toContain('.pacmon/zig/DEPENDENCY-NOTES.md');
   });
 
   it('appends the block once and replaces it on re-run', () => {
