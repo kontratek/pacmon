@@ -7,6 +7,30 @@
 
 ## Unreleased
 
+- **Pacmon reads `Cargo.toml`, `pom.xml` and Gradle build files, not only
+  `package.json`.** A Rust, Maven or Gradle manifest gets what a
+  `package.json` has, in VS Code and in the JetBrains plugin: the mark before
+  each dependency, the first line of its note at the end of the line, the
+  whole note on hover, the note editor and **Documentation Coverage**. Each
+  ecosystem keeps its notes in a file of its own beside the manifest —
+  `.pacmon/cargo/DEPENDENCY-NOTES.md`, `.pacmon/maven/DEPENDENCY-NOTES.md`,
+  `.pacmon/gradle/DEPENDENCY-NOTES.md` — so a folder with both a
+  `package.json` and a `Cargo.toml` keeps the two apart. A section carries the
+  name the manifest gives the dependency: its key in a Cargo dependency
+  table, `groupId:artifactId` in Maven, `group:name` or the `libs.*` alias in
+  Gradle. Pacmon reads each manifest as text and runs none of the build
+  tools, so it sees what is written in the file: not what a parent POM adds,
+  and not a dependency a Gradle script adds with code. The new files are
+  `dependency-notes/2`, whose frontmatter also names the ecosystem; npm notes
+  stay `dependency-notes/1` and need nothing. **Open package.json** is now
+  **Open Dependency Manifest**.
+- **Set Up AI Instructions covers every ecosystem.** `.pacmon/AGENT-RULES.md`
+  names the four notes files and spells out the section heading for each
+  manifest, with an example, and the pointer it writes into `AGENTS.md`,
+  `CLAUDE.md` and the rest names the four files too. An agent that adds a
+  crate or bumps a Maven artifact finds the right file and writes the right
+  heading.
+
 ## 0.3.3 — 2026-09-23
 
 - **A release submits the JetBrains plugin too.** The plugin was uploaded by

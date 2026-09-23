@@ -1,6 +1,6 @@
 # The dependency notes formats
 
-Pacmon stores dependency notes as Markdown. Existing npm files use `dependency-notes/1`; ecosystem-scoped Cargo, Maven, and Gradle files use `dependency-notes/2`. See [Versioning](#versioning).
+Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, and Gradle files use `dependency-notes/2`. See [Versioning](#versioning).
 
 ## The notes file
 
@@ -8,7 +8,7 @@ The path identifies the ecosystem:
 
 - npm: `.pacmon/DEPENDENCY-NOTES.md`, beside `package.json`;
 - Cargo: `.pacmon/cargo/DEPENDENCY-NOTES.md`, beside `Cargo.toml`;
-- Maven: `.pacmon/maven/DEPENDENCY-NOTES.md`, beside `pom.xml`.
+- Maven: `.pacmon/maven/DEPENDENCY-NOTES.md`, beside `pom.xml`;
 - Gradle: `.pacmon/gradle/DEPENDENCY-NOTES.md`, beside `build.gradle` or `build.gradle.kts`.
 
 A manifest without its own notes file uses the closest ancestor notes file for the same ecosystem, up to the workspace root. npm, Cargo, Maven, and Gradle files never share notes.
@@ -84,12 +84,12 @@ The introduction is everything between the title and the first section. It holds
 
 A section starts with a level-2 heading: `## <name>`. Level-2 headings are reserved for dependency note keys everywhere in the file.
 
-A direct dependency is identified statically from its manifest:
+A direct dependency is identified statically from its manifest. Its note key is the name its section carries:
 
-- npm: keys under `dependencies`, `devDependencies`, `peerDependencies`, or `optionalDependencies`;
-- Cargo: local keys in dependency, dev-dependency, build-dependency, and target-specific dependency tables;
-- Maven: `groupId:artifactId` under project or profile `dependencies` (not dependency management or plugin dependencies).
-- Gradle: static external module coordinates and `libs.*` catalog aliases used in a `dependencies` block (not plugins, constraints, project dependencies, file dependencies, or catalog bundles).
+- npm: a key under `dependencies`, `devDependencies`, `peerDependencies`, or `optionalDependencies`. The note key is that key, including `@scope/`.
+- Cargo: a key in a dependency, dev-dependency, build-dependency, or target-specific dependency table, not in `[workspace.dependencies]`. The note key is the local key; for a renamed dependency, that is the key and not its `package`.
+- Maven: a dependency under the project's or a profile's `dependencies`, not under dependency management or a plugin. The note key is `groupId:artifactId`.
+- Gradle: a static external module coordinate or a `libs.*` catalog alias used in a `dependencies` block, not a plugin, constraint, project dependency, file dependency, or catalog bundle. The note key is `group:name` without the version, or the alias as written, such as `libs.junit.jupiter`.
 
 A v1/npm section matches after trimming, stripping one pair of surrounding quotes or backticks, and lower-casing. Cargo, Maven, and Gradle v2 keys preserve case after trimming and wrapper removal.
 
@@ -187,7 +187,7 @@ A tool that adds a section puts it at its sorted position when the file is sorte
 
 ## Example
 
-A complete repository is in [`example-repo`](example-repo/): a `package.json` and the `.pacmon/DEPENDENCY-NOTES.md` that documents it. One section:
+A complete repository is in [`example-repo`](example-repo/): a `package.json` and the `.pacmon/DEPENDENCY-NOTES.md` that documents it. A Cargo, Maven, or Gradle file differs in its frontmatter, its header comment, and its note keys. One section:
 
 ```md
 ## express

@@ -4,10 +4,12 @@
 console.log(`Pacmon — Dependency Notes
 
 The command line interface is not released yet. Today Pacmon is a VS Code
-extension that documents why each dependency exists, right next to your
-package.json. Notes live in your repository, in .pacmon/DEPENDENCY-NOTES.md.
+extension and a JetBrains plugin that document why each dependency exists,
+right next to your package.json, Cargo.toml, pom.xml or build.gradle. Notes
+live in your repository, under .pacmon/.
 
-  Extension  https://marketplace.visualstudio.com/items?itemName=Kontra.pacmon
+  VS Code    https://marketplace.visualstudio.com/items?itemName=Kontra.pacmon
+  JetBrains  https://plugins.jetbrains.com/plugin/34295-pacmon
   Source     https://github.com/kontratek/pacmon
   Site       https://pacmon.dev
 `);

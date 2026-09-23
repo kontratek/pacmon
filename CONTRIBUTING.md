@@ -6,7 +6,7 @@
 
 Open an [issue](https://github.com/kontratek/pacmon/issues).
 
-- **Bug report.** Include the Pacmon version, the VS Code version, your operating system, and the smallest `package.json` and `.pacmon/DEPENDENCY-NOTES.md` that show the problem.
+- **Bug report.** Include the Pacmon version, your editor and its version (VS Code or a JetBrains IDE), your operating system, and the smallest manifest (`package.json`, `Cargo.toml`, `pom.xml` or Gradle build file) and notes file that show the problem.
 - **Feature request.** Say what you tried to do and what stopped you.
 - **Question about the format.** The reference is [`docs/format.md`](docs/format.md). If it does not answer your question, the document has a gap; open an issue.
 

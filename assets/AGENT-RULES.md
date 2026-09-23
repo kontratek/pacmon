@@ -6,7 +6,7 @@
 
 ## Before you touch a dependency
 
-Its notes are beside the manifest you are changing: npm uses `.pacmon/DEPENDENCY-NOTES.md`, Rust uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`, and Gradle uses `.pacmon/gradle/DEPENDENCY-NOTES.md`. In a monorepo, use the nearest matching ecosystem file walking up. Read the introduction and then the package's `## <name>` section.
+Its notes are beside the manifest you are changing: npm uses `.pacmon/DEPENDENCY-NOTES.md`, Rust uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`, and Gradle uses `.pacmon/gradle/DEPENDENCY-NOTES.md`. In a monorepo, use the nearest file for the same ecosystem, walking up. Read two things first: the free text between `# Dependency Notes` and the first section (this repository's own rules), then the dependency's `## <name>` section.
 
 - **Adding a package:** open its section in the same commit, with at least `purpose:`. Say what you considered and why this one, in `alternatives:` or `log:`.
 - **Upgrading:** read its `constraint:` and `verify:` lines, then run what `verify:` says. Log the attempt with its outcome even if you reverted it — the next agent must not repeat it.
@@ -16,7 +16,7 @@ Its notes are beside the manifest you are changing: npm uses `.pacmon/DEPENDENCY
 ## Where you write
 
 ```md
-## <exact note key shown by Pacmon>
+## <the dependency's note key>
 
 Text written by people. Do not touch it.
 
@@ -26,9 +26,14 @@ Text written by people. Do not touch it.
 - key: value
 ```
 
+- **The heading is the dependency's note key**, spelled as its manifest spells it:
+  - `package.json`: the package name with its `@scope/` — `## @types/node`
+  - `Cargo.toml`: the key in the dependency table; for a renamed dependency, the key, not its `package` — `## serde`
+  - `pom.xml`: `groupId:artifactId` — `## org.slf4j:slf4j-api`
+  - `build.gradle(.kts)`: `group:name` without the version, or the catalog alias as written — `## org.slf4j:slf4j-api`, `## libs.junit.jupiter`
 - **The text right under the heading is written by people.** Never edit or delete it. Treat it as one of your sources — alongside the code, the git history, the registry and your own reasoning. If your block disagrees with it, the human text wins: fix your block and add a `log:` line saying so.
 - **`### Agent notes` is yours.** Lower-case keys, one fact per line, keys may repeat (several `constraint:` or `log:` lines are normal). Keys outside the vocabulary below are flagged by Pacmon; if something fits none of them, write it as `note:` — never invent a key.
-- One `## name` section per direct dependency, in alphabetical order. `##` is reserved for package names; inside a section the only heading is `### Agent notes`.
+- One `## name` section per direct dependency, in alphabetical order. `##` is reserved for dependencies; inside a section the only heading is `### Agent notes`.
 - Never write an empty field or a dash placeholder. If you have nothing true to say, leave the field out.
 - Write judgments, not measurements.
 - Revise, do not accumulate: correct a line instead of adding a contradicting one. `log:` is the exception — it is the history.
@@ -46,7 +51,7 @@ Fill these whenever you can:
 | `constraint:` | What must not change? | a pin, a forbidden upgrade, a coordination requirement — the rule and its reason |
 | `verify:` | How do I check I did not break it? | a command or a flow: `vitest src/api`, "run the login e2e" |
 | `log:` | What happened, what was decided? | one dated event per line — added (by whom, version, PR), an upgrade attempt, a rejected proposal and why; carry a commit hash, PR or advisory id |
-| `verified:` | Which installed version were these notes checked against? | the version from the lockfile when you last confirmed the block is still true |
+| `verified:` | Which installed version were these notes checked against? | the resolved version (from the lockfile, where there is one) when you last confirmed the block is still true |
 
 Add these only when they are true and non-obvious:
 

@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
   "version": "0.0.2",
-  "description": "Pacmon documents why each dependency exists, next to your package.json. Available today as a VS Code extension; this package is where the CLI will live.",
+  "description": "Pacmon documents why each dependency exists, next to your package.json, Cargo.toml, pom.xml or build.gradle. Available today as a VS Code extension and a JetBrains plugin; this package is where the CLI will live.",
   "license": "Apache-2.0",
   "author": "Kontra Siber Savunma Teknoloji Ltd. Şti. (https://kontra.com.tr/)",
   "homepage": "https://pacmon.dev",
@@ -16,6 +16,9 @@
   "keywords": [
     "dependencies",
     "package.json",
+    "Cargo.toml",
+    "pom.xml",
+    "build.gradle",
     "documentation",
     "notes",
     "dependency-management"
