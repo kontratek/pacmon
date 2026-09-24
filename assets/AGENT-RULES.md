@@ -6,7 +6,7 @@
 
 ## Before you touch a dependency
 
-Its notes are beside the manifest you are changing: npm uses `.pacmon/DEPENDENCY-NOTES.md`, Rust uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`, Gradle uses `.pacmon/gradle/DEPENDENCY-NOTES.md`, Mix uses `.pacmon/mix/DEPENDENCY-NOTES.md`, and Zig uses `.pacmon/zig/DEPENDENCY-NOTES.md`. In a monorepo, use the nearest file for the same ecosystem, walking up. Read two things first: the free text between `# Dependency Notes` and the first section (this repository's own rules), then the dependency's `## <name>` section.
+Its notes are beside the manifest you are changing: npm uses `.pacmon/DEPENDENCY-NOTES.md`, Rust uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`, Gradle uses `.pacmon/gradle/DEPENDENCY-NOTES.md`, Mix uses `.pacmon/mix/DEPENDENCY-NOTES.md`, Zig uses `.pacmon/zig/DEPENDENCY-NOTES.md`, and Python uses `.pacmon/python/DEPENDENCY-NOTES.md`. In a monorepo, use the nearest file for the same ecosystem, walking up. Read two things first: the free text between `# Dependency Notes` and the first section (this repository's own rules), then the dependency's `## <name>` section.
 
 - **Adding a package:** open its section in the same commit, with at least `purpose:`. Say what you considered and why this one, in `alternatives:` or `log:`.
 - **Upgrading:** read its `constraint:` and `verify:` lines, then run what `verify:` says. Log the attempt with its outcome even if you reverted it — the next agent must not repeat it.
@@ -33,6 +33,7 @@ Text written by people. Do not touch it.
   - `build.gradle(.kts)`: `group:name` without the version, or the catalog alias as written — `## org.slf4j:slf4j-api`, `## libs.junit.jupiter`
   - `mix.exs`: the dependency tuple's first application atom — `## phoenix`, `## ecto_sql`
   - `build.zig.zon`: the direct field name in the top-level `.dependencies` struct — `## known_folders`
+  - `pyproject.toml` or a requirements file: the normalized distribution name, lower-case with `.`, `_`, and `-` treated alike — `## requests`, `## importlib-metadata`
 - **The text right under the heading is written by people.** Never edit or delete it. Treat it as one of your sources — alongside the code, the git history, the registry and your own reasoning. If your block disagrees with it, the human text wins: fix your block and add a `log:` line saying so.
 - **`### Agent notes` is yours.** Lower-case keys, one fact per line, keys may repeat (several `constraint:` or `log:` lines are normal). Keys outside the vocabulary below are flagged by Pacmon; if something fits none of them, write it as `note:` — never invent a key.
 - One `## name` section per direct dependency, in alphabetical order. `##` is reserved for dependencies; inside a section the only heading is `### Agent notes`.
