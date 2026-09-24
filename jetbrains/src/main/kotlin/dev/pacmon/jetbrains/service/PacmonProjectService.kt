@@ -169,14 +169,14 @@ class PacmonProjectService(private val project: Project) :
     }
 
     fun dependencies(manifest: VirtualFile): List<DependencyRef> {
-        val adapter = ManifestRegistry.forFileName(manifest.name) ?: return emptyList()
+        val adapter = ManifestRegistry.forPath(manifest.path) ?: return emptyList()
         val document = FileDocumentManager.getInstance().getCachedDocument(manifest)
         val stamp = document?.modificationStamp ?: manifest.modificationStamp
         val cached = dependencyCache[manifest.path]
         val entries = if (cached?.stamp == stamp) {
             cached.entries
         } else {
-            val parsed = adapter.extractDependencies(textOf(manifest))
+            val parsed = adapter.extractDependencies(textOf(manifest), manifest.path)
             dependencyCache[manifest.path] = CachedDependencies(stamp, parsed)
             parsed
         }
@@ -205,10 +205,10 @@ class PacmonProjectService(private val project: Project) :
     }
 
     fun resolveNotesFile(manifest: VirtualFile): VirtualFile? {
-        val kind = ManifestRegistry.forFileName(manifest.name)?.kind ?: return null
+        val kind = ManifestRegistry.forPath(manifest.path)?.kind ?: return null
         val root = manifestRoot(manifest) ?: return null
         if (settings.monorepoMode == MonorepoModes.ROOT_ONLY) return notesIn(root, kind)
-        var directory: VirtualFile? = manifest.parent
+        var directory: VirtualFile? = manifestOwnerDirectory(manifest)
         repeat(64) {
             val current = directory ?: return null
             notesIn(current, kind)?.let { return it }
@@ -218,10 +218,21 @@ class PacmonProjectService(private val project: Project) :
         return null
     }
 
-    fun creationTargetDirectory(manifest: VirtualFile): VirtualFile = manifest.parent
+    fun creationTargetDirectory(manifest: VirtualFile): VirtualFile = manifestOwnerDirectory(manifest)
+
+    private fun manifestOwnerDirectory(manifest: VirtualFile): VirtualFile {
+        val adapter = ManifestRegistry.forPath(manifest.path)
+        if (adapter?.kind != ManifestKind.PYTHON || manifest.name == "pyproject.toml") return manifest.parent
+        var directory = manifest.parent
+        repeat(64) {
+            if (directory.name == "requirements") return directory.parent ?: directory
+            directory = directory.parent ?: return manifest.parent
+        }
+        return manifest.parent
+    }
 
     fun saveNoteLayers(manifest: VirtualFile, dependency: String, human: String, agent: String): VirtualFile {
-        val kind = ManifestRegistry.forFileName(manifest.name)?.kind ?: error("Unsupported dependency manifest.")
+        val kind = ManifestRegistry.forPath(manifest.path)?.kind ?: error("Unsupported dependency manifest.")
         var result: VirtualFile? = null
         WriteCommandAction.runWriteCommandAction(project, "Update dependency note", null, {
             val existing = resolveNotesFile(manifest)
@@ -356,8 +367,10 @@ class PacmonProjectService(private val project: Project) :
 
     fun manifestBesideNotes(file: VirtualFile): VirtualFile? {
         val kind = notesKind(file) ?: return null
-        val owner = if (kind == ManifestKind.NPM) file.parent?.parent else file.parent?.parent?.parent
-        return ManifestRegistry.forKind(kind).fileNames.firstNotNullOfOrNull { owner?.findChild(it) }
+        val key = file.path.replace('\\', '/')
+        return manifests(kind)
+            .filter { resolveNotesFile(it)?.path?.replace('\\', '/') == key }
+            .minByOrNull(::manifestPriority)
     }
 
     fun dependenciesForNotes(notesFile: VirtualFile): List<DependencyRef> {
@@ -370,16 +383,46 @@ class PacmonProjectService(private val project: Project) :
     private fun manifests(kind: ManifestKind): List<VirtualFile> = manifestIndex.getOrPut(kind) {
         val adapter = ManifestRegistry.forKind(kind)
         ReadAction.compute<List<VirtualFile>, RuntimeException> {
-            adapter.fileNames.flatMap { fileName ->
+            val names = if (kind == ManifestKind.PYTHON) {
+                FilenameIndex.getAllFilenames(project).filter { name ->
+                    name == "pyproject.toml" || name.endsWith(".txt")
+                }
+            } else adapter.fileNames
+            names.flatMap { fileName ->
                 FilenameIndex.getVirtualFilesByName(
                     fileName,
                     GlobalSearchScope.projectScope(project),
                 )
-            }.filter { !it.isDirectory && !isExcludedFromManifestDiscovery(it, kind) }.distinctBy { it.path }
+            }.filter {
+                !it.isDirectory && adapter.matchesPath(it.path) && !isExcludedFromManifestDiscovery(it, kind)
+            }.distinctBy { it.path }.sortedBy(::manifestPriority)
         }
     }
 
+    private fun manifestPriority(file: VirtualFile): String {
+        val adapter = ManifestRegistry.forPath(file.path)
+        val rank = if (adapter?.kind == ManifestKind.PYTHON) {
+            when (file.name) {
+                "pyproject.toml" -> 0
+                "requirements.txt" -> 1
+                else -> 2
+            }
+        } else {
+            adapter?.fileNames?.indexOf(file.name)?.takeIf { it >= 0 } ?: 99
+        }
+        return "%02d:%s".format(rank, file.path.replace('\\', '/'))
+    }
+
     private fun isExcludedFromManifestDiscovery(file: VirtualFile, kind: ManifestKind): Boolean {
+        if (kind == ManifestKind.PYTHON) {
+            val excluded = setOf(".venv", "venv", ".tox", ".nox", "site-packages", "dist", "build", ".git")
+            var directory = file.parent
+            while (directory != null) {
+                if (directory.name in excluded) return true
+                directory = directory.parent
+            }
+            return false
+        }
         if (kind != ManifestKind.ZIG) return false
         var directory = file.parent
         while (directory != null) {
@@ -390,17 +433,20 @@ class PacmonProjectService(private val project: Project) :
     }
 
     fun rememberManifest(file: VirtualFile) {
-        if (file.isValid && ManifestRegistry.forFileName(file.name) != null) lastManifest = file
+        if (file.isValid && ManifestRegistry.forPath(file.path) != null) lastManifest = file
     }
 
     fun defaultManifest(): VirtualFile? {
-        val selected = FileEditorManager.getInstance(project).selectedFiles.firstOrNull { ManifestRegistry.forFileName(it.name) != null }
+        val selected = FileEditorManager.getInstance(project).selectedFiles.firstOrNull { ManifestRegistry.forPath(it.path) != null }
         if (selected != null) return selected.also(::rememberManifest)
         lastManifest?.takeIf { it.isValid }?.let { return it }
         for (root in manifestRoots()) {
             ManifestRegistry.adapters.firstNotNullOfOrNull { adapter ->
                 adapter.fileNames.firstNotNullOfOrNull(root::findChild)
             }?.let { return it }
+        }
+        ManifestRegistry.adapters.forEach { adapter ->
+            manifests(adapter.kind).firstOrNull()?.let { return it }
         }
         return null
     }
@@ -412,7 +458,7 @@ class PacmonProjectService(private val project: Project) :
     private fun isRelevantPath(path: String): Boolean {
         val normalized = path.replace('\\', '/')
         return ManifestRegistry.adapters.any {
-            it.fileNames.any { fileName -> normalized.endsWith("/$fileName") } ||
+            it.matchesPath(normalized) ||
                 normalized.endsWith("/${it.notesRelativePath}")
         }
     }

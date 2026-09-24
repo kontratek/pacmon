@@ -37,14 +37,14 @@ object DependencyPsi {
 
     fun all(file: PsiFile): List<DependencyRef> {
         val manifest = file.virtualFile ?: return emptyList()
-        val adapter = ManifestRegistry.forFileName(file.name) ?: return emptyList()
-        return adapter.extractDependencies(file.text).map { DependencyRef(manifest, it) }
+        val adapter = ManifestRegistry.forPath(manifest.path) ?: return emptyList()
+        return adapter.extractDependencies(file.text, manifest.path).map { DependencyRef(manifest, it) }
     }
 
-    fun isManifest(file: PsiFile?): Boolean = file != null && ManifestRegistry.forFileName(file.name) != null
+    fun isManifest(file: PsiFile?): Boolean = file?.virtualFile?.let { ManifestRegistry.forPath(it.path) } != null
 
     fun isManifest(file: VirtualFile?): Boolean = file != null && !file.isDirectory &&
-        ManifestRegistry.forFileName(file.name) != null
+        ManifestRegistry.forPath(file.path) != null
 
     fun anchorElement(file: PsiFile, dependency: DependencyRef): PsiElement? =
         file.findElementAt(dependency.primaryRange.offset.coerceIn(0, (file.textLength - 1).coerceAtLeast(0)))

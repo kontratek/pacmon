@@ -6,7 +6,8 @@ enum class ManifestKind(val id: String) {
     MAVEN("maven"),
     GRADLE("gradle"),
     MIX("mix"),
-    ZIG("zig");
+    ZIG("zig"),
+    PYTHON("python");
 
     companion object {
         fun fromId(value: String?): ManifestKind? = entries.firstOrNull { it.id == value }
@@ -29,8 +30,11 @@ data class DependencyEntry(
 interface ManifestAdapter {
     val kind: ManifestKind
     val fileNames: List<String>
+    val discoveryGlobs: List<String> get() = fileNames.map { "**/$it" }
     val notesRelativePath: String
     fun extractDependencies(text: String): List<DependencyEntry>
+    fun extractDependencies(text: String, path: String): List<DependencyEntry> = extractDependencies(text)
+    fun matchesPath(path: String): Boolean = path.replace('\\', '/').substringAfterLast('/') in fileNames
     fun normalizeNoteKey(raw: String): String
 }
 
@@ -42,9 +46,12 @@ object ManifestRegistry {
         GradleManifestAdapter,
         MixManifestAdapter,
         ZigManifestAdapter,
+        PythonManifestAdapter,
     )
 
-    fun forFileName(fileName: String): ManifestAdapter? = adapters.firstOrNull { fileName in it.fileNames }
+    fun forFileName(fileName: String): ManifestAdapter? = forPath(fileName)
+
+    fun forPath(path: String): ManifestAdapter? = adapters.firstOrNull { it.matchesPath(path) }
 
     fun forKind(kind: ManifestKind): ManifestAdapter = adapters.first { it.kind == kind }
 
@@ -61,6 +68,7 @@ object ManifestRegistry {
 
     fun normalizeName(raw: String, ecosystem: ManifestKind?): String {
         val value = stripName(raw)
+        if (ecosystem == ManifestKind.PYTHON) return PythonManifestAdapter.normalizePackageName(value)
         return if (ecosystem != null && ecosystem != ManifestKind.NPM) value else value.lowercase()
     }
 }

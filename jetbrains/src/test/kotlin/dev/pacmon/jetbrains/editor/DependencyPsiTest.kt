@@ -118,6 +118,19 @@ class DependencyPsiTest : BasePlatformTestCase() {
         assertNull(DependencyPsi.atOffset(file, file.text.indexOf("url") + 1))
     }
 
+    fun testFindsPythonDependenciesInPyprojectAndRequirementsFiles() {
+        val pyproject = myFixture.configureByText(
+            "pyproject.toml",
+            "[project]\ndependencies = [\"Requests>=2\", \"importlib_metadata>=7\"]",
+        )
+        assertEquals(listOf("requests", "importlib-metadata"), DependencyPsi.all(pyproject).map { it.name })
+        assertEquals("requests", DependencyPsi.atOffset(pyproject, pyproject.text.indexOf("Requests") + 2)?.name)
+
+        val requirements = myFixture.configureByText("requirements-dev.txt", "pytest>=8\n-r base.txt\n")
+        assertEquals(listOf("pytest"), DependencyPsi.all(requirements).map { it.name })
+        assertEquals("pytest", DependencyPsi.atOffset(requirements, requirements.text.indexOf("pytest") + 2)?.name)
+    }
+
     fun testUsesDifferentIconsForDocumentedAndUndocumentedDependencies() {
         assertSame(PacmonIcons.Documented, PacmonIcons.forNote(true))
         assertSame(PacmonIcons.Undocumented, PacmonIcons.forNote(false))

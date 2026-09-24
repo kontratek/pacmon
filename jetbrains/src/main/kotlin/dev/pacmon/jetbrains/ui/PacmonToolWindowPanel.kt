@@ -215,14 +215,14 @@ class PacmonToolWindowPanel(
         target = value
         nameLabel.text = value.name
         sectionLabel.text = value.section
-        notesPathLabel.text = "->  ${ManifestRegistry.forFileName(value.manifest.name)?.notesRelativePath.orEmpty()}"
+        notesPathLabel.text = "->  ${ManifestRegistry.forPath(value.manifest.path)?.notesRelativePath.orEmpty()}"
         loadFromDisk(focusEmpty = true)
     }
 
     fun externalNotesChanged(paths: Set<String>) {
         if (disposed || writing || target == null) return
         val current = target ?: return
-        val relativePath = dev.pacmon.jetbrains.core.ManifestRegistry.forFileName(current.manifest.name)
+        val relativePath = dev.pacmon.jetbrains.core.ManifestRegistry.forPath(current.manifest.path)
             ?.notesRelativePath ?: dev.pacmon.jetbrains.core.NotesCore.NOTES_RELATIVE_PATH
         val relevantPath = notes.resolveNotesFile(current.manifest)?.path?.replace('\\', '/')
             ?: "${current.manifest.parent.path.replace('\\', '/')}/$relativePath"

@@ -22,8 +22,10 @@ object AiInstructions {
         "Dependency notes live in `${NotesCore.NOTES_RELATIVE_PATH}` for npm, " +
             "`.pacmon/cargo/${NotesCore.NOTES_FILE_NAME}` for Rust, " +
             "`.pacmon/maven/${NotesCore.NOTES_FILE_NAME}` for Maven, " +
-            "`.pacmon/gradle/${NotesCore.NOTES_FILE_NAME}` for Gradle, and " +
-            "`.pacmon/mix/${NotesCore.NOTES_FILE_NAME}` for Mix; people write below `## <package>`, " +
+            "`.pacmon/gradle/${NotesCore.NOTES_FILE_NAME}` for Gradle, " +
+            "`.pacmon/mix/${NotesCore.NOTES_FILE_NAME}` for Mix, " +
+            "`.pacmon/zig/${NotesCore.NOTES_FILE_NAME}` for Zig, and " +
+            "`.pacmon/python/${NotesCore.NOTES_FILE_NAME}` for Python; people write below `## <package>`, " +
             "agents under `${NotesCore.AGENT_NOTES_HEADING}`.",
         "Rules and the field list are in `${NotesCore.AGENT_RULES_RELATIVE_PATH}`; read a package's section " +
             "before adding, bumping or removing it.",

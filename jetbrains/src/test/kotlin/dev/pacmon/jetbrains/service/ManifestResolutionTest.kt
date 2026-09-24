@@ -31,12 +31,14 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             "build.zig.zon",
             ".{ .dependencies = .{ .known_folders = .{ .path = \"../known-folders\" } } }",
         )
+        val python = myFixture.tempDirFixture.createFile("pyproject.toml", "[project]\ndependencies = [\"requests>=2\"]")
         myFixture.tempDirFixture.createFile(".pacmon/DEPENDENCY-NOTES.md", "## vue\n\nnpm\n")
         myFixture.tempDirFixture.createFile(".pacmon/cargo/DEPENDENCY-NOTES.md", "## serde\n\ncargo\n")
         myFixture.tempDirFixture.createFile(".pacmon/maven/DEPENDENCY-NOTES.md", "## g:a\n\nmaven\n")
         myFixture.tempDirFixture.createFile(".pacmon/gradle/DEPENDENCY-NOTES.md", "## g:a\n\ngradle\n")
         myFixture.tempDirFixture.createFile(".pacmon/mix/DEPENDENCY-NOTES.md", "## phoenix\n\nmix\n")
         myFixture.tempDirFixture.createFile(".pacmon/zig/DEPENDENCY-NOTES.md", "## known_folders\n\nzig\n")
+        myFixture.tempDirFixture.createFile(".pacmon/python/DEPENDENCY-NOTES.md", "## requests\n\npython\n")
 
         assertTrue(service().resolveNotesFile(npm)!!.path.endsWith(".pacmon/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(cargo)!!.path.endsWith(".pacmon/cargo/DEPENDENCY-NOTES.md"))
@@ -44,9 +46,11 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         assertTrue(service().resolveNotesFile(gradle)!!.path.endsWith(".pacmon/gradle/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(mix)!!.path.endsWith(".pacmon/mix/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(zig)!!.path.endsWith(".pacmon/zig/DEPENDENCY-NOTES.md"))
+        assertTrue(service().resolveNotesFile(python)!!.path.endsWith(".pacmon/python/DEPENDENCY-NOTES.md"))
         assertEquals("cargo", service().noteFor(cargo, "serde")?.layers?.human)
         assertEquals("mix", service().noteFor(mix, "phoenix")?.layers?.human)
         assertEquals("zig", service().noteFor(zig, "known_folders")?.layers?.human)
+        assertEquals("python", service().noteFor(python, "requests")?.layers?.human)
         assertNull(service().noteFor(cargo, "vue"))
     }
 
@@ -83,6 +87,11 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             ".{ .dependencies = .{ .known_folders = .{ .path = \"../known-folders\" } } }",
         )
         val zigNotes = service().saveNoteLayers(zig, "known_folders", "Filesystem paths", "")
+        val python = myFixture.tempDirFixture.createFile(
+            "pyproject.toml",
+            "[project]\ndependencies = [\"requests>=2\"]",
+        )
+        val pythonNotes = service().saveNoteLayers(python, "requests", "HTTP client", "")
 
         assertTrue(cargoNotes.path.endsWith(".pacmon/cargo/DEPENDENCY-NOTES.md"))
         assertTrue(String(cargoNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: cargo"))
@@ -94,6 +103,8 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         assertTrue(String(mixNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: mix"))
         assertTrue(zigNotes.path.endsWith(".pacmon/zig/DEPENDENCY-NOTES.md"))
         assertTrue(String(zigNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: zig"))
+        assertTrue(pythonNotes.path.endsWith(".pacmon/python/DEPENDENCY-NOTES.md"))
+        assertTrue(String(pythonNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: python"))
         assertNull(cargo.parent.findChild(".pacmon")?.findChild("DEPENDENCY-NOTES.md"))
     }
 
@@ -154,6 +165,22 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         myFixture.tempDirFixture.createFile("apps/web/mix.exs", "defp deps, do: [{:phoenix, \"~> 1.8\"}]")
         myFixture.tempDirFixture.createFile("apps/accounts/mix.exs", "defp deps, do: [{:ecto_sql, \"~> 3.13\"}]")
         assertEquals(setOf("phoenix", "ecto_sql"), service().dependenciesForNotes(notes).map { it.name }.toSet())
+    }
+
+    fun testSplitRequirementsShareProjectPythonNotesAndPreferPyproject() {
+        val notes = myFixture.tempDirFixture.createFile(
+            ".pacmon/python/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: python\n---\n# Dependency Notes\n",
+        )
+        val pyproject = myFixture.tempDirFixture.createFile(
+            "pyproject.toml",
+            "[project]\ndependencies = [\"requests>=2\"]",
+        )
+        val requirements = myFixture.tempDirFixture.createFile("requirements/dev.txt", "pytest>=8\n")
+
+        assertEquals(notes.path, service().resolveNotesFile(requirements)?.path)
+        assertEquals(setOf("requests", "pytest"), service().dependenciesForNotes(notes).map { it.name }.toSet())
+        assertEquals(pyproject.path, service().manifestBesideNotes(notes)?.path)
     }
 
     fun testZigPackageCacheManifestsAreExcludedFromNotesDiscovery() {
