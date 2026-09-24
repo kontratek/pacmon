@@ -7,7 +7,8 @@ enum class ManifestKind(val id: String) {
     GRADLE("gradle"),
     MIX("mix"),
     ZIG("zig"),
-    PYTHON("python");
+    PYTHON("python"),
+    GO("go");
 
     companion object {
         fun fromId(value: String?): ManifestKind? = entries.firstOrNull { it.id == value }
@@ -47,6 +48,7 @@ object ManifestRegistry {
         MixManifestAdapter,
         ZigManifestAdapter,
         PythonManifestAdapter,
+        GoManifestAdapter,
     )
 
     fun forFileName(fileName: String): ManifestAdapter? = forPath(fileName)
