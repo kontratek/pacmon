@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.5.0 — 2026-09-24
+
 - **Pacmon supports Python projects in VS Code and JetBrains.** Standard,
   Poetry and uv dependencies in `pyproject.toml`, plus named dependencies in
   common pip requirements-file layouts, get markers, hover, note editing and
