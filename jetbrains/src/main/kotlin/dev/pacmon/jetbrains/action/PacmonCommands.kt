@@ -41,7 +41,7 @@ object PacmonCommands {
     /** The mirror of [openNotesFile]: the manifest the notes describe. */
     fun openManifest(project: Project, manifest: VirtualFile? = null) {
         val selected = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
-        val file = manifest?.takeIf { it.isValid && ManifestRegistry.forFileName(it.name) != null }
+        val file = manifest?.takeIf { it.isValid && ManifestRegistry.forPath(it.path) != null }
             ?: selected?.let { service(project).manifestBesideNotes(it) }
             ?: service(project).defaultManifest()
         if (file == null) {
@@ -113,8 +113,8 @@ object PacmonCommands {
         val selected = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
         if (selected != null && notes.notesKind(selected) != null) return selected
 
-        val chosen = manifest?.takeIf { it.isValid && ManifestRegistry.forFileName(it.name) != null }
-            ?: selected?.takeIf { ManifestRegistry.forFileName(it.name) != null }
+        val chosen = manifest?.takeIf { it.isValid && ManifestRegistry.forPath(it.path) != null }
+            ?: selected?.takeIf { ManifestRegistry.forPath(it.path) != null }
             ?: notes.defaultManifest()
         if (chosen != null) notes.resolveNotesFile(chosen)?.let { return it }
 

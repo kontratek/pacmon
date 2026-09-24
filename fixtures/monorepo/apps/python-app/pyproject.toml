@@ -1,0 +1,7 @@
+[project]
+name = "python-app"
+version = "0.1.0"
+dependencies = ["fastapi>=0.115", "shared_python>=1"]
+
+[dependency-groups]
+test = ["pytest>=8"]

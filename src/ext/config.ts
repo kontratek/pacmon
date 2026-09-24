@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { INLINE_SOURCES, type InlineSource } from '../core/layers';
 import { NOTES_REL_PATH } from '../core/template';
 import { DEFAULT_NOTE_BUTTONS, type NoteButton } from './noteButtonIds';
-import { MANIFEST_ADAPTERS, manifestAdapterForFileName, manifestAdapterForKind } from '../core/manifest';
+import { MANIFEST_ADAPTERS, manifestAdapterForKind, manifestAdapterForPath } from '../core/manifest';
 import type { ManifestKind } from '../core/model';
 
 export { AGENT_RULES_REL_PATH, NOTES_REL_PATH } from '../core/template';
@@ -18,12 +18,12 @@ export function notesFileLabel(kind: ManifestKind = 'npm'): string {
 }
 
 export function notesFileLabelForManifest(uri: vscode.Uri): string {
-  const adapter = manifestAdapterForFileName(uriBasename(uri));
+  const adapter = manifestAdapterForPath(uri.path);
   return adapter?.notesRelativePath ?? NOTES_REL_PATH;
 }
 
 export const MANIFEST_SELECTOR: vscode.DocumentSelector = MANIFEST_ADAPTERS.flatMap((adapter) =>
-  adapter.fileNames.map((fileName) => ({ pattern: `**/${fileName}` })),
+  adapter.discoveryGlobs.map((pattern) => ({ pattern })),
 );
 
 /** Which layer of a note feeds the end-of-line preview and leads the hover. */
@@ -94,7 +94,7 @@ export function isPackageJson(uri: vscode.Uri): boolean {
 }
 
 export function isManifest(uri: vscode.Uri): boolean {
-  return manifestAdapterForFileName(uriBasename(uri)) !== undefined;
+  return manifestAdapterForPath(uri.path) !== undefined;
 }
 
 /** `DEPENDENCY-NOTES.md` inside a `.pacmon/` directory — nothing else counts, not

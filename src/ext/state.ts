@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import type { DepEntry, NotesFileModel } from '../core/model';
 import { parseNotes } from '../core/parseNotes';
-import { manifestAdapterForFileName } from '../core/manifest';
-import { uriBasename } from './config';
+import { manifestAdapterForPath } from '../core/manifest';
 
 interface CacheEntry<T> {
   version: string;
@@ -48,7 +47,7 @@ export class Store implements vscode.Disposable {
   }
 
   rememberManifest(uri: vscode.Uri): void {
-    if (manifestAdapterForFileName(uriBasename(uri))) this.lastManifest = uri;
+    if (manifestAdapterForPath(uri.path)) this.lastManifest = uri;
   }
 
   getLastManifest(): vscode.Uri | undefined {
@@ -95,7 +94,7 @@ export class Store implements vscode.Disposable {
     if (hit && hit.version === version) return hit.value;
     const text = await this.getText(uri);
     if (text === undefined) return [];
-    const value = manifestAdapterForFileName(uriBasename(uri))?.extractDependencies(text) ?? [];
+    const value = manifestAdapterForPath(uri.path)?.extractDependencies(text, uri.path) ?? [];
     this.depsCache.set(key, { version, value });
     return value;
   }
@@ -107,7 +106,7 @@ export class Store implements vscode.Disposable {
     const version = `doc:${doc.version}`;
     const hit = this.depsCache.get(key);
     if (hit && hit.version === version) return hit.value;
-    const value = manifestAdapterForFileName(uriBasename(doc.uri))?.extractDependencies(doc.getText()) ?? [];
+    const value = manifestAdapterForPath(doc.uri.path)?.extractDependencies(doc.getText(), doc.uri.path) ?? [];
     this.depsCache.set(key, { version, value });
     return value;
   }

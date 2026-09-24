@@ -199,7 +199,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
             FileEditorManagerListener.FILE_EDITOR_MANAGER,
             object : FileEditorManagerListener {
                 override fun selectionChanged(event: FileEditorManagerEvent) {
-                    if (ManifestRegistry.forFileName(event.newFile?.name.orEmpty()) != null) {
+                    if (event.newFile?.let { ManifestRegistry.forPath(it.path) } != null) {
                         lastManifest = event.newFile
                         event.newFile?.let(service::rememberManifest)
                     }
@@ -209,7 +209,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         )
         EditorFactory.getInstance().eventMulticaster.addDocumentListener(object : DocumentListener {
             override fun documentChanged(event: DocumentEvent) {
-                if (ManifestRegistry.forFileName(FileDocumentManager.getInstance().getFile(event.document)?.name.orEmpty()) != null) {
+                if (FileDocumentManager.getInstance().getFile(event.document)?.let { ManifestRegistry.forPath(it.path) } != null) {
                     scheduleRefresh()
                 }
             }
@@ -226,7 +226,7 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
         refreshTargetsCount()
 
         val selected = FileEditorManager.getInstance(project).selectedFiles
-            .firstOrNull { ManifestRegistry.forFileName(it.name) != null }
+            .firstOrNull { ManifestRegistry.forPath(it.path) != null }
         if (selected != null) {
             lastManifest = selected
             service.rememberManifest(selected)

@@ -1,0 +1,28 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <codeInsight.inlayProvider
+            language="Python"
+            id="PacmonDependencyIconsPython"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
+        <codeInsight.inlayProvider
+            language="Requirements"
+            id="PacmonDependencyIconsRequirements"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
+        <intentionAction>
+            <language>Python</language>
+            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
+            <category>Pacmon</category>
+        </intentionAction>
+        <intentionAction>
+            <language>Requirements</language>
+            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
+            <category>Pacmon</category>
+        </intentionAction>
+        <lang.documentationProvider
+            language="Python"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>
+        <lang.documentationProvider
+            language="Requirements"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>
+    </extensions>
+</idea-plugin>

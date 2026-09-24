@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+- **Pacmon supports Python projects in VS Code and JetBrains.** Standard,
+  Poetry and uv dependencies in `pyproject.toml`, plus named dependencies in
+  common pip requirements-file layouts, get markers, hover, note editing and
+  coverage backed by `.pacmon/python/DEPENDENCY-NOTES.md`. Parsing is static:
+  Pacmon does not run Python or package-management tools, follow includes, or
+  treat constraints and lock data as direct dependencies.
+
 - **Pacmon supports Zig projects in VS Code and JetBrains.** Direct fields in
   the top-level `.dependencies` struct of `build.zig.zon` get markers, hover,
   note editing and coverage backed by `.pacmon/zig/DEPENDENCY-NOTES.md`.

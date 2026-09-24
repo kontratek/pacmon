@@ -80,7 +80,7 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(w);
   };
   for (const adapter of MANIFEST_ADAPTERS) {
-    for (const fileName of adapter.fileNames) registerWatcher(`**/${fileName}`);
+    for (const glob of adapter.discoveryGlobs) registerWatcher(glob);
   }
   registerWatcher(NOTES_GLOB);
 

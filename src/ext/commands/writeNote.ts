@@ -7,11 +7,10 @@ import {
   replaceSectionLayersInText,
 } from '../../core/serialize';
 import { newNotesFileContent } from '../../core/template';
-import { manifestAdapterForFileName } from '../../core/manifest';
+import { manifestAdapterForPath } from '../../core/manifest';
 import { agentRulesText } from '../agentRules';
 import { agentRulesUriFor, clearResolverCache, creationTargetFor, resolveNotesFileFor } from '../resolveNotesFile';
 import type { Store } from '../state';
-import { uriBasename } from '../config';
 
 /** Write full text to the notes file. Through the open document only when it
  *  has UNSAVED edits (preserves them + undo); otherwise straight to disk —
@@ -101,7 +100,7 @@ async function createNotesFile(
   name: string,
   body: string,
 ): Promise<void> {
-  const ecosystem = manifestAdapterForFileName(uriBasename(manifestUri))?.kind;
+  const ecosystem = manifestAdapterForPath(manifestUri.path)?.kind;
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(notesUri, '..'));
   await vscode.workspace.fs.writeFile(
     notesUri,

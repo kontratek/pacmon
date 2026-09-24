@@ -9,7 +9,7 @@ class ManifestCoreTest {
     @Test
     fun `registry matches only supported manifests in priority order`() {
         assertEquals(
-            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "build.zig.zon"),
+            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "build.zig.zon", "pyproject.toml", "requirements.txt"),
             ManifestRegistry.adapters.flatMap { it.fileNames },
         )
         assertEquals(ManifestKind.NPM, ManifestRegistry.forFileName("package.json")?.kind)
@@ -19,6 +19,8 @@ class ManifestCoreTest {
         assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle")?.kind)
         assertEquals(ManifestKind.MIX, ManifestRegistry.forFileName("mix.exs")?.kind)
         assertEquals(ManifestKind.ZIG, ManifestRegistry.forFileName("build.zig.zon")?.kind)
+        assertEquals(ManifestKind.PYTHON, ManifestRegistry.forFileName("pyproject.toml")?.kind)
+        assertEquals(ManifestKind.PYTHON, ManifestRegistry.forFileName("requirements-dev.txt")?.kind)
         assertNull(ManifestRegistry.forFileName("settings.gradle.kts"))
     }
 

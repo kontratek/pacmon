@@ -51,7 +51,7 @@ class PacmonDocumentationProvider : AbstractDocumentationProvider() {
             append(DocumentationMarkup.SECTION_HEADER_START)
             append("Source")
             append(DocumentationMarkup.SECTION_SEPARATOR)
-            append(ManifestRegistry.forFileName(manifest.name)?.notesRelativePath ?: NotesCore.NOTES_RELATIVE_PATH)
+            append(ManifestRegistry.forPath(manifest.path)?.notesRelativePath ?: NotesCore.NOTES_RELATIVE_PATH)
             append(DocumentationMarkup.SECTION_END)
             append(DocumentationMarkup.SECTIONS_END)
         }
