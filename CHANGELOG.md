@@ -26,6 +26,11 @@
   Hex, Git, path and umbrella tuples are read statically; Pacmon never executes Mix
   or project code, and dynamically assembled dependency lists are left alone.
 
+- **The warnings in a notes file keep up with its text in VS Code.** Two checks of
+  the same file could finish out of order, and the older one's result then stayed
+  until the next edit. A check that finishes after a newer one has started is now
+  dropped.
+
 ## 0.4.0 — 2026-09-23
 
 - **Pacmon reads `Cargo.toml`, `pom.xml` and Gradle build files, not only

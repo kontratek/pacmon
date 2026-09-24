@@ -42,11 +42,17 @@ export type DiagCode =
 export class NotesDiagnostics implements vscode.Disposable {
   private readonly collection = vscode.languages.createDiagnosticCollection('pacmon');
   private readonly disposables: vscode.Disposable[] = [];
+  /** The newest refresh started for each open notes file, by URI. */
+  private readonly latestRefresh = new Map<string, number>();
+  private refreshCount = 0;
 
   constructor(private readonly store: Store) {
     this.disposables.push(
       vscode.workspace.onDidOpenTextDocument((doc) => void this.refresh(doc)),
-      vscode.workspace.onDidCloseTextDocument((doc) => this.collection.delete(doc.uri)),
+      vscode.workspace.onDidCloseTextDocument((doc) => {
+        this.latestRefresh.delete(doc.uri.toString());
+        this.collection.delete(doc.uri);
+      }),
       this.store.onDidChange(() => {
         for (const doc of vscode.workspace.textDocuments) void this.refresh(doc);
       }),
@@ -61,6 +67,9 @@ export class NotesDiagnostics implements vscode.Disposable {
 
   private async refresh(doc: vscode.TextDocument): Promise<void> {
     if (!isNotesFile(doc.uri)) return;
+    const key = doc.uri.toString();
+    const refreshId = ++this.refreshCount;
+    this.latestRefresh.set(key, refreshId);
     const model = parseNotes(doc.getText());
     const diags: vscode.Diagnostic[] = [];
     const warning = vscode.DiagnosticSeverity.Warning;
@@ -88,6 +97,10 @@ export class NotesDiagnostics implements vscode.Disposable {
     }
 
     const deps = await dependenciesForNotes(this.store, doc.uri);
+    // Refreshes of one file can wait on the same dependency discovery and finish
+    // in any order. One that started later saw newer text; this result would
+    // overwrite its diagnostics, and no event would come to correct them.
+    if (this.latestRefresh.get(key) !== refreshId) return;
 
     for (const f of lintNotes(model, deps.map((d) => d.noteKey), notesKind(doc.uri))) {
       switch (f.kind) {
