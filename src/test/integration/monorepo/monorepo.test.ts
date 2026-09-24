@@ -99,6 +99,20 @@ async function pythonHoverText(manifest: vscode.Uri, dep: string): Promise<strin
     .map((content) => typeof content === 'string' ? content : content.value).join('\n');
 }
 
+async function goHoverText(manifest: vscode.Uri, dep: string): Promise<string> {
+  const doc = await vscode.workspace.openTextDocument(manifest);
+  await vscode.window.showTextDocument(doc);
+  const offset = doc.getText().indexOf(dep);
+  assert.ok(offset >= 0, `${dep} is not in ${manifest.path}`);
+  const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+    'vscode.executeHoverProvider',
+    manifest,
+    doc.positionAt(offset + 2),
+  );
+  return (hovers ?? []).flatMap((hover) => hover.contents)
+    .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+}
+
 const cfg = (): vscode.WorkspaceConfiguration => vscode.workspace.getConfiguration('pacmon');
 
 suite('pacmon monorepo', () => {
@@ -173,6 +187,16 @@ suite('pacmon monorepo', () => {
     assert.ok(requirements.includes('Python linting and formatting'), requirements);
   });
 
+  test('a nested Go module uses its nearest Go notes', async function () {
+    this.timeout(20000);
+    const text = await poll(async () => {
+      const value = await goHoverText(at('apps', 'go-app', 'go.mod'), 'github.com/example/shared-go');
+      return value.includes('Nested Go note') ? value : undefined;
+    });
+    assert.ok(text.includes('.pacmon/go/DEPENDENCY-NOTES.md'), text);
+    assert.ok(!text.includes('Root Go note'), 'the root Go note must not leak into the nested module');
+  });
+
   test('pacmon.monorepo = rootOnly ignores the nested notes file', async function () {
     this.timeout(20000);
     await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
@@ -227,6 +251,42 @@ suite('pacmon monorepo', () => {
       assert.ok(!text.includes('Nested Python note'), 'rootOnly must ignore the child Python notes file');
     } finally {
       await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test('pacmon.monorepo = rootOnly makes a nested Go module use root Go notes', async function () {
+    this.timeout(20000);
+    await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
+    try {
+      const text = await poll(async () => {
+        const value = await goHoverText(at('apps', 'go-app', 'go.mod'), 'github.com/example/shared-go');
+        return value.includes('Root Go note') ? value : undefined;
+      });
+      assert.ok(!text.includes('Nested Go note'), 'rootOnly must ignore the child Go notes file');
+    } finally {
+      await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test('Go vendor manifests are excluded from note dependency discovery', async function () {
+    this.timeout(15000);
+    const notes = at('.pacmon', 'go', 'DEPENDENCY-NOTES.md');
+    const doc = await vscode.workspace.openTextDocument(notes);
+    const editor = await vscode.window.showTextDocument(doc);
+    const ecosystemLine = doc.getText().split(/\r?\n/).findIndex((line) => line === 'ecosystem: go');
+    assert.ok(ecosystemLine > 0, 'fixture changed: no Go ecosystem line');
+    await editor.edit((edit) => edit.replace(doc.lineAt(ecosystemLine).range, 'ecosystem: cargo'));
+    try {
+      const mine = await poll(() => {
+        const diagnostics = vscode.languages.getDiagnostics(notes).filter((item) => item.source === 'pacmon');
+        return diagnostics.some((item) => item.code === 'wrong-ecosystem') ? diagnostics : undefined;
+      });
+      assert.ok(
+        !mine.some((item) => item.code === 'removed-but-present'),
+        'a dependency found only under vendor/ must not count as a project dependency',
+      );
+    } finally {
+      await vscode.commands.executeCommand('workbench.action.files.revert');
     }
   });
 

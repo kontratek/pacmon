@@ -11,6 +11,7 @@ import {
   normalizePythonPackageName,
   pythonRequirementsScope,
 } from './python-manifest';
+import { extractGoDependencies } from './go-manifest';
 export { dependencyAtOffset } from './dependency';
 
 export interface ManifestAdapter {
@@ -119,6 +120,15 @@ export const MANIFEST_ADAPTERS: readonly ManifestAdapter[] = [
       ? extractPyprojectDependencies(text)
       : extractRequirementsDependencies(text, pythonRequirementsScope(path)),
     normalizeNoteKey: (raw) => normalizePythonPackageName(tolerantKey(raw)),
+  },
+  {
+    kind: 'go',
+    fileNames: ['go.mod'],
+    discoveryGlobs: exactDiscoveryGlobs(['go.mod']),
+    notesRelativePath: '.pacmon/go/DEPENDENCY-NOTES.md',
+    matchesPath: exactPathMatcher(['go.mod']),
+    extractDependencies: extractGoDependencies,
+    normalizeNoteKey: tolerantKey,
   },
 ];
 

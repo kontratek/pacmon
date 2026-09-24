@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Notes",
-  "description": "Why each dependency exists, as a note next to package.json, Cargo.toml, pom.xml, build.gradle, mix.exs, build.zig.zon or Python manifests. Plain Markdown in your repo; AI agents read and write it too.",
+  "description": "Why each dependency exists, as a note next to package.json, Cargo.toml, pom.xml, build.gradle, mix.exs, build.zig.zon, go.mod or Python manifests. Plain Markdown in your repo; AI agents read and write it too.",
   "version": "0.4.0",
   "publisher": "kontra",
   "private": true,
@@ -44,6 +44,9 @@
     "pip",
     "Poetry",
     "uv",
+    "Go",
+    "go.mod",
+    "Go modules",
     "documentation",
     "notes",
     "dependency management"
@@ -70,6 +73,7 @@
     "workspaceContains:**/pyproject.toml",
     "workspaceContains:**/requirements*.txt",
     "workspaceContains:**/requirements/**/*.txt",
+    "workspaceContains:**/go.mod",
     "onView:pacmon.settings"
   ],
   "main": "./dist/extension.js",
@@ -146,7 +150,7 @@
       "editor/context": [
         {
           "command": "pacmon.addOrEditNote",
-          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml || resourceFilename == build.gradle || resourceFilename == build.gradle.kts || resourceFilename == mix.exs || resourceFilename == build.zig.zon || resourceFilename == pyproject.toml || resourceFilename =~ /^requirements.*\\.txt$/ || resourcePath =~ /[\\\\/]requirements[\\\\/].*\\.txt$/) && editorTextFocus",
+          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml || resourceFilename == build.gradle || resourceFilename == build.gradle.kts || resourceFilename == mix.exs || resourceFilename == build.zig.zon || resourceFilename == pyproject.toml || resourceFilename == go.mod || resourceFilename =~ /^requirements.*\\.txt$/ || resourcePath =~ /[\\\\/]requirements[\\\\/].*\\.txt$/) && editorTextFocus",
           "group": "1_modification@100"
         }
       ],

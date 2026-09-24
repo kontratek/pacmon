@@ -286,6 +286,31 @@ suite('pacmon integration', () => {
     }
   });
 
+  test('the first Go note creates a v2 Go notes file', async function () {
+    this.timeout(20000);
+    const notes = fixtureUri('.pacmon', 'go', 'DEPENDENCY-NOTES.md');
+    const original = await vscode.workspace.fs.readFile(notes);
+    try {
+      await vscode.workspace.fs.delete(notes);
+      await sleep(500);
+      const manifest = fixtureUri('go.mod');
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(manifest));
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'github.com/jackc/pgx/v5', 'PostgreSQL driver.');
+      const text = await poll(async () => {
+        try {
+          const value = await readText(notes);
+          return value.includes('## github.com/jackc/pgx/v5') ? value : undefined;
+        } catch {
+          return undefined;
+        }
+      });
+      assert.ok(text.includes('format: dependency-notes/2\necosystem: go\nlang: en'));
+      assert.ok(text.includes('PostgreSQL driver.'));
+    } finally {
+      await vscode.workspace.fs.writeFile(notes, original);
+    }
+  });
+
   test('writing a Cargo note does not change other ecosystem notes', async function () {
     this.timeout(15000);
     const cargoNotes = fixtureUri('.pacmon', 'cargo', 'DEPENDENCY-NOTES.md');
@@ -294,7 +319,8 @@ suite('pacmon integration', () => {
     const gradleNotes = fixtureUri('.pacmon', 'gradle', 'DEPENDENCY-NOTES.md');
     const mixNotes = fixtureUri('.pacmon', 'mix', 'DEPENDENCY-NOTES.md');
     const zigNotes = fixtureUri('.pacmon', 'zig', 'DEPENDENCY-NOTES.md');
-    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes, mixNotes, zigNotes];
+    const goNotes = fixtureUri('.pacmon', 'go', 'DEPENDENCY-NOTES.md');
+    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes, mixNotes, zigNotes, goNotes];
     const originals = await Promise.all(notesFiles.map((uri) => vscode.workspace.fs.readFile(uri)));
     try {
       const cargo = fixtureUri('Cargo.toml');
@@ -310,6 +336,7 @@ suite('pacmon integration', () => {
       assert.strictEqual(await readText(gradleNotes), new TextDecoder().decode(originals[3]!));
       assert.strictEqual(await readText(mixNotes), new TextDecoder().decode(originals[4]!));
       assert.strictEqual(await readText(zigNotes), new TextDecoder().decode(originals[5]!));
+      assert.strictEqual(await readText(goNotes), new TextDecoder().decode(originals[6]!));
     } finally {
       await Promise.all(notesFiles.map((uri, index) =>
         vscode.workspace.fs.writeFile(uri, originals[index]!),
