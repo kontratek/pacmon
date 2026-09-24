@@ -27,19 +27,26 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             "mix.exs",
             "defmodule Demo.MixProject do\n  defp deps, do: [{:phoenix, \"~> 1.8\"}]\nend",
         )
+        val zig = myFixture.tempDirFixture.createFile(
+            "build.zig.zon",
+            ".{ .dependencies = .{ .known_folders = .{ .path = \"../known-folders\" } } }",
+        )
         myFixture.tempDirFixture.createFile(".pacmon/DEPENDENCY-NOTES.md", "## vue\n\nnpm\n")
         myFixture.tempDirFixture.createFile(".pacmon/cargo/DEPENDENCY-NOTES.md", "## serde\n\ncargo\n")
         myFixture.tempDirFixture.createFile(".pacmon/maven/DEPENDENCY-NOTES.md", "## g:a\n\nmaven\n")
         myFixture.tempDirFixture.createFile(".pacmon/gradle/DEPENDENCY-NOTES.md", "## g:a\n\ngradle\n")
         myFixture.tempDirFixture.createFile(".pacmon/mix/DEPENDENCY-NOTES.md", "## phoenix\n\nmix\n")
+        myFixture.tempDirFixture.createFile(".pacmon/zig/DEPENDENCY-NOTES.md", "## known_folders\n\nzig\n")
 
         assertTrue(service().resolveNotesFile(npm)!!.path.endsWith(".pacmon/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(cargo)!!.path.endsWith(".pacmon/cargo/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(maven)!!.path.endsWith(".pacmon/maven/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(gradle)!!.path.endsWith(".pacmon/gradle/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(mix)!!.path.endsWith(".pacmon/mix/DEPENDENCY-NOTES.md"))
+        assertTrue(service().resolveNotesFile(zig)!!.path.endsWith(".pacmon/zig/DEPENDENCY-NOTES.md"))
         assertEquals("cargo", service().noteFor(cargo, "serde")?.layers?.human)
         assertEquals("mix", service().noteFor(mix, "phoenix")?.layers?.human)
+        assertEquals("zig", service().noteFor(zig, "known_folders")?.layers?.human)
         assertNull(service().noteFor(cargo, "vue"))
     }
 
@@ -71,6 +78,11 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             "defmodule Demo.MixProject do\n  defp deps, do: [{:phoenix, \"~> 1.8\"}]\nend",
         )
         val mixNotes = service().saveNoteLayers(mix, "phoenix", "Framework", "")
+        val zig = myFixture.tempDirFixture.createFile(
+            "build.zig.zon",
+            ".{ .dependencies = .{ .known_folders = .{ .path = \"../known-folders\" } } }",
+        )
+        val zigNotes = service().saveNoteLayers(zig, "known_folders", "Filesystem paths", "")
 
         assertTrue(cargoNotes.path.endsWith(".pacmon/cargo/DEPENDENCY-NOTES.md"))
         assertTrue(String(cargoNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: cargo"))
@@ -80,7 +92,31 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         assertTrue(String(gradleNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: gradle"))
         assertTrue(mixNotes.path.endsWith(".pacmon/mix/DEPENDENCY-NOTES.md"))
         assertTrue(String(mixNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: mix"))
+        assertTrue(zigNotes.path.endsWith(".pacmon/zig/DEPENDENCY-NOTES.md"))
+        assertTrue(String(zigNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: zig"))
         assertNull(cargo.parent.findChild(".pacmon")?.findChild("DEPENDENCY-NOTES.md"))
+    }
+
+    fun testZigNearestAndRootOnlyResolutionStaysInItsNamespace() {
+        val zig = myFixture.tempDirFixture.createFile(
+            "apps/zig-app/build.zig.zon",
+            ".{ .dependencies = .{ .known_folders = .{ .path = \"../known-folders\" } } }",
+        )
+        val rootNotes = myFixture.tempDirFixture.createFile(
+            ".pacmon/zig/DEPENDENCY-NOTES.md",
+            "## known_folders\n\nroot\n",
+        )
+        val nearNotes = myFixture.tempDirFixture.createFile(
+            "apps/zig-app/.pacmon/zig/DEPENDENCY-NOTES.md",
+            "## known_folders\n\nnear\n",
+        )
+        myFixture.tempDirFixture.createFile("apps/zig-app/.pacmon/cargo/DEPENDENCY-NOTES.md", "## known_folders\n\ncargo\n")
+
+        assertEquals(nearNotes.path, service().resolveNotesFile(zig)?.path)
+        assertEquals("near", service().noteFor(zig, "known_folders")?.layers?.human)
+        service().state.monorepoMode = MonorepoModes.ROOT_ONLY
+        assertEquals(rootNotes.path, service().resolveNotesFile(zig)?.path)
+        assertEquals("root", service().noteFor(zig, "known_folders")?.layers?.human)
     }
 
     fun testDefaultManifestUsesActiveThenRootPriority() {
@@ -118,6 +154,25 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         myFixture.tempDirFixture.createFile("apps/web/mix.exs", "defp deps, do: [{:phoenix, \"~> 1.8\"}]")
         myFixture.tempDirFixture.createFile("apps/accounts/mix.exs", "defp deps, do: [{:ecto_sql, \"~> 3.13\"}]")
         assertEquals(setOf("phoenix", "ecto_sql"), service().dependenciesForNotes(notes).map { it.name }.toSet())
+    }
+
+    fun testZigPackageCacheManifestsAreExcludedFromNotesDiscovery() {
+        val notes = myFixture.tempDirFixture.createFile(
+            ".pacmon/zig/DEPENDENCY-NOTES.md",
+            "## real_dep\n\nApplication dependency\n",
+        )
+        myFixture.tempDirFixture.createFile(
+            "apps/demo/build.zig.zon",
+            ".{ .dependencies = .{ .real_dep = .{ .path = \"../real\" } } }",
+        )
+        for (directory in listOf("zig-pkg", ".zig-cache", "zig-cache", "zig-out")) {
+            myFixture.tempDirFixture.createFile(
+                "$directory/downloaded/build.zig.zon",
+                ".{ .dependencies = .{ .cached_dep = .{ .path = \"../cached\" } } }",
+            )
+        }
+
+        assertEquals(listOf("real_dep"), service().dependenciesForNotes(notes).map { it.name })
     }
 
     fun testManifestWatcherInvalidatesTheWorkspaceIndex() {

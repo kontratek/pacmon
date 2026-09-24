@@ -11,7 +11,8 @@
         <p><b>Your dependency manifest says what you depend on. Pacmon adds why.</b></p>
         <p>Every dependency gets a short note: why it is here, what must not change,
         what to check before an upgrade. The note shows in <code>package.json</code>,
-        <code>Cargo.toml</code>, Maven <code>pom.xml</code>, a Gradle build file, or <code>mix.exs</code> as quick documentation,
+        <code>Cargo.toml</code>, Maven <code>pom.xml</code>, a Gradle build file, <code>mix.exs</code>, or
+        <code>build.zig.zon</code> as quick documentation,
         and you write it from there.</p>
         <p>Notes are plain Markdown under <code>.pacmon/</code>, separated by ecosystem.
         No database, no service, no account: files that you read, diff and commit like
@@ -49,6 +50,7 @@
     <depends optional="true" config-file="pacmon-groovy.xml">org.intellij.groovy</depends>
     <depends optional="true" config-file="pacmon-kotlin.xml">org.jetbrains.kotlin</depends>
     <depends optional="true" config-file="pacmon-elixir.xml">org.elixir_lang</depends>
+    <depends optional="true" config-file="pacmon-zig.xml">com.falsepattern.zigbrains</depends>
 
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
         <supportsKotlinPluginMode supportsK2="true"/>

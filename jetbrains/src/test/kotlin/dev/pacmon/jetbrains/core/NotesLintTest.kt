@@ -15,6 +15,12 @@ class NotesLintTest {
             "---\nformat: dependency-notes/2\necosystem: cargo\nlang: en\n---\n# Dependency Notes\n",
         )
         assertTrue(NotesLint.lint(wrong, emptyList(), ManifestKind.MAVEN).any { it is LintFinding.WrongEcosystem })
+
+        val zig = NotesCore.parse(
+            "---\nformat: dependency-notes/2\necosystem: zig\nlang: en\n---\n# Dependency Notes\n",
+        )
+        assertTrue(NotesLint.lint(zig, emptyList(), ManifestKind.ZIG).none { it is LintFinding.WrongEcosystem })
+        assertTrue(NotesLint.lint(zig, emptyList(), ManifestKind.CARGO).any { it is LintFinding.WrongEcosystem })
     }
 
     private val deps = listOf("express", "@scope/util", "lodash")

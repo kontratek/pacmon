@@ -72,6 +72,7 @@ class PacmonProjectService(private val project: Project) :
     private val dependencyCache = ConcurrentHashMap<String, CachedDependencies>()
     private val manifestIndex = ConcurrentHashMap<ManifestKind, List<VirtualFile>>()
     private var lastManifest: VirtualFile? = null
+    private val zigDiscoveryExcludedDirectories = setOf("zig-pkg", ".zig-cache", "zig-cache", "zig-out")
 
     init {
         project.messageBus.connect(this).subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
@@ -374,8 +375,18 @@ class PacmonProjectService(private val project: Project) :
                     fileName,
                     GlobalSearchScope.projectScope(project),
                 )
-            }.filter { !it.isDirectory }.distinctBy { it.path }
+            }.filter { !it.isDirectory && !isExcludedFromManifestDiscovery(it, kind) }.distinctBy { it.path }
         }
+    }
+
+    private fun isExcludedFromManifestDiscovery(file: VirtualFile, kind: ManifestKind): Boolean {
+        if (kind != ManifestKind.ZIG) return false
+        var directory = file.parent
+        while (directory != null) {
+            if (directory.name in zigDiscoveryExcludedDirectories) return true
+            directory = directory.parent
+        }
+        return false
     }
 
     fun rememberManifest(file: VirtualFile) {
