@@ -1,6 +1,6 @@
 # The dependency notes formats
 
-Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, Gradle, Mix, and Zig files use `dependency-notes/2`. Zig manifests are currently supported by the VS Code extension only. See [Versioning](#versioning).
+Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, Gradle, Mix, and Zig files use `dependency-notes/2`. Both the VS Code and JetBrains extensions support every listed ecosystem. See [Versioning](#versioning).
 
 ## The notes file
 

@@ -9,7 +9,7 @@ class ManifestCoreTest {
     @Test
     fun `registry matches only supported manifests in priority order`() {
         assertEquals(
-            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs"),
+            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "build.zig.zon"),
             ManifestRegistry.adapters.flatMap { it.fileNames },
         )
         assertEquals(ManifestKind.NPM, ManifestRegistry.forFileName("package.json")?.kind)
@@ -18,7 +18,104 @@ class ManifestCoreTest {
         assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle.kts")?.kind)
         assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle")?.kind)
         assertEquals(ManifestKind.MIX, ManifestRegistry.forFileName("mix.exs")?.kind)
+        assertEquals(ManifestKind.ZIG, ManifestRegistry.forFileName("build.zig.zon")?.kind)
         assertNull(ManifestRegistry.forFileName("settings.gradle.kts"))
+    }
+
+    @Test
+    fun `zig extracts URL path lazy and escaped direct dependencies with ranges`() {
+        val text = """
+            .{
+              .name = .example,
+              .version = "0.1.0",
+              .dependencies = .{
+                .known_folders = .{
+                  .url = "https://example.test/known-folders.tar.gz",
+                  .hash = "known-folders-hash",
+                },
+                .local_utils = .{ .path = "../local-utils" },
+                .lazy_dep = .{
+                  .url = "https://example.test/lazy.tar.gz",
+                  .hash = "lazy-hash",
+                  .lazy = true,
+                },
+                .@"quoted-dep" = .{ .path = "../quoted" },
+              },
+              .paths = .{ "build.zig", "src" },
+            }
+        """.trimIndent()
+        val dependencies = ZigManifestAdapter.extractDependencies(text)
+        assertEquals(
+            listOf(
+                "dependencies:known_folders",
+                "dependencies:local_utils",
+                "dependencies:lazy_dep",
+                "dependencies:quoted-dep",
+            ),
+            dependencies.map { "${it.scope}:${it.noteKey}" },
+        )
+
+        val known = dependencies.first()
+        assertEquals("known_folders", text.substring(known.primaryRange.offset, known.primaryRange.offset + known.primaryRange.length))
+        assertEquals("known_folders", text.substring(known.sourceRanges.single().offset, known.sourceRanges.single().offset + known.sourceRanges.single().length))
+        assertEquals(".", text.substring(known.iconRange.offset, known.iconRange.offset + known.iconRange.length))
+        assertEquals(known, ManifestRegistry.dependencyAtOffset(dependencies, known.primaryRange.offset + 2))
+
+        val quoted = dependencies.last()
+        assertEquals("quoted-dep", text.substring(quoted.primaryRange.offset, quoted.primaryRange.offset + quoted.primaryRange.length))
+        assertEquals("@\"quoted-dep\"", text.substring(quoted.sourceRanges.single().offset, quoted.sourceRanges.single().offset + quoted.sourceRanges.single().length))
+    }
+
+    @Test
+    fun `zig ignores nested fields and declarations in comments strings and multiline strings`() {
+        val text = """
+            .{
+              // .dependencies = .{ .commented = .{ .path = "x" } },
+              .description = ".dependencies = .{ .string = .{} }",
+              \\ .dependencies = .{ .multiline = .{} },
+              .dependencies = .{
+                .real = .{
+                  .url = "https://example.test/.fake = .{}",
+                  .hash = "hash",
+                },
+              },
+              .other = .{ .nested = .{ .path = "not-a-dependency" } },
+            }
+        """.trimIndent()
+        assertEquals(listOf("real"), ZigManifestAdapter.extractDependencies(text).map { it.noteKey })
+    }
+
+    @Test
+    fun `zig decodes escaped identifiers and keeps the first duplicate`() {
+        val text = """
+            .{ .dependencies = .{
+              .@"quoted\x2ddep" = .{ .path = "a" },
+              .@"quoted-dep" = .{ .path = "b" },
+              .@"snowman\u{2603}" = .{ .path = "c" },
+            } }
+        """.trimIndent()
+        assertEquals(
+            listOf("quoted-dep", "snowman☃"),
+            ZigManifestAdapter.extractDependencies(text).map { it.noteKey },
+        )
+    }
+
+    @Test
+    fun `zig accepts legacy manifests and preserves fields before a malformed tail`() {
+        val legacy = """
+            .{
+              .name = "legacy-app",
+              .version = "0.1.0",
+              .dependencies = .{ .legacy_dep = .{ .path = "../legacy" } },
+            }
+        """.trimIndent()
+        assertEquals(listOf("legacy_dep"), ZigManifestAdapter.extractDependencies(legacy).map { it.noteKey })
+        assertEquals(
+            listOf("first", "broken"),
+            ZigManifestAdapter.extractDependencies(".{ .dependencies = .{ .first = .{}, .broken = .{").map { it.noteKey },
+        )
+        assertTrue(ZigManifestAdapter.extractDependencies(".{ .dependencies = .{} }").isEmpty())
+        assertTrue(ZigManifestAdapter.extractDependencies(".{ .name = .none }").isEmpty())
     }
 
     @Test
@@ -140,6 +237,7 @@ class ManifestCoreTest {
         assertTrue(MavenManifestAdapter.extractDependencies("<project><dependencies><dependency>").isEmpty())
         assertTrue(GradleManifestAdapter.extractDependencies("dependencies { implementation(\"g:a:1\")").isEmpty())
         assertTrue(MixManifestAdapter.extractDependencies("defp deps do [{:phoenix, \"~> 1.8\"}").isEmpty())
+        assertTrue(ZigManifestAdapter.extractDependencies(".{ .dependencies =").isEmpty())
     }
 
     @Test

@@ -3,9 +3,11 @@ package dev.pacmon.jetbrains.editor
 import com.intellij.lang.documentation.AbstractDocumentationProvider
 import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.impl.FakePsiElement
 import dev.pacmon.jetbrains.core.NotesCore
 import dev.pacmon.jetbrains.core.ManifestRegistry
 import dev.pacmon.jetbrains.service.PacmonProjectService
@@ -20,7 +22,9 @@ class PacmonDocumentationProvider : AbstractDocumentationProvider() {
         val manifest = file.virtualFile ?: return null
         val service = file.project.getService(PacmonProjectService::class.java)
         val dependency = service.dependencyAt(manifest, targetOffset) ?: return null
-        return file.findElementAt(dependency.primaryRange.offset)
+        val element = file.findElementAt(dependency.primaryRange.offset)
+        if (element != null && element.textRange.startOffset == dependency.primaryRange.offset) return element
+        return DocumentationTarget(file, dependency)
     }
 
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? = documentation(element)
@@ -56,4 +60,21 @@ class PacmonDocumentationProvider : AbstractDocumentationProvider() {
     private fun markdownAsSafeHtml(markdown: String): String = markdown
         .lineSequence()
         .joinToString("<br>") { StringUtil.escapeXmlEntities(it) }
+
+    /** Plain-text PSI can represent the whole manifest as one element, losing the hovered offset. */
+    private class DocumentationTarget(
+        private val source: PsiFile,
+        private val dependency: DependencyRef,
+    ) : FakePsiElement() {
+        override fun getParent(): PsiElement = source
+
+        override fun getContainingFile(): PsiFile = source
+
+        override fun getName(): String = dependency.name
+
+        override fun getTextRange(): TextRange = TextRange(
+            dependency.primaryRange.offset,
+            dependency.primaryRange.offset + dependency.primaryRange.length,
+        )
+    }
 }

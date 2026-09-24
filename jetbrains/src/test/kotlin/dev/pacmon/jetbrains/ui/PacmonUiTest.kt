@@ -13,6 +13,7 @@ import dev.pacmon.jetbrains.editor.PacmonLinePainter
 import dev.pacmon.jetbrains.service.PacmonProjectService
 import dev.pacmon.jetbrains.settings.Decorations
 import dev.pacmon.jetbrains.settings.InlineSources
+import dev.pacmon.jetbrains.settings.MonorepoModes
 import dev.pacmon.jetbrains.settings.NoteButtons
 import dev.pacmon.jetbrains.settings.NoteEntries
 import java.awt.Font
@@ -23,7 +24,10 @@ class PacmonUiTest : BasePlatformTestCase() {
     // rather than from whatever the class before it left behind.
     override fun setUp() {
         super.setUp()
-        project.getService(PacmonProjectService::class.java).resetViewSettings()
+        project.getService(PacmonProjectService::class.java).apply {
+            resetViewSettings()
+            state.monorepoMode = MonorepoModes.NEAREST
+        }
     }
 
     private class RecordingSink : InlayHintsSink {
@@ -134,6 +138,26 @@ class PacmonUiTest : BasePlatformTestCase() {
         myFixture.configureByText("README.txt", "project")
         dashboard.refresh()
         assertEquals(coverage.packagePath, dashboard.coverageForTest().packagePath)
+    }
+
+    fun testDashboardCoverageReadsZigDependenciesAndNotes() {
+        val manifest = myFixture.tempDirFixture.createFile(
+            "apps/zig/build.zig.zon",
+            ".{ .dependencies = .{ .known_folders = .{}, .ziglyph = .{ .lazy = true } } }",
+        )
+        myFixture.tempDirFixture.createFile(
+            "apps/zig/.pacmon/zig/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: zig\nlang: en\n---\n# Dependency Notes\n\n## known_folders\n\nPaths\n",
+        )
+        myFixture.configureFromExistingVirtualFile(manifest)
+        val dashboard = PacmonDashboardPanel(project)
+        dashboard.refresh()
+
+        val coverage = dashboard.coverageForTest()
+        assertEquals("1 of 2", coverage.ratio)
+        assertTrue(coverage.packagePath.endsWith("apps/zig/build.zig.zon"))
+        assertEquals(50, coverage.percent)
+        assertEquals("1 dependency has no note yet.", coverage.status)
     }
 
     fun testDashboardWritesEveryChoiceAndResetsThemAllTogether() {

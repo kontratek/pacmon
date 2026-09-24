@@ -105,6 +105,19 @@ class DependencyPsiTest : BasePlatformTestCase() {
         assertNull(DependencyPsi.atOffset(file, file.text.indexOf("~>")))
     }
 
+    fun testFindsZigDependencyFromFieldRangeWithoutZigBrains() {
+        val file = myFixture.configureByText(
+            "build.zig.zon",
+            ".{ .dependencies = .{ .known_folders = .{ .url = \"https://example.test/pkg.tar.gz\" } } }",
+        )
+        assertEquals(listOf("known_folders"), DependencyPsi.all(file).map { it.name })
+        assertEquals(
+            "known_folders",
+            DependencyPsi.atOffset(file, file.text.indexOf("known_folders") + 2)?.name,
+        )
+        assertNull(DependencyPsi.atOffset(file, file.text.indexOf("url") + 1))
+    }
+
     fun testUsesDifferentIconsForDocumentedAndUndocumentedDependencies() {
         assertSame(PacmonIcons.Documented, PacmonIcons.forNote(true))
         assertSame(PacmonIcons.Undocumented, PacmonIcons.forNote(false))

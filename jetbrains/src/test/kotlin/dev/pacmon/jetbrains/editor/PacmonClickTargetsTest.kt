@@ -313,4 +313,34 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
             )?.size,
         )
     }
+
+    fun testZigUsesInlayLinkDecorationAndHoverSurfacesWithoutZigBrains() {
+        val manifest = myFixture.tempDirFixture.createFile(
+            "build.zig.zon",
+            ".{ .dependencies = .{ .known_folders = .{ .path = \"../known-folders\" } } }",
+        )
+        myFixture.tempDirFixture.createFile(
+            ".pacmon/zig/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: zig\nlang: en\n---\n# Dependency Notes\n\n## known_folders\n\nFilesystem paths\n",
+        )
+        myFixture.configureFromExistingVirtualFile(manifest)
+        val dependency = DependencyPsi.all(myFixture.file).single()
+        val offset = dependency.primaryRange.offset + 2
+
+        assertEquals(listOf(dependency.iconRange.offset to false), collect(NoteButtons.ICON_LEFT).inline)
+        val line = myFixture.editor.document.getLineNumber(dependency.primaryRange.offset)
+        assertEquals("   \u25AA Filesystem paths", PacmonLinePainter().getLineExtensions(project, manifest, line).single().text)
+
+        service().setNoteButtons(listOf(NoteButtons.LINK))
+        val element = myFixture.file.findElementAt(offset) ?: myFixture.file
+        assertEquals(
+            1,
+            PacmonNoteDeclarationHandler().getGotoDeclarationTargets(element, offset, myFixture.editor)?.size,
+        )
+
+        val documentation = PacmonDocumentationProvider()
+        val target = documentation.getCustomDocumentationElement(myFixture.editor, myFixture.file, element, offset)
+        assertNotNull(target)
+        assertTrue(documentation.generateHoverDoc(target!!, element).orEmpty().contains("Filesystem paths"))
+    }
 }

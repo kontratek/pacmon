@@ -1,14 +1,14 @@
 # Pacmon for JetBrains IDEs
 
-The JetBrains counterpart of the [VS Code extension](../README.md): the same ecosystem-specific dependency notes, read and written the same way, inside IntelliJ IDEA, WebStorm and the rest of the JetBrains family. npm uses `.pacmon/DEPENDENCY-NOTES.md`, Cargo uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`, and Gradle uses `.pacmon/gradle/DEPENDENCY-NOTES.md`. `docs/format.md` (at the repository root) is the authority on the formats both clients read; this module keeps its own hand-written port of the same rules, not a shared library.
+The JetBrains counterpart of the [VS Code extension](../README.md): the same ecosystem-specific dependency notes, read and written the same way, inside IntelliJ IDEA, WebStorm and the rest of the JetBrains family. npm uses `.pacmon/DEPENDENCY-NOTES.md`; Cargo, Maven, Gradle, Mix and Zig use their own `.pacmon/<ecosystem>/DEPENDENCY-NOTES.md`. `docs/format.md` (at the repository root) is the authority on the formats both clients read; this module keeps its own hand-written port of the same rules, not a shared library.
 
 ## What it does
 
 - A **Pacmon** tool window (right stripe) with two views: a dashboard (documentation coverage, click-target and note-marker settings) and a per-dependency editor with separate human and agent layers.
-- Small inlay icons at dependency declarations in `package.json`, `Cargo.toml`, Maven `pom.xml`, `build.gradle`, and `build.gradle.kts` — filled when they have a note, hollow when they do not — plus an end-of-line preview and a quick-doc hover.
+- Small inlay icons at dependency declarations in `package.json`, `Cargo.toml`, Maven `pom.xml`, `build.gradle`, `build.gradle.kts`, `mix.exs`, and `build.zig.zon` — filled when they have a note, hollow when they do not — plus an end-of-line preview and a quick-doc hover.
 - Live `docs/format.md` warnings, underlined with a hover message, wherever `DEPENDENCY-NOTES.md` is open.
 - Five Tools-menu commands — **Open DEPENDENCY-NOTES.md**, **Open Dependency Manifest**, **Documentation Coverage**, **Set Up AI Instructions**, **Format DEPENDENCY-NOTES.md** — and **Add/Edit Dependency Note** in the editor's context menu.
-- Pure Kotlin manifest parsers; Rust, TOML, Maven, Groovy, Kotlin, and Gradle plugins are not required. When optional language plugins are installed, Pacmon also registers directly for their language support.
+- Pure Kotlin manifest parsers; Rust, TOML, Maven, Groovy, Kotlin, Gradle, Elixir, Zig and ZON plugins are not required. When optional language plugins such as ZigBrains are installed, Pacmon also registers directly for their language support.
 
 ## Requirements
 
@@ -45,6 +45,8 @@ src/main/kotlin/dev/pacmon/jetbrains/
 │   ├── LintFinding.kt    one sealed class per lint finding kind, with its message()
 │   ├── ManifestCore.kt   the npm, Cargo and Maven adapters and source-range parsers
 │   ├── GradleManifest.kt the Groovy/Kotlin DSL Gradle adapter and source-range parser
+│   ├── MixManifest.kt    the static Elixir/Mix dependency parser
+│   ├── ZigManifest.kt    the static build.zig.zon dependency parser
 │   ├── AgentNotes.kt     agent-layer field lint used live in the note editor's side panel
 │   └── AiInstructions.kt the AGENTS.md/CLAUDE.md pointer block ("Set Up AI Instructions")
 │

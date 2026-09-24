@@ -7,6 +7,12 @@
 
 ## Unreleased
 
+- **Pacmon supports Zig projects in VS Code and JetBrains.** Direct fields in
+  the top-level `.dependencies` struct of `build.zig.zon` get markers, hover,
+  note editing and coverage backed by `.pacmon/zig/DEPENDENCY-NOTES.md`.
+  URL/hash, path and lazy dependencies are read statically; Pacmon never runs
+  Zig, evaluates `build.zig` or follows transitive dependencies.
+
 - **Pacmon supports Elixir/Mix projects in VS Code and JetBrains.** Literal direct
   dependencies in `mix.exs` get the same markers, hover, note editor and coverage
   as the other manifests, with notes in `.pacmon/mix/DEPENDENCY-NOTES.md`.

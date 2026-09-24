@@ -13,14 +13,19 @@ class NotesCoreTest {
         val maven = NotesCore.newNotesFile("Org.Example:Core", "Library", ecosystem = ManifestKind.MAVEN)
         val gradle = NotesCore.newNotesFile("org.slf4j:slf4j-api", "Logging", ecosystem = ManifestKind.GRADLE)
         val mix = NotesCore.newNotesFile("phoenix", "Framework", ecosystem = ManifestKind.MIX)
+        val zig = NotesCore.newNotesFile("Known_Folders", "Filesystem paths", ecosystem = ManifestKind.ZIG)
 
         assertTrue(npm.contains("format: dependency-notes/1"))
         assertTrue(cargo.contains("format: dependency-notes/2\necosystem: cargo\nlang: en"))
         assertTrue(maven.contains("format: dependency-notes/2\necosystem: maven\nlang: en"))
         assertTrue(gradle.contains("format: dependency-notes/2\necosystem: gradle\nlang: en"))
         assertTrue(mix.contains("format: dependency-notes/2\necosystem: mix\nlang: en"))
+        assertTrue(zig.contains("format: dependency-notes/2\necosystem: zig\nlang: en"))
+        assertTrue(zig.contains("package from the zig dependency manifest"))
         assertNull(NotesCore.findSection(NotesCore.parse(cargo), "serde"))
         assertEquals("Serde", NotesCore.findSection(NotesCore.parse(cargo), "Serde")?.name)
+        assertNull(NotesCore.findSection(NotesCore.parse(zig), "known_folders"))
+        assertEquals("Known_Folders", NotesCore.findSection(NotesCore.parse(zig), "Known_Folders")?.name)
         assertEquals("Vue", NotesCore.findSection(NotesCore.parse(npm), "vue")?.name)
     }
 
