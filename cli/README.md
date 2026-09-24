@@ -1,6 +1,6 @@
 # pacmon
 
-**Pacmon documents *why* each dependency exists — right next to your JavaScript, Rust, JVM, Elixir, Zig, or Python dependency manifest.**
+**Pacmon documents *why* each dependency exists — right next to your JavaScript, Rust, JVM, Elixir, Zig, Python, or Go dependency manifest.**
 
 Today Pacmon ships as a **VS Code extension** and a **JetBrains plugin**: hover a dependency to read its note, right-click to write one. Notes live in your repository under `.pacmon/`, travel with git, and render on GitHub. Notes are plain Markdown and stay in your repository.
 
