@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
-import { MANIFEST_ADAPTERS, manifestAdapterForFileName, manifestAdapterForKind } from '../core/manifest';
+import { MANIFEST_ADAPTERS, manifestAdapterForKind, manifestAdapterForPath } from '../core/manifest';
 import type { DependencyEntry, ManifestKind } from '../core/model';
 import { AGENT_RULES_REL_PATH } from '../core/template';
 import { monorepoMode, uriBasename } from './config';
+
+const DISCOVERY_EXCLUDE = '**/{node_modules,target,.gradle,_build,deps,zig-pkg,.zig-cache,zig-cache,zig-out,.venv,venv,.tox,.nox,site-packages,dist,build,.git}/**';
 
 const existsCache = new Map<string, boolean>();
 const manifestsForNotesCache = new Map<string, Promise<vscode.Uri[]>>();
@@ -28,6 +30,20 @@ async function exists(uri: vscode.Uri): Promise<boolean> {
 
 function parentDir(uri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(uri, '..');
+}
+
+/** Python files in requirements/ belong to the project directory above it. */
+export function manifestOwnerDirectory(uri: vscode.Uri): vscode.Uri {
+  const adapter = manifestAdapterForPath(uri.path);
+  let directory = parentDir(uri);
+  if (adapter?.kind !== 'python' || uriBasename(uri) === 'pyproject.toml') return directory;
+  for (let i = 0; i < 64; i++) {
+    if (uriBasename(directory) === 'requirements') return parentDir(directory);
+    const parent = parentDir(directory);
+    if (parent.path === directory.path) break;
+    directory = parent;
+  }
+  return parentDir(uri);
 }
 
 export function notesUriIn(dir: vscode.Uri, kind: ManifestKind = 'npm'): vscode.Uri {
@@ -62,14 +78,14 @@ export function agentRulesUriFor(anyUri: vscode.Uri): vscode.Uri | undefined {
 }
 
 export async function resolveNotesFileFor(manifestUri: vscode.Uri): Promise<vscode.Uri | undefined> {
-  const adapter = manifestAdapterForFileName(uriBasename(manifestUri));
+  const adapter = manifestAdapterForPath(manifestUri.path);
   const folder = vscode.workspace.getWorkspaceFolder(manifestUri);
   if (!adapter || !folder) return undefined;
   if (monorepoMode() === 'rootOnly') {
     const candidate = notesUriIn(folder.uri, adapter.kind);
     return (await exists(candidate)) ? candidate : undefined;
   }
-  let dir = parentDir(manifestUri);
+  let dir = manifestOwnerDirectory(manifestUri);
   const rootPath = folder.uri.path.replace(/\/+$/, '');
   for (let i = 0; i < 64; i++) {
     const candidate = notesUriIn(dir, adapter.kind);
@@ -82,8 +98,8 @@ export async function resolveNotesFileFor(manifestUri: vscode.Uri): Promise<vsco
 }
 
 export function creationTargetFor(manifestUri: vscode.Uri): vscode.Uri {
-  const adapter = manifestAdapterForFileName(uriBasename(manifestUri));
-  return notesUriIn(parentDir(manifestUri), adapter?.kind ?? 'npm');
+  const adapter = manifestAdapterForPath(manifestUri.path);
+  return notesUriIn(manifestOwnerDirectory(manifestUri), adapter?.kind ?? 'npm');
 }
 
 export async function defaultManifest(store: {
@@ -100,13 +116,30 @@ export async function defaultManifest(store: {
       if ((await store.getText(candidate)) !== undefined) return candidate;
     }
   }
+  for (const adapter of MANIFEST_ADAPTERS) {
+    const groups = await Promise.all(adapter.discoveryGlobs.map((glob) => vscode.workspace.findFiles(
+      new vscode.RelativePattern(folder, glob),
+      DISCOVERY_EXCLUDE,
+    )));
+    const first = groups.flat().sort((a, b) => a.path.localeCompare(b.path))[0];
+    if (first) return first;
+  }
   return undefined;
 }
 
 /** Backward-compatible name; now returns the default supported manifest. */
 export const defaultPackageJson = defaultManifest;
 
-async function manifestsForNotes(notesUri: vscode.Uri): Promise<vscode.Uri[]> {
+function manifestPriority(uri: vscode.Uri): string {
+  const basename = uriBasename(uri);
+  const adapter = manifestAdapterForPath(uri.path);
+  const rank = adapter?.kind === 'python'
+    ? basename === 'pyproject.toml' ? 0 : basename === 'requirements.txt' ? 1 : 2
+    : Math.max(0, adapter?.fileNames.indexOf(basename) ?? 99);
+  return `${rank.toString().padStart(2, '0')}:${uri.path}`;
+}
+
+export async function manifestsForNotes(notesUri: vscode.Uri): Promise<vscode.Uri[]> {
   const key = notesUri.toString();
   const cached = manifestsForNotesCache.get(key);
   if (cached) return cached;
@@ -115,9 +148,9 @@ async function manifestsForNotes(notesUri: vscode.Uri): Promise<vscode.Uri[]> {
     const folder = vscode.workspace.getWorkspaceFolder(notesUri);
     if (!kind || !folder) return [];
     const adapter = manifestAdapterForKind(kind);
-    const groups = await Promise.all(adapter.fileNames.map((fileName) => vscode.workspace.findFiles(
-      new vscode.RelativePattern(folder, `**/${fileName}`),
-      '**/{node_modules,target,.gradle,_build,deps,zig-pkg,.zig-cache,zig-cache,zig-out,.git}/**',
+    const groups = await Promise.all(adapter.discoveryGlobs.map((glob) => vscode.workspace.findFiles(
+      new vscode.RelativePattern(folder, glob),
+      DISCOVERY_EXCLUDE,
     )));
     const found = groups.flat();
     const matching: vscode.Uri[] = [];
@@ -130,7 +163,7 @@ async function manifestsForNotes(notesUri: vscode.Uri): Promise<vscode.Uri[]> {
         if (await exists(sibling)) matching.push(sibling);
       }
     }
-    return matching;
+    return matching.sort((a, b) => manifestPriority(a).localeCompare(manifestPriority(b)));
   })();
   manifestsForNotesCache.set(key, pending);
   return pending;

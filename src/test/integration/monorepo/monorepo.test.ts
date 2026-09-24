@@ -1,8 +1,8 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-// Runs in a copy of fixtures/monorepo: npm, Mix and Zig manifests with nested
-// notes files, plus a downloaded Zig manifest that discovery must ignore.
+// Runs in a copy of fixtures/monorepo: npm, Mix, Zig and Python manifests with
+// nested notes files, plus downloaded/cache manifests discovery must ignore.
 
 function at(...parts: string[]): vscode.Uri {
   const folder = vscode.workspace.workspaceFolders![0]!;
@@ -85,6 +85,20 @@ async function zigHoverText(manifest: vscode.Uri, dep: string): Promise<string> 
     .join('\n');
 }
 
+async function pythonHoverText(manifest: vscode.Uri, dep: string): Promise<string> {
+  const doc = await vscode.workspace.openTextDocument(manifest);
+  await vscode.window.showTextDocument(doc);
+  const offset = doc.getText().indexOf(dep);
+  assert.ok(offset >= 0, `${dep} is not in ${manifest.path}`);
+  const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+    'vscode.executeHoverProvider',
+    manifest,
+    doc.positionAt(offset + 2),
+  );
+  return (hovers ?? []).flatMap((hover) => hover.contents)
+    .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+}
+
 const cfg = (): vscode.WorkspaceConfiguration => vscode.workspace.getConfiguration('pacmon');
 
 suite('pacmon monorepo', () => {
@@ -151,6 +165,14 @@ suite('pacmon monorepo', () => {
     assert.ok(!text.includes('Root Zig note'), 'the root Zig note must not leak into the nested project');
   });
 
+  test('Python pyproject and split requirements use their nearest shared notes', async function () {
+    this.timeout(20000);
+    const pyproject = await pythonHoverText(at('apps', 'python-app', 'pyproject.toml'), 'shared_python');
+    assert.ok(pyproject.includes('Nested Python note'), pyproject);
+    const requirements = await pythonHoverText(at('apps', 'python-app', 'requirements', 'dev.txt'), 'ruff');
+    assert.ok(requirements.includes('Python linting and formatting'), requirements);
+  });
+
   test('pacmon.monorepo = rootOnly ignores the nested notes file', async function () {
     this.timeout(20000);
     await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
@@ -189,6 +211,20 @@ suite('pacmon monorepo', () => {
         return value.includes('Root Zig note') ? value : undefined;
       });
       assert.ok(!text.includes('Nested Zig note'), 'rootOnly must ignore the child Zig notes file');
+    } finally {
+      await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test('pacmon.monorepo = rootOnly makes a nested Python manifest use root Python notes', async function () {
+    this.timeout(20000);
+    await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
+    try {
+      const text = await poll(async () => {
+        const value = await pythonHoverText(at('apps', 'python-app', 'pyproject.toml'), 'shared_python');
+        return value.includes('Root Python note') ? value : undefined;
+      });
+      assert.ok(!text.includes('Nested Python note'), 'rootOnly must ignore the child Python notes file');
     } finally {
       await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
     }

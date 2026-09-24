@@ -56,6 +56,8 @@ describe('template: frontmatter and header', () => {
     expect(normalizeText(mix)).toBe(mix);
     const zig = newNotesFileContent('\n', 'known_folders', 'Platform directories.', 'zig');
     expect(zig).toContain('ecosystem: zig');
+    const python = newNotesFileContent('\n', 'requests', 'HTTP client', 'python');
+    expect(python).toContain('ecosystem: python');
     expect(zig).toContain('zig dependency manifest');
     expect(normalizeText(zig)).toBe(zig);
   });

@@ -200,6 +200,42 @@ suite('pacmon integration', () => {
     assert.ok(text.includes('.pacmon/zig/DEPENDENCY-NOTES.md'));
   });
 
+  test('pyproject.toml requirements use canonical Python notes', async () => {
+    const manifest = fixtureUri('pyproject.toml');
+    const doc = await vscode.workspace.openTextDocument(manifest);
+    await vscode.window.showTextDocument(doc);
+    const offset = doc.getText().indexOf('requests>=');
+    const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+      'vscode.executeHoverProvider',
+      manifest,
+      doc.positionAt(offset + 2),
+    );
+    const text = (hovers ?? []).flatMap((hover) => hover.contents)
+      .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+    assert.ok(text.includes('HTTP client used by the Python fixture'), `Python note missing, got: ${text}`);
+    assert.ok(text.includes('.pacmon/python/DEPENDENCY-NOTES.md'));
+  });
+
+  test('split requirements files share project Python notes and open pyproject first', async () => {
+    const manifest = fixtureUri('requirements', 'dev.txt');
+    const doc = await vscode.workspace.openTextDocument(manifest);
+    await vscode.window.showTextDocument(doc);
+    const offset = doc.getText().indexOf('pytest-cov');
+    const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+      'vscode.executeHoverProvider',
+      manifest,
+      doc.positionAt(offset + 2),
+    );
+    const text = (hovers ?? []).flatMap((hover) => hover.contents)
+      .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+    assert.ok(text.includes('Coverage reporting for Python tests'), `requirements note missing, got: ${text}`);
+
+    const notes = fixtureUri('.pacmon', 'python', 'DEPENDENCY-NOTES.md');
+    await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(notes));
+    await vscode.commands.executeCommand('pacmon.openManifest');
+    await poll(() => vscode.window.activeTextEditor?.document.uri.path.endsWith('/pyproject.toml') ? true : undefined);
+  });
+
   test('the first Mix note creates a v2 Mix notes file', async function () {
     this.timeout(20000);
     const notes = fixtureUri('.pacmon', 'mix', 'DEPENDENCY-NOTES.md');

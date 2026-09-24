@@ -15,6 +15,8 @@ describe('manifest adapters', () => {
     expect(manifestAdapterForFileName('build.gradle.kts')?.kind).toBe('gradle');
     expect(manifestAdapterForFileName('mix.exs')?.kind).toBe('mix');
     expect(manifestAdapterForFileName('build.zig.zon')?.kind).toBe('zig');
+    expect(manifestAdapterForFileName('pyproject.toml')?.kind).toBe('python');
+    expect(manifestAdapterForFileName('requirements-dev.txt')?.kind).toBe('python');
     expect(manifestAdapterForFileName('settings.gradle')).toBeUndefined();
   });
 });

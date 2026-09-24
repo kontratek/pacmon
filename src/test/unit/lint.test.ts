@@ -52,6 +52,8 @@ describe('lintNotes — frontmatter and title', () => {
       .toBe('gradle');
     expect(parseNotes('---\nformat: dependency-notes/2\necosystem: zig\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
       .toBe('zig');
+    expect(parseNotes('---\nformat: dependency-notes/2\necosystem: python\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
+      .toBe('python');
   });
 
   it('wants exactly one title, worded "# Dependency Notes"', () => {

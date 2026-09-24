@@ -45,7 +45,7 @@ export function parseNotes(text: string): NotesFileModel {
           // Unknown keys are kept as lines; only the format's own are read.
           if (kv[1] === 'format') fm.formatVersion = kv[2];
           else if (kv[1] === 'lang') fm.lang = kv[2];
-          else if (kv[1] === 'ecosystem' && ['cargo', 'maven', 'gradle', 'mix', 'zig'].includes(kv[2])) {
+          else if (kv[1] === 'ecosystem' && ['cargo', 'maven', 'gradle', 'mix', 'zig', 'python'].includes(kv[2])) {
             fm.ecosystem = kv[2] as ManifestKind;
           }
         }

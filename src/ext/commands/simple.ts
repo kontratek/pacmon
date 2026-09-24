@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { normalizeText } from '../../core/serialize';
 import { isManifest, isNotesFile, notesFileLabel, toggleDecorationsState } from '../config';
-import { defaultManifest, manifestsBesideNotes, notesUriIn, resolveNotesFileFor } from '../resolveNotesFile';
+import { defaultManifest, manifestsForNotes, notesUriIn, resolveNotesFileFor } from '../resolveNotesFile';
 import type { Store } from '../state';
 import { S } from '../strings';
 
@@ -44,7 +44,7 @@ export async function openManifest(store: Store): Promise<void> {
   }
   let fromNotes: vscode.Uri | undefined;
   if (editor && isNotesFile(editor.document.uri)) {
-    for (const candidate of manifestsBesideNotes(editor.document.uri)) {
+    for (const candidate of await manifestsForNotes(editor.document.uri)) {
       if ((await store.getText(candidate)) !== undefined) {
         fromNotes = candidate;
         break;
