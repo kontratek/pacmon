@@ -80,19 +80,11 @@
         <!-- The "link" click target: Ctrl+click a package name to open its note. -->
         <gotoDeclarationHandler
             implementation="dev.pacmon.jetbrains.editor.PacmonNoteDeclarationHandler"/>
-        <!-- The "lightbulb" click target: nothing drawn until the caret is on the line. -->
+        <!-- The "lightbulb" click target: nothing drawn until the caret is on the line.
+             Registered once, for every language: the IDE refuses an intention class
+             registered more than once (IntelliJ 2026.3 throws on it), and
+             isAvailable() returns false outside a dependency manifest. -->
         <intentionAction>
-            <language>JSON</language>
-            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
-            <category>Pacmon</category>
-        </intentionAction>
-        <intentionAction>
-            <language>XML</language>
-            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
-            <category>Pacmon</category>
-        </intentionAction>
-        <intentionAction>
-            <language>TEXT</language>
             <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
             <category>Pacmon</category>
         </intentionAction>

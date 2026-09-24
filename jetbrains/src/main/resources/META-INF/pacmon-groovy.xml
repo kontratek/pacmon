@@ -4,11 +4,6 @@
             language="Groovy"
             id="PacmonDependencyIconsGroovy"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
-        <intentionAction>
-            <language>Groovy</language>
-            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
-            <category>Pacmon</category>
-        </intentionAction>
         <lang.documentationProvider
             language="Groovy"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>

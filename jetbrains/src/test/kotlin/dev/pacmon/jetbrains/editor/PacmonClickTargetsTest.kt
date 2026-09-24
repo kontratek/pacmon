@@ -5,6 +5,8 @@ import com.intellij.codeInsight.hints.HorizontalConstraints
 import com.intellij.codeInsight.hints.InlayHintsSink
 import com.intellij.codeInsight.hints.presentation.InlayPresentation
 import com.intellij.codeInsight.hints.presentation.RootInlayPresentation
+import com.intellij.codeInsight.intention.IntentionActionBean
+import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.openapi.vfs.VirtualFile
 import dev.pacmon.jetbrains.service.PacmonProjectService
@@ -173,6 +175,14 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         service().setNoteButtons(listOf(NoteButtons.ICON_LEFT))
         myFixture.editor.caretModel.moveToOffset(dependency.primaryRange.offset + 1)
         assertFalse(intention.isAvailable(project, myFixture.editor, myFixture.file))
+    }
+
+    fun testLightbulbIsRegisteredOnceForEveryLanguage() {
+        // IntelliJ 2026.3 throws when one intention class is registered more than once.
+        val registrations = ExtensionPointName<IntentionActionBean>("com.intellij.intentionAction").extensionList
+            .filter { it.className == PacmonAddNoteIntention::class.java.name }
+        assertEquals(1, registrations.size)
+        assertNull(registrations.single().language)
     }
 
     fun testNoteMarkersShowThePreview_thenTheBareBadge_thenNothing() {
