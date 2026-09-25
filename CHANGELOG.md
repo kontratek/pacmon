@@ -7,6 +7,14 @@
 
 ## Unreleased
 
+- **Pacmon supports Go projects in VS Code and JetBrains.** Module paths in the
+  `require` directives of `go.mod`, single-line or in a block, get markers,
+  hover, note editing and coverage backed by `.pacmon/go/DEPENDENCY-NOTES.md`;
+  `// indirect` requirements are included with a scope of their own. A `tool`
+  directive belongs to the required module that provides it. Parsing is static:
+  Pacmon never runs Go, and `replace`, `exclude`, `retract`, `go.work` and
+  `vendor/` are not read as dependencies.
+
 ## 0.5.0 — 2026-09-24
 
 - **Pacmon supports Python projects in VS Code and JetBrains.** Standard,
