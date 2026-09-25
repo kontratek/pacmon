@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Notes",
-  "description": "Why each dependency exists, as a note next to package.json, Cargo.toml, pom.xml, build.gradle, mix.exs, build.zig.zon or Python manifests. Plain Markdown in your repo; AI agents read and write it too.",
+  "description": "Why each dependency exists, as a note next to JavaScript, Rust, JVM, Elixir, Zig, Python or .NET/NuGet manifests. Plain Markdown in your repo; AI agents read and write it too.",
   "version": "0.4.0",
   "publisher": "kontra",
   "private": true,
@@ -44,6 +44,10 @@
     "pip",
     "Poetry",
     "uv",
+    ".NET",
+    "NuGet",
+    "csproj",
+    "Directory.Packages.props",
     "documentation",
     "notes",
     "dependency management"
@@ -61,6 +65,7 @@
     "workspaceContains:**/.pacmon/gradle/DEPENDENCY-NOTES.md",
     "workspaceContains:**/.pacmon/mix/DEPENDENCY-NOTES.md",
     "workspaceContains:**/.pacmon/zig/DEPENDENCY-NOTES.md",
+    "workspaceContains:**/.pacmon/nuget/DEPENDENCY-NOTES.md",
     "workspaceContains:**/Cargo.toml",
     "workspaceContains:**/pom.xml",
     "workspaceContains:**/build.gradle",
@@ -70,6 +75,10 @@
     "workspaceContains:**/pyproject.toml",
     "workspaceContains:**/requirements*.txt",
     "workspaceContains:**/requirements/**/*.txt",
+    "workspaceContains:**/*.csproj",
+    "workspaceContains:**/*.fsproj",
+    "workspaceContains:**/*.vbproj",
+    "workspaceContains:**/Directory.Packages.props",
     "onView:pacmon.settings"
   ],
   "main": "./dist/extension.js",
@@ -146,7 +155,7 @@
       "editor/context": [
         {
           "command": "pacmon.addOrEditNote",
-          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml || resourceFilename == build.gradle || resourceFilename == build.gradle.kts || resourceFilename == mix.exs || resourceFilename == build.zig.zon || resourceFilename == pyproject.toml || resourceFilename =~ /^requirements.*\\.txt$/ || resourcePath =~ /[\\\\/]requirements[\\\\/].*\\.txt$/) && editorTextFocus",
+          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml || resourceFilename == build.gradle || resourceFilename == build.gradle.kts || resourceFilename == mix.exs || resourceFilename == build.zig.zon || resourceFilename == pyproject.toml || resourceFilename == Directory.Packages.props || resourceFilename =~ /^requirements.*\\.txt$/ || resourcePath =~ /[\\\\/]requirements[\\\\/].*\\.txt$/ || resourceExtname =~ /^\\.(cs|fs|vb)proj$/) && editorTextFocus",
           "group": "1_modification@100"
         }
       ],

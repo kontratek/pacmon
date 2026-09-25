@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import { MANIFEST_ADAPTERS, manifestAdapterForKind, manifestAdapterForPath } from '../core/manifest';
 import type { DependencyEntry, ManifestKind } from '../core/model';
+import { uniqueNugetDependencies } from '../core/nuget-manifest';
 import { AGENT_RULES_REL_PATH } from '../core/template';
 import { monorepoMode, uriBasename } from './config';
 
-const DISCOVERY_EXCLUDE = '**/{node_modules,target,.gradle,_build,deps,zig-pkg,.zig-cache,zig-cache,zig-out,.venv,venv,.tox,.nox,site-packages,dist,build,.git}/**';
+const DISCOVERY_EXCLUDE = '**/{node_modules,target,.gradle,_build,deps,zig-pkg,.zig-cache,zig-cache,zig-out,.venv,venv,.tox,.nox,site-packages,dist,build,bin,obj,.git}/**';
 
 const existsCache = new Map<string, boolean>();
 const manifestsForNotesCache = new Map<string, Promise<vscode.Uri[]>>();
@@ -46,6 +47,25 @@ export function manifestOwnerDirectory(uri: vscode.Uri): vscode.Uri {
   return parentDir(uri);
 }
 
+/** NuGet projects using central package management belong to the closest
+ * Directory.Packages.props. Other manifests retain their ordinary directory. */
+async function manifestOwnerDirectoryForResolution(uri: vscode.Uri): Promise<vscode.Uri> {
+  const adapter = manifestAdapterForPath(uri.path);
+  const directOwner = manifestOwnerDirectory(uri);
+  if (adapter?.kind !== 'nuget' || uriBasename(uri) === 'Directory.Packages.props') return directOwner;
+  const folder = vscode.workspace.getWorkspaceFolder(uri);
+  if (!folder) return directOwner;
+  let directory = directOwner;
+  const rootPath = folder.uri.path.replace(/\/+$/, '');
+  for (let i = 0; i < 64; i++) {
+    if (await exists(vscode.Uri.joinPath(directory, 'Directory.Packages.props'))) return directory;
+    const directoryPath = directory.path.replace(/\/+$/, '');
+    if (directoryPath === rootPath || directoryPath.length <= rootPath.length) break;
+    directory = parentDir(directory);
+  }
+  return directOwner;
+}
+
 export function notesUriIn(dir: vscode.Uri, kind: ManifestKind = 'npm'): vscode.Uri {
   return vscode.Uri.joinPath(dir, ...manifestAdapterForKind(kind).notesRelativePath.split('/'));
 }
@@ -85,7 +105,7 @@ export async function resolveNotesFileFor(manifestUri: vscode.Uri): Promise<vsco
     const candidate = notesUriIn(folder.uri, adapter.kind);
     return (await exists(candidate)) ? candidate : undefined;
   }
-  let dir = manifestOwnerDirectory(manifestUri);
+  let dir = await manifestOwnerDirectoryForResolution(manifestUri);
   const rootPath = folder.uri.path.replace(/\/+$/, '');
   for (let i = 0; i < 64; i++) {
     const candidate = notesUriIn(dir, adapter.kind);
@@ -97,9 +117,9 @@ export async function resolveNotesFileFor(manifestUri: vscode.Uri): Promise<vsco
   return undefined;
 }
 
-export function creationTargetFor(manifestUri: vscode.Uri): vscode.Uri {
+export async function creationTargetFor(manifestUri: vscode.Uri): Promise<vscode.Uri> {
   const adapter = manifestAdapterForPath(manifestUri.path);
-  return notesUriIn(manifestOwnerDirectory(manifestUri), adapter?.kind ?? 'npm');
+  return notesUriIn(await manifestOwnerDirectoryForResolution(manifestUri), adapter?.kind ?? 'npm');
 }
 
 export async function defaultManifest(store: {
@@ -135,7 +155,9 @@ function manifestPriority(uri: vscode.Uri): string {
   const adapter = manifestAdapterForPath(uri.path);
   const rank = adapter?.kind === 'python'
     ? basename === 'pyproject.toml' ? 0 : basename === 'requirements.txt' ? 1 : 2
-    : Math.max(0, adapter?.fileNames.indexOf(basename) ?? 99);
+    : adapter?.kind === 'nuget'
+      ? basename === 'Directory.Packages.props' ? 0 : 1
+      : Math.max(0, adapter?.fileNames.indexOf(basename) ?? 99);
   return `${rank.toString().padStart(2, '0')}:${uri.path}`;
 }
 
@@ -174,5 +196,7 @@ export async function dependenciesForNotes(
   notesUri: vscode.Uri,
 ): Promise<DependencyEntry[]> {
   const groups = await Promise.all((await manifestsForNotes(notesUri)).map((uri) => store.getDeps(uri)));
-  return groups.flat();
+  const dependencies = groups.flat();
+  if (notesKind(notesUri) !== 'nuget') return dependencies;
+  return uniqueNugetDependencies(dependencies);
 }

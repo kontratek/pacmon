@@ -91,7 +91,7 @@ const LEGACY_AI_BLOCK = ['<!-- pacmon:deps-notes:start -->', '<!-- pacmon:deps-n
 export function aiInstructionsBlock(): string {
   return [
     AI_BLOCK_START,
-    `Dependency notes live in \`${NOTES_REL_PATH}\` for npm, \`${NOTES_DIR}/cargo/${NOTES_FILE_NAME}\` for Rust, \`${NOTES_DIR}/maven/${NOTES_FILE_NAME}\` for Maven, \`${NOTES_DIR}/gradle/${NOTES_FILE_NAME}\` for Gradle, \`${NOTES_DIR}/mix/${NOTES_FILE_NAME}\` for Mix, \`${NOTES_DIR}/zig/${NOTES_FILE_NAME}\` for Zig, and \`${NOTES_DIR}/python/${NOTES_FILE_NAME}\` for Python; people write below \`## <package>\`, agents under \`${AGENT_NOTES_HEADING}\`.`,
+    `Dependency notes live in \`${NOTES_REL_PATH}\` for npm, \`${NOTES_DIR}/cargo/${NOTES_FILE_NAME}\` for Rust, \`${NOTES_DIR}/maven/${NOTES_FILE_NAME}\` for Maven, \`${NOTES_DIR}/gradle/${NOTES_FILE_NAME}\` for Gradle, \`${NOTES_DIR}/mix/${NOTES_FILE_NAME}\` for Mix, \`${NOTES_DIR}/zig/${NOTES_FILE_NAME}\` for Zig, \`${NOTES_DIR}/python/${NOTES_FILE_NAME}\` for Python, and \`${NOTES_DIR}/nuget/${NOTES_FILE_NAME}\` for .NET/NuGet; people write below \`## <package>\`, agents under \`${AGENT_NOTES_HEADING}\`.`,
     `Rules and the field list are in \`${AGENT_RULES_REL_PATH}\`; read a package's section before adding, bumping or removing it.`,
     `Update the notes in the same commit as the dependency manifest; a removed package keeps its section with \`- status: removed …\`.`,
     AI_BLOCK_END,

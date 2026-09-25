@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Nested.Package" Version="2.0.0" />
+    <PackageVersion Include="New.Package" Version="1.0.0" />
+  </ItemGroup>
+</Project>

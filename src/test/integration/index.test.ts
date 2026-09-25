@@ -236,6 +236,53 @@ suite('pacmon integration', () => {
     await poll(() => vscode.window.activeTextEditor?.document.uri.path.endsWith('/pyproject.toml') ? true : undefined);
   });
 
+  test('.NET project and central package declarations use NuGet notes', async () => {
+    for (const [parts, packageName] of [
+      [['Pacmon.DotNet.csproj'], 'Newtonsoft.Json'],
+      [['Directory.Packages.props'], 'Newtonsoft.Json'],
+      [['Directory.Packages.props'], 'Nerdbank.GitVersioning'],
+    ] as const) {
+      const manifest = fixtureUri(...parts);
+      const doc = await vscode.workspace.openTextDocument(manifest);
+      await vscode.window.showTextDocument(doc);
+      const offset = doc.getText().indexOf(`"${packageName}"`);
+      assert.ok(offset > 0, `${packageName} missing from ${manifest.path}`);
+      const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+        'vscode.executeHoverProvider',
+        manifest,
+        doc.positionAt(offset + 2),
+      );
+      const text = (hovers ?? []).flatMap((hover) => hover.contents)
+        .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+      assert.ok(text.includes('.pacmon/nuget/DEPENDENCY-NOTES.md'), `NuGet path missing: ${text}`);
+    }
+  });
+
+  test('the first .NET note is created beside Directory.Packages.props', async function () {
+    this.timeout(20000);
+    const notes = fixtureUri('.pacmon', 'nuget', 'DEPENDENCY-NOTES.md');
+    const original = await vscode.workspace.fs.readFile(notes);
+    try {
+      await vscode.workspace.fs.delete(notes);
+      await sleep(500);
+      const manifest = fixtureUri('Pacmon.DotNet.csproj');
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(manifest));
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'Serilog.AspNetCore', 'Structured request logging.');
+      const text = await poll(async () => {
+        try {
+          const value = await readText(notes);
+          return value.includes('## Serilog.AspNetCore') ? value : undefined;
+        } catch {
+          return undefined;
+        }
+      });
+      assert.ok(text.includes('format: dependency-notes/2\necosystem: nuget\nlang: en'));
+      assert.ok(text.includes('Structured request logging.'));
+    } finally {
+      await vscode.workspace.fs.writeFile(notes, original);
+    }
+  });
+
   test('the first Mix note creates a v2 Mix notes file', async function () {
     this.timeout(20000);
     const notes = fixtureUri('.pacmon', 'mix', 'DEPENDENCY-NOTES.md');

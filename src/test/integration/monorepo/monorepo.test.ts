@@ -99,6 +99,20 @@ async function pythonHoverText(manifest: vscode.Uri, dep: string): Promise<strin
     .map((content) => typeof content === 'string' ? content : content.value).join('\n');
 }
 
+async function nugetHoverText(manifest: vscode.Uri, dep: string): Promise<string> {
+  const doc = await vscode.workspace.openTextDocument(manifest);
+  await vscode.window.showTextDocument(doc);
+  const offset = doc.getText().indexOf(`"${dep}"`);
+  assert.ok(offset >= 0, `${dep} is not in ${manifest.path}`);
+  const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+    'vscode.executeHoverProvider',
+    manifest,
+    doc.positionAt(offset + 2),
+  );
+  return (hovers ?? []).flatMap((hover) => hover.contents)
+    .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+}
+
 const cfg = (): vscode.WorkspaceConfiguration => vscode.workspace.getConfiguration('pacmon');
 
 suite('pacmon monorepo', () => {
@@ -171,6 +185,72 @@ suite('pacmon monorepo', () => {
     assert.ok(pyproject.includes('Nested Python note'), pyproject);
     const requirements = await pythonHoverText(at('apps', 'python-app', 'requirements', 'dev.txt'), 'ruff');
     assert.ok(requirements.includes('Python linting and formatting'), requirements);
+  });
+
+  test('.NET projects and central manifests use their nearest NuGet notes', async function () {
+    this.timeout(20000);
+    for (const manifest of [
+      at('apps', 'dotnet-app', 'App.csproj'),
+      at('apps', 'dotnet-app', 'Directory.Packages.props'),
+    ]) {
+      const text = await poll(async () => {
+        const value = await nugetHoverText(manifest, 'Nested.Package');
+        return value.includes('Nested central NuGet note') ? value : undefined;
+      });
+      assert.ok(text.includes('.pacmon/nuget/DEPENDENCY-NOTES.md'), text);
+      assert.ok(!text.includes('Root-level NuGet note'), 'root NuGet notes must not leak into the nested project');
+    }
+  });
+
+  test('a first nested .NET note is created beside the nearest Directory.Packages.props', async function () {
+    this.timeout(20000);
+    const nestedNotes = at('apps', 'dotnet-app', '.pacmon', 'nuget', 'DEPENDENCY-NOTES.md');
+    const rootNotes = at('.pacmon', 'nuget', 'DEPENDENCY-NOTES.md');
+    const originalNested = await vscode.workspace.fs.readFile(nestedNotes);
+    const originalRoot = await vscode.workspace.fs.readFile(rootNotes);
+    try {
+      await vscode.workspace.fs.delete(nestedNotes);
+      await vscode.workspace.fs.delete(rootNotes);
+      await sleep(500);
+      const manifest = at('apps', 'dotnet-app', 'App.csproj');
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(manifest));
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'New.Package', 'Nested package note.');
+      const text = await poll(async () => {
+        try {
+          const value = await readText(nestedNotes);
+          return value.includes('## New.Package') ? value : undefined;
+        } catch {
+          return undefined;
+        }
+      });
+      assert.ok(text.includes('ecosystem: nuget'));
+      assert.strictEqual(await exists(rootNotes), false, 'root NuGet notes must not be created');
+    } finally {
+      await vscode.workspace.fs.writeFile(nestedNotes, originalNested);
+      await vscode.workspace.fs.writeFile(rootNotes, originalRoot);
+    }
+  });
+
+  test('bin and obj .NET manifests are excluded from note dependency discovery', async function () {
+    this.timeout(15000);
+    const notes = at('apps', 'dotnet-app', '.pacmon', 'nuget', 'DEPENDENCY-NOTES.md');
+    const doc = await vscode.workspace.openTextDocument(notes);
+    const editor = await vscode.window.showTextDocument(doc);
+    const ecosystemLine = doc.getText().split(/\r?\n/).findIndex((line) => line === 'ecosystem: nuget');
+    assert.ok(ecosystemLine > 0, 'fixture changed: no NuGet ecosystem line');
+    await editor.edit((edit) => edit.replace(doc.lineAt(ecosystemLine).range, 'ecosystem: cargo'));
+    try {
+      const mine = await poll(() => {
+        const diagnostics = vscode.languages.getDiagnostics(notes).filter((item) => item.source === 'pacmon');
+        return diagnostics.some((item) => item.code === 'wrong-ecosystem') ? diagnostics : undefined;
+      });
+      assert.ok(
+        !mine.some((item) => item.code === 'removed-but-present'),
+        'a dependency found only under obj must not count as a project dependency',
+      );
+    } finally {
+      await vscode.commands.executeCommand('workbench.action.files.revert');
+    }
   });
 
   test('pacmon.monorepo = rootOnly ignores the nested notes file', async function () {

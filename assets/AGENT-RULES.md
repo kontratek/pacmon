@@ -6,7 +6,7 @@
 
 ## Before you touch a dependency
 
-Its notes are beside the manifest you are changing: npm uses `.pacmon/DEPENDENCY-NOTES.md`, Rust uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`, Gradle uses `.pacmon/gradle/DEPENDENCY-NOTES.md`, Mix uses `.pacmon/mix/DEPENDENCY-NOTES.md`, Zig uses `.pacmon/zig/DEPENDENCY-NOTES.md`, and Python uses `.pacmon/python/DEPENDENCY-NOTES.md`. In a monorepo, use the nearest file for the same ecosystem, walking up. Read two things first: the free text between `# Dependency Notes` and the first section (this repository's own rules), then the dependency's `## <name>` section.
+Its notes are beside the manifest you are changing: npm uses `.pacmon/DEPENDENCY-NOTES.md`, Rust uses `.pacmon/cargo/DEPENDENCY-NOTES.md`, Maven uses `.pacmon/maven/DEPENDENCY-NOTES.md`, Gradle uses `.pacmon/gradle/DEPENDENCY-NOTES.md`, Mix uses `.pacmon/mix/DEPENDENCY-NOTES.md`, Zig uses `.pacmon/zig/DEPENDENCY-NOTES.md`, Python uses `.pacmon/python/DEPENDENCY-NOTES.md`, and .NET/NuGet uses `.pacmon/nuget/DEPENDENCY-NOTES.md`. In a monorepo, use the nearest file for the same ecosystem, walking up. Read two things first: the free text between `# Dependency Notes` and the first section (this repository's own rules), then the dependency's `## <name>` section.
 
 - **Adding a package:** open its section in the same commit, with at least `purpose:`. Say what you considered and why this one, in `alternatives:` or `log:`.
 - **Upgrading:** read its `constraint:` and `verify:` lines, then run what `verify:` says. Log the attempt with its outcome even if you reverted it — the next agent must not repeat it.
@@ -28,6 +28,7 @@ Text written by people. Do not touch it.
 
 - **The heading is the dependency's note key**, spelled as its manifest spells it:
   - `package.json`: the package name with its `@scope/` — `## @types/node`
+  - .NET project files and `Directory.Packages.props`: the case-insensitive NuGet package ID as written — `## Newtonsoft.Json`
   - `Cargo.toml`: the key in the dependency table; for a renamed dependency, the key, not its `package` — `## serde`
   - `pom.xml`: `groupId:artifactId` — `## org.slf4j:slf4j-api`
   - `build.gradle(.kts)`: `group:name` without the version, or the catalog alias as written — `## org.slf4j:slf4j-api`, `## libs.junit.jupiter`

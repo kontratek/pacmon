@@ -1,6 +1,6 @@
 # The dependency notes formats
 
-Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, Gradle, Mix, Zig, and Python files use `dependency-notes/2`. Both the VS Code and JetBrains extensions support every listed ecosystem. See [Versioning](#versioning).
+Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, Gradle, Mix, Zig, Python, and NuGet files use `dependency-notes/2`. NuGet is currently supported by the VS Code extension; the other listed ecosystems are supported by both VS Code and JetBrains. See [Versioning](#versioning).
 
 ## The notes file
 
@@ -13,6 +13,7 @@ The path identifies the ecosystem:
 - Mix: `.pacmon/mix/DEPENDENCY-NOTES.md`, beside `mix.exs`.
 - Zig: `.pacmon/zig/DEPENDENCY-NOTES.md`, beside `build.zig.zon`.
 - Python: `.pacmon/python/DEPENDENCY-NOTES.md`, beside `pyproject.toml` or a requirements manifest. Files below `requirements/` are owned by the directory above it.
+- NuGet: `.pacmon/nuget/DEPENDENCY-NOTES.md`, beside `Directory.Packages.props` or a .NET project file. A project owned by central package management uses the closest `Directory.Packages.props` directory.
 
 A manifest without its own notes file uses the closest ancestor notes file for the same ecosystem, up to the workspace root. Different ecosystems never share notes.
 
@@ -45,7 +46,7 @@ Human layer.
 
 The frontmatter, the header comment and the title have fixed content, given below. A tool that formats the file rewrites them. The introduction is written by people. A section has layers: one is written by people, one by AI agents.
 
-Cargo, Maven, Gradle, Mix, Zig, and Python files use v2 frontmatter:
+Cargo, Maven, Gradle, Mix, Zig, Python, and NuGet files use v2 frontmatter:
 
 ```yaml
 ---
@@ -65,7 +66,7 @@ Version 1 defines `format` and `lang`. Version 2 also requires `ecosystem`.
 
 `format` names the version of these rules the file follows. Supported values are `dependency-notes/1` and `dependency-notes/2`. When the key is missing, the file is read as v1.
 
-`ecosystem` is required in v2 and is `cargo`, `maven`, `gradle`, `mix`, `zig`, or `python`. It must agree with the notes path.
+`ecosystem` is required in v2 and is `cargo`, `maven`, `gradle`, `mix`, `zig`, `python`, or `nuget`. It must agree with the notes path.
 
 `lang` names the language the values are written in. Keys are always English. When the key is missing, the language is `en`.
 
@@ -96,8 +97,9 @@ A direct dependency is identified statically from its manifest. Its note key is 
 - Mix: the first application atom in a literal dependency tuple inside `def/defp deps` or an inline `deps: [...]` list. Hex, Git, path and umbrella tuples share this rule; `{:phoenix, "~> 1.8"}` has the note key `phoenix`. Dynamically assembled lists are not evaluated.
 - Zig: a direct field of the top-level `.dependencies` struct in `build.zig.zon`. URL/hash, path and lazy dependencies share this rule; `.known_folders = .{ ... }` has the note key `known_folders`. Escaped identifiers are decoded. `build.zig`, system libraries and transitive dependencies are not evaluated.
 - Python: a named dependency in `pyproject.toml` project metadata, optional dependencies, dependency groups, build requirements, Poetry dependency tables/groups, or uv legacy development dependencies; or a named PEP 508 requirement in a supported pip requirements file. Includes, constraints, options, source metadata, unnamed paths and lock files are ignored. Note keys are normalized to lowercase, with each run of `.`, `_`, or `-` replaced by `-`.
+- NuGet: a literal `PackageReference Include` item in a `.csproj`, `.fsproj`, or `.vbproj`; a `PackageVersion Include/Update` or `GlobalPackageReference Include` item in `Directory.Packages.props`. Imports, MSBuild expressions, `Update`/`Remove` project items, project/framework references, package downloads and transitive packages are ignored. The note key is the package ID as written.
 
-A v1/npm section matches after trimming, stripping one pair of surrounding quotes or backticks, and lower-casing. Python applies distribution-name normalization after the same wrapper removal. Cargo, Maven, Gradle, Mix, and Zig v2 keys preserve case.
+A v1/npm section matches after trimming, stripping one pair of surrounding quotes or backticks, and lower-casing. Python applies distribution-name normalization after the same wrapper removal. NuGet lower-cases after wrapper removal. Cargo, Maven, Gradle, Mix, and Zig v2 keys preserve case.
 
 Each dependency has at most one section. Two sections with the same name are a mistake; the file does not say which one is wrong. Until it is fixed, tools read the first one in the file.
 
@@ -189,7 +191,7 @@ A tool that adds a section puts it at its sorted position when the file is sorte
 
 ## Changes
 
-- `dependency-notes/2` adds ecosystem-scoped Cargo, Maven, Gradle, Mix, Zig, and Python notes while leaving npm v1 files in place.
+- `dependency-notes/2` adds ecosystem-scoped Cargo, Maven, Gradle, Mix, Zig, Python, and NuGet notes while leaving npm v1 files in place.
 
 ## Example
 

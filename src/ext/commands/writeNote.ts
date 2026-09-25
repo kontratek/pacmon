@@ -78,7 +78,7 @@ async function locate(store: Store, pkgUri: vscode.Uri): Promise<Located> {
     if (text !== undefined) return { notesUri: resolved, text };
   }
   if (resolved) clearResolverCache(); // the file went away under a stale cache entry
-  return { notesUri: creationTargetFor(pkgUri), text: undefined };
+  return { notesUri: await creationTargetFor(pkgUri), text: undefined };
 }
 
 /** A real stat: the resolver's cache and a just-closed editor's document can

@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+- **Pacmon supports .NET/NuGet projects in VS Code.** Literal `PackageReference`
+  items in `.csproj`, `.fsproj` and `.vbproj` files, plus central
+  `PackageVersion` and `GlobalPackageReference` items in
+  `Directory.Packages.props`, get markers, hover, note editing and coverage
+  backed by `.pacmon/nuget/DEPENDENCY-NOTES.md`. Parsing is static: Pacmon does
+  not run .NET, MSBuild or NuGet, follow imports, or resolve transitive packages.
+
 - **Pacmon supports Python projects in VS Code and JetBrains.** Standard,
   Poetry and uv dependencies in `pyproject.toml`, plus named dependencies in
   common pip requirements-file layouts, get markers, hover, note editing and

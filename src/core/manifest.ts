@@ -11,6 +11,7 @@ import {
   normalizePythonPackageName,
   pythonRequirementsScope,
 } from './python-manifest';
+import { extractNugetDependencies, isNugetManifestPath } from './nuget-manifest';
 export { dependencyAtOffset } from './dependency';
 
 export interface ManifestAdapter {
@@ -119,6 +120,15 @@ export const MANIFEST_ADAPTERS: readonly ManifestAdapter[] = [
       ? extractPyprojectDependencies(text)
       : extractRequirementsDependencies(text, pythonRequirementsScope(path)),
     normalizeNoteKey: (raw) => normalizePythonPackageName(tolerantKey(raw)),
+  },
+  {
+    kind: 'nuget',
+    fileNames: ['Directory.Packages.props'],
+    discoveryGlobs: ['**/*.csproj', '**/*.fsproj', '**/*.vbproj', '**/Directory.Packages.props'],
+    notesRelativePath: '.pacmon/nuget/DEPENDENCY-NOTES.md',
+    matchesPath: isNugetManifestPath,
+    extractDependencies: extractNugetDependencies,
+    normalizeNoteKey: (raw) => tolerantKey(raw).toLowerCase(),
   },
 ];
 
