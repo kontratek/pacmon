@@ -4,11 +4,6 @@
             language="TOML"
             id="PacmonDependencyIconsToml"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
-        <intentionAction>
-            <language>TOML</language>
-            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
-            <category>Pacmon</category>
-        </intentionAction>
         <lang.documentationProvider
             language="TOML"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>

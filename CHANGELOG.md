@@ -7,12 +7,7 @@
 
 ## Unreleased
 
-- **Pacmon supports Go projects in VS Code and JetBrains.** Modules in the
-  `require` directives of `go.mod`, direct and `// indirect`, get markers,
-  hover, note editing and coverage backed by `.pacmon/go/DEPENDENCY-NOTES.md`;
-  a `tool` directive points at the module that provides it. Parsing is static:
-  Pacmon does not run `go`, and `replace`, `exclude`, `retract`, `go.work` and
-  `vendor/` are not read as dependencies.
+## 0.5.0 — 2026-09-24
 
 - **Pacmon supports Python projects in VS Code and JetBrains.** Standard,
   Poetry and uv dependencies in `pyproject.toml`, plus named dependencies in
@@ -32,6 +27,16 @@
   as the other manifests, with notes in `.pacmon/mix/DEPENDENCY-NOTES.md`.
   Hex, Git, path and umbrella tuples are read statically; Pacmon never executes Mix
   or project code, and dynamically assembled dependency lists are left alone.
+
+- **The JetBrains plugin no longer throws an error in IntelliJ IDEA 2026.3.** The
+  note lightbulb was registered once per manifest language, and 2026.3 refuses an
+  intention registered more than once. It is now registered once, for every
+  language, and still appears only on a dependency line in a manifest.
+
+- **The warnings in a notes file keep up with its text in VS Code.** Two checks of
+  the same file could finish out of order, and the older one's result then stayed
+  until the next edit. A check that finishes after a newer one has started is now
+  dropped.
 
 ## 0.4.0 — 2026-09-23
 

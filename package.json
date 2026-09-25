@@ -1,8 +1,8 @@
 {
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Notes",
-  "description": "Why each dependency exists, as a note next to package.json, Cargo.toml, pom.xml, build.gradle, mix.exs, build.zig.zon, go.mod or Python manifests. Plain Markdown in your repo; AI agents read and write it too.",
-  "version": "0.4.0",
+  "description": "Why each dependency exists, as a note next to package.json, Cargo.toml, pom.xml, build.gradle, mix.exs, build.zig.zon or Python manifests. Plain Markdown in your repo; AI agents read and write it too.",
+  "version": "0.5.0",
   "publisher": "kontra",
   "private": true,
   "license": "Apache-2.0",
