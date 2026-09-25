@@ -2,7 +2,7 @@
 
 <!-- .pacmon/AGENT-RULES.md is copied into this repository by Pacmon; do not edit it.
   "Pacmon: Set Up AI Instructions" refreshes it. The format reference is
-  https://github.com/kontratek/pacmon/blob/main/docs/format.md -->
+  https://pacmon.dev/format/ -->
 
 ## Before you touch a dependency
 

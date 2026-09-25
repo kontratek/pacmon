@@ -37,8 +37,8 @@
         <p>Pacmon reads and writes files in your project and makes no network
         requests; it does not call any AI service. The
         <a href="https://marketplace.visualstudio.com/items?itemName=kontra.pacmon">VS Code
-        extension</a> reads the same files, and the format is documented in
-        <a href="https://github.com/kontratek/pacmon/blob/main/docs/format.md">docs/format.md</a>.</p>
+        extension</a> reads the same files, and the format is documented at
+        <a href="https://pacmon.dev/format/">pacmon.dev/format</a>.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>

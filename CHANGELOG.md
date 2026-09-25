@@ -15,6 +15,11 @@
   Pacmon never runs Go, and `replace`, `exclude`, `retract`, `go.work` and
   `vendor/` are not read as dependencies.
 
+- **The listings and the agent rules point at pacmon.dev.** The VS Code
+  Marketplace and Open VSX pages link to https://pacmon.dev instead of the
+  GitHub README, and `.pacmon/AGENT-RULES.md` and the JetBrains Marketplace page
+  give https://pacmon.dev/format/ as the format reference.
+
 ## 0.5.0 — 2026-09-24
 
 - **Pacmon supports Python projects in VS Code and JetBrains.** Standard,

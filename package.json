@@ -13,7 +13,7 @@
   "bugs": {
     "url": "https://github.com/kontratek/pacmon/issues"
   },
-  "homepage": "https://github.com/kontratek/pacmon#readme",
+  "homepage": "https://pacmon.dev",
   "engines": {
     "vscode": "^1.100.0"
   },
