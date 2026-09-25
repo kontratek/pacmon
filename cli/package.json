@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
   "version": "0.0.2",
-  "description": "Pacmon documents why each dependency exists, next to JavaScript, Rust, JVM, Elixir, Zig or Python manifests. Available today as a VS Code extension and a JetBrains plugin; this package is where the CLI will live.",
+  "description": "Pacmon documents why each dependency exists, next to JavaScript, Rust, JVM, Elixir, Zig, Python or Go manifests. Available today as a VS Code extension and a JetBrains plugin; this package is where the CLI will live.",
   "license": "Apache-2.0",
   "author": "Kontra Siber Savunma Teknoloji Ltd. Şti. (https://kontra.com.tr/)",
   "homepage": "https://pacmon.dev",
@@ -27,6 +27,8 @@
     "pyproject.toml",
     "requirements.txt",
     "Python",
+    "go.mod",
+    "Go",
     "documentation",
     "notes",
     "dependency-management"

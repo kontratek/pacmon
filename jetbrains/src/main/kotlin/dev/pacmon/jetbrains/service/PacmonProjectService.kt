@@ -72,7 +72,11 @@ class PacmonProjectService(private val project: Project) :
     private val dependencyCache = ConcurrentHashMap<String, CachedDependencies>()
     private val manifestIndex = ConcurrentHashMap<ManifestKind, List<VirtualFile>>()
     private var lastManifest: VirtualFile? = null
-    private val zigDiscoveryExcludedDirectories = setOf("zig-pkg", ".zig-cache", "zig-cache", "zig-out")
+    private val discoveryExcludedDirectories = mapOf(
+        ManifestKind.ZIG to setOf("zig-pkg", ".zig-cache", "zig-cache", "zig-out"),
+        ManifestKind.PYTHON to setOf(".venv", "venv", ".tox", ".nox", "site-packages", "dist", "build", ".git"),
+        ManifestKind.GO to setOf("vendor", "testdata", ".git"),
+    )
 
     init {
         project.messageBus.connect(this).subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
@@ -414,19 +418,10 @@ class PacmonProjectService(private val project: Project) :
     }
 
     private fun isExcludedFromManifestDiscovery(file: VirtualFile, kind: ManifestKind): Boolean {
-        if (kind == ManifestKind.PYTHON) {
-            val excluded = setOf(".venv", "venv", ".tox", ".nox", "site-packages", "dist", "build", ".git")
-            var directory = file.parent
-            while (directory != null) {
-                if (directory.name in excluded) return true
-                directory = directory.parent
-            }
-            return false
-        }
-        if (kind != ManifestKind.ZIG) return false
+        val excluded = discoveryExcludedDirectories[kind] ?: return false
         var directory = file.parent
         while (directory != null) {
-            if (directory.name in zigDiscoveryExcludedDirectories) return true
+            if (directory.name in excluded) return true
             directory = directory.parent
         }
         return false

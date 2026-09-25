@@ -17,6 +17,7 @@ describe('manifest adapters', () => {
     expect(manifestAdapterForFileName('build.zig.zon')?.kind).toBe('zig');
     expect(manifestAdapterForFileName('pyproject.toml')?.kind).toBe('python');
     expect(manifestAdapterForFileName('requirements-dev.txt')?.kind).toBe('python');
+    expect(manifestAdapterForFileName('go.mod')?.kind).toBe('go');
     expect(manifestAdapterForFileName('settings.gradle')).toBeUndefined();
   });
 });

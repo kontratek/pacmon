@@ -1,0 +1,16 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <codeInsight.inlayProvider
+            language="vgo"
+            id="PacmonDependencyIconsGoMod"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
+        <intentionAction>
+            <language>vgo</language>
+            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
+            <category>Pacmon</category>
+        </intentionAction>
+        <lang.documentationProvider
+            language="vgo"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>
+    </extensions>
+</idea-plugin>

@@ -131,6 +131,15 @@ class DependencyPsiTest : BasePlatformTestCase() {
         assertEquals("pytest", DependencyPsi.atOffset(requirements, requirements.text.indexOf("pytest") + 2)?.name)
     }
 
+    fun testFindsGoRequirementsAndTools() {
+        val goMod = myFixture.configureByText(
+            "go.mod",
+            "module m\n\nrequire (\n\tgithub.com/spf13/cobra v1.8.1\n\tgolang.org/x/tools v0.28.0 // indirect\n)\n\ntool golang.org/x/tools/cmd/stringer\n",
+        )
+        assertEquals(listOf("github.com/spf13/cobra", "golang.org/x/tools"), DependencyPsi.all(goMod).map { it.name })
+        assertEquals("golang.org/x/tools", DependencyPsi.atOffset(goMod, goMod.text.indexOf("cmd/stringer"))?.name)
+    }
+
     fun testUsesDifferentIconsForDocumentedAndUndocumentedDependencies() {
         assertSame(PacmonIcons.Documented, PacmonIcons.forNote(true))
         assertSame(PacmonIcons.Undocumented, PacmonIcons.forNote(false))
