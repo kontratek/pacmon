@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-09-25
+
 - **Pacmon supports Go projects in VS Code and JetBrains.** Module paths in the
   `require` directives of `go.mod`, single-line or in a block, get markers,
   hover, note editing and coverage backed by `.pacmon/go/DEPENDENCY-NOTES.md`;
