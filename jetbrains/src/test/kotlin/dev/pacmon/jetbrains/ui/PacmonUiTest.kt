@@ -160,6 +160,39 @@ class PacmonUiTest : BasePlatformTestCase() {
         assertEquals("1 dependency has no note yet.", coverage.status)
     }
 
+    fun testDashboardCoverageAggregatesCentralAndProjectNugetDependencies() {
+        myFixture.tempDirFixture.createFile(
+            "Directory.Packages.props",
+            """
+            <Project><ItemGroup>
+              <PackageVersion Include="Newtonsoft.Json" />
+              <GlobalPackageReference Include="Nerdbank.GitVersioning" />
+            </ItemGroup></Project>
+            """.trimIndent(),
+        )
+        val manifest = myFixture.tempDirFixture.createFile(
+            "src/App.csproj",
+            """
+            <Project><ItemGroup>
+              <PackageReference Include="newtonsoft.json" />
+              <PackageReference Include="Serilog" />
+            </ItemGroup></Project>
+            """.trimIndent(),
+        )
+        myFixture.tempDirFixture.createFile(
+            ".pacmon/nuget/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: nuget\nlang: en\n---\n# Dependency Notes\n\n## NEWTONSOFT.JSON\n\nJSON\n",
+        )
+        myFixture.configureFromExistingVirtualFile(manifest)
+        val dashboard = PacmonDashboardPanel(project)
+        dashboard.refresh()
+
+        val coverage = dashboard.coverageForTest()
+        assertEquals("1 of 3", coverage.ratio)
+        assertEquals(33, coverage.percent)
+        assertEquals("2 dependencies have no note yet.", coverage.status)
+    }
+
     fun testDashboardWritesEveryChoiceAndResetsThemAllTogether() {
         myFixture.configureByText("package.json", """{ "dependencies": { "vue": "^3" } }""")
         val service = project.getService(PacmonProjectService::class.java)

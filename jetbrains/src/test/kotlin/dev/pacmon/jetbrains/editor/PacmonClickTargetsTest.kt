@@ -202,6 +202,52 @@ class PacmonClickTargetsTest : BasePlatformTestCase() {
         assertEmpty(painter.getLineExtensions(project, packageJson, line))
     }
 
+    fun testNugetProjectAndCentralManifestUseInlaysDecorationsLinksAndHover() {
+        val central = myFixture.tempDirFixture.createFile(
+            "Directory.Packages.props",
+            "<Project><PackageVersion Include=\"Newtonsoft.Json\" /></Project>",
+        )
+        val projectFile = myFixture.tempDirFixture.createFile(
+            "src/App.csproj",
+            "<Project><PackageReference Include=\"newtonsoft.json\" /></Project>",
+        )
+        myFixture.tempDirFixture.createFile(
+            ".pacmon/nuget/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: nuget\nlang: en\n---\n# Dependency Notes\n\n## NEWTONSOFT.JSON\n\nJSON serialization\n",
+        )
+        val documentation = PacmonDocumentationProvider()
+        val handler = PacmonNoteDeclarationHandler()
+
+        for (manifest in listOf(projectFile, central)) {
+            myFixture.configureFromExistingVirtualFile(manifest)
+            val dependency = DependencyPsi.all(myFixture.file).single()
+            assertEquals(listOf(dependency.iconRange.offset to false), collect(NoteButtons.ICON_LEFT).inline)
+            val line = myFixture.editor.document.getLineNumber(dependency.primaryRange.offset)
+            assertEquals(
+                "   ▪ JSON serialization",
+                PacmonLinePainter().getLineExtensions(project, manifest, line).single().text,
+            )
+
+            service().setNoteButtons(listOf(NoteButtons.LINK))
+            val offset = dependency.primaryRange.offset + 1
+            assertEquals(
+                1,
+                handler.getGotoDeclarationTargets(
+                    myFixture.file.findElementAt(offset),
+                    offset,
+                    myFixture.editor,
+                )?.size,
+            )
+            val element = documentation.getCustomDocumentationElement(
+                myFixture.editor,
+                myFixture.file,
+                myFixture.file.findElementAt(offset),
+                offset,
+            )
+            assertTrue(documentation.generateHoverDoc(element!!, null)!!.contains("JSON serialization"))
+        }
+    }
+
     fun testEveryEcosystemUsesTheSameInlayLinkAndDecorationSurfaces() {
         val cargo = myFixture.tempDirFixture.createFile("Cargo.toml", "[dependencies]\nserde = \"1\"\n")
         myFixture.tempDirFixture.createFile(

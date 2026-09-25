@@ -1,14 +1,14 @@
 # Pacmon for JetBrains IDEs
 
-The JetBrains counterpart of the [VS Code extension](../README.md): the same ecosystem-specific dependency notes, read and written the same way, inside IntelliJ IDEA, WebStorm and the rest of the JetBrains family. npm uses `.pacmon/DEPENDENCY-NOTES.md`; Cargo, Maven, Gradle, Mix and Zig use their own `.pacmon/<ecosystem>/DEPENDENCY-NOTES.md`. `docs/format.md` (at the repository root) is the authority on the formats both clients read; this module keeps its own hand-written port of the same rules, not a shared library.
+The JetBrains counterpart of the [VS Code extension](../README.md): the same ecosystem-specific dependency notes, read and written the same way, inside Rider, IntelliJ IDEA, WebStorm and the rest of the JetBrains family. npm uses `.pacmon/DEPENDENCY-NOTES.md`; Cargo, Maven, Gradle, Mix, Zig, Python and NuGet use their own `.pacmon/<ecosystem>/DEPENDENCY-NOTES.md`. `docs/format.md` (at the repository root) is the authority on the formats both clients read; this module keeps its own hand-written port of the same rules, not a shared library.
 
 ## What it does
 
 - A **Pacmon** tool window (right stripe) with two views: a dashboard (documentation coverage, click-target and note-marker settings) and a per-dependency editor with separate human and agent layers.
-- Small inlay icons at dependency declarations in `package.json`, `Cargo.toml`, Maven `pom.xml`, `build.gradle`, `build.gradle.kts`, `mix.exs`, `build.zig.zon`, `pyproject.toml`, and pip requirements files — filled when they have a note, hollow when they do not — plus an end-of-line preview and a quick-doc hover.
+- Small inlay icons at dependency declarations in `package.json`, `Cargo.toml`, Maven `pom.xml`, `build.gradle`, `build.gradle.kts`, `mix.exs`, `build.zig.zon`, `pyproject.toml`, pip requirements files, .NET project files and `Directory.Packages.props` — filled when they have a note, hollow when they do not — plus an end-of-line preview and a quick-doc hover.
 - Live `docs/format.md` warnings, underlined with a hover message, wherever `DEPENDENCY-NOTES.md` is open.
 - Five Tools-menu commands — **Open DEPENDENCY-NOTES.md**, **Open Dependency Manifest**, **Documentation Coverage**, **Set Up AI Instructions**, **Format DEPENDENCY-NOTES.md** — and **Add/Edit Dependency Note** in the editor's context menu.
-- Pure Kotlin manifest parsers; Rust, TOML, Maven, Groovy, Kotlin, Gradle, Elixir, Zig and ZON plugins are not required. When optional language plugins such as ZigBrains are installed, Pacmon also registers directly for their language support.
+- Pure Kotlin manifest parsers; Rust, TOML, Maven, Groovy, Kotlin, Gradle, Elixir, Zig, ZON, .NET, MSBuild and NuGet tooling are not required. When optional language plugins such as ZigBrains are installed, Pacmon also registers directly for their language support.
 
 ## Requirements
 
@@ -48,6 +48,8 @@ src/main/kotlin/dev/pacmon/jetbrains/
 │   ├── MixManifest.kt    the static Elixir/Mix dependency parser
 │   ├── ZigManifest.kt    the static build.zig.zon dependency parser
 │   ├── PythonManifest.kt the static pyproject.toml and pip requirements parsers
+│   ├── NugetManifest.kt  the static .NET project and central package parser
+│   ├── Xml.kt            the shared tolerant XML reader for Maven and NuGet
 │   ├── AgentNotes.kt     agent-layer field lint used live in the note editor's side panel
 │   └── AiInstructions.kt the AGENTS.md/CLAUDE.md pointer block ("Set Up AI Instructions")
 │
@@ -98,6 +100,6 @@ The plugin is [Pacmon](https://plugins.jetbrains.com/plugin/34295-pacmon) on the
 
 **What happens on a release.** The workflow runs `./gradlew test buildPlugin verifyPluginStructure`, then `./gradlew publishPlugin` with the `JETBRAINS_TOKEN` secret, unless the Marketplace already lists that version. JetBrains reviews every version by hand, normally within two business days, and mails the vendor when the status changes; until then the version is not listed. The zip also goes on the GitHub Release.
 
-**Verifying.** CI's `jetbrains-verify` job runs the IntelliJ Plugin Verifier on every push to `main`, against the build target and the newest release of every later IDE branch (`pluginVerification.ides` in `build.gradle.kts`; since `until-build` is left open, that is every IDE the listing claims). The Marketplace runs it again after each upload, across every product. To run it by hand: `./gradlew verifyPlugin`; each extra IDE is 1.2 GB to download and 3.5 GB unpacked under `~/.gradle`, once, so on a laptop short of disk `./gradlew verifyPlugin -Ppacmon.verify=current` checks the build target alone and downloads nothing. The report lands in `build/reports/pluginVerifier/`; a *compatibility problem* has to be fixed before a release, a deprecated-API warning is advice.
+**Verifying.** CI's `jetbrains-verify` job runs the IntelliJ Plugin Verifier on every push to `main`, against the build target, later IntelliJ releases and Rider 2025.2 or newer (`pluginVerification.ides` in `build.gradle.kts`). The Marketplace runs it again after each upload, across every product. To run it by hand: `./gradlew verifyPlugin`; each extra IDE is a large download cached under `~/.gradle`, so on a laptop short of disk `./gradlew verifyPlugin -Ppacmon.verify=current` checks the build target alone and downloads nothing. The report lands in `build/reports/pluginVerifier/`; a *compatibility problem* has to be fixed before a release, a deprecated-API warning is advice.
 
 `sinceBuild` under `pluginConfiguration.ideaVersion` controls the oldest IDE that can install a release — raise it when you start depending on a newer platform API. `until-build` is deliberately not set: one plugin.xml serves every JetBrains product that bundles `com.intellij.modules.json`, on every version from `sinceBuild` on, which is why the verifier matters.

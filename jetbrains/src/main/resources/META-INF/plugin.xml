@@ -12,7 +12,8 @@
         <p>Every dependency gets a short note: why it is here, what must not change,
         what to check before an upgrade. The note shows in <code>package.json</code>,
         <code>Cargo.toml</code>, Maven <code>pom.xml</code>, a Gradle build file, <code>mix.exs</code>, or
-        <code>build.zig.zon</code>, <code>pyproject.toml</code>, or a pip requirements file as quick documentation,
+        <code>build.zig.zon</code>, <code>pyproject.toml</code>, a pip requirements file, a .NET project file,
+        or <code>Directory.Packages.props</code> as quick documentation,
         and you write it from there.</p>
         <p>Notes are plain Markdown under <code>.pacmon/</code>, separated by ecosystem.
         No database, no service, no account: files that you read, diff and commit like

@@ -238,12 +238,12 @@ class PacmonDashboardPanel(private val project: Project) : JPanel(BorderLayout()
             showCoverage("", "", 0, "Open a dependency manifest to see its dependencies here.", false)
             return
         }
-        val dependencies = service.dependencies(manifest)
+        val dependencies = service.dependenciesForCoverage(manifest)
         if (dependencies.isEmpty()) {
             showCoverage("", relativePath(manifest), 0, "This dependency manifest has no supported dependencies.", false)
             return
         }
-        val documented = dependencies.count { service.noteFor(manifest, it.name) != null }
+        val documented = dependencies.count { service.noteFor(it.manifest, it.name) != null }
         val missing = dependencies.size - documented
         val status = when (missing) {
             0 -> "Every dependency has a note."

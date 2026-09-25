@@ -131,6 +131,30 @@ class DependencyPsiTest : BasePlatformTestCase() {
         assertEquals("pytest", DependencyPsi.atOffset(requirements, requirements.text.indexOf("pytest") + 2)?.name)
     }
 
+    fun testFindsNugetDependenciesAtAttributeValues() {
+        val project = myFixture.configureByText(
+            "App.csproj",
+            """
+            <Project><ItemGroup>
+              <PackageReference Include="Newtonsoft.Json" />
+              <PackageReference Update="Imported.Package" />
+            </ItemGroup></Project>
+            """.trimIndent(),
+        )
+        assertEquals(listOf("Newtonsoft.Json"), DependencyPsi.all(project).map { it.name })
+        assertEquals(
+            "Newtonsoft.Json",
+            DependencyPsi.atOffset(project, project.text.indexOf("Newtonsoft.Json") + 2)?.name,
+        )
+        assertNull(DependencyPsi.atOffset(project, project.text.indexOf("Imported.Package") + 2))
+
+        val central = myFixture.configureByText(
+            "Directory.Packages.props",
+            "<Project><PackageVersion Update=\"Serilog\" /></Project>",
+        )
+        assertEquals("Serilog", DependencyPsi.atOffset(central, central.text.indexOf("Serilog") + 2)?.name)
+    }
+
     fun testUsesDifferentIconsForDocumentedAndUndocumentedDependencies() {
         assertSame(PacmonIcons.Documented, PacmonIcons.forNote(true))
         assertSame(PacmonIcons.Undocumented, PacmonIcons.forNote(false))

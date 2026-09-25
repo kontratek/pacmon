@@ -15,6 +15,7 @@ class NotesCoreTest {
         val mix = NotesCore.newNotesFile("phoenix", "Framework", ecosystem = ManifestKind.MIX)
         val zig = NotesCore.newNotesFile("Known_Folders", "Filesystem paths", ecosystem = ManifestKind.ZIG)
         val python = NotesCore.newNotesFile("requests", "HTTP client", ecosystem = ManifestKind.PYTHON)
+        val nuget = NotesCore.newNotesFile("Newtonsoft.Json", "JSON serialization", ecosystem = ManifestKind.NUGET)
 
         assertTrue(npm.contains("format: dependency-notes/1"))
         assertTrue(cargo.contains("format: dependency-notes/2\necosystem: cargo\nlang: en"))
@@ -23,6 +24,7 @@ class NotesCoreTest {
         assertTrue(mix.contains("format: dependency-notes/2\necosystem: mix\nlang: en"))
         assertTrue(zig.contains("format: dependency-notes/2\necosystem: zig\nlang: en"))
         assertTrue(python.contains("format: dependency-notes/2\necosystem: python\nlang: en"))
+        assertTrue(nuget.contains("format: dependency-notes/2\necosystem: nuget\nlang: en"))
         assertTrue(zig.contains("package from the zig dependency manifest"))
         assertNull(NotesCore.findSection(NotesCore.parse(cargo), "serde"))
         assertEquals("Serde", NotesCore.findSection(NotesCore.parse(cargo), "Serde")?.name)
@@ -31,6 +33,7 @@ class NotesCoreTest {
         val pythonNames = NotesCore.newNotesFile("Importlib_Metadata", "Backport", ecosystem = ManifestKind.PYTHON)
         assertEquals("Importlib_Metadata", NotesCore.findSection(NotesCore.parse(pythonNames), "importlib-metadata")?.name)
         assertEquals("Vue", NotesCore.findSection(NotesCore.parse(npm), "vue")?.name)
+        assertEquals("Newtonsoft.Json", NotesCore.findSection(NotesCore.parse(nuget), "newtonsoft.json")?.name)
     }
 
     @Test

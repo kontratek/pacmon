@@ -33,7 +33,7 @@ object NotesCore {
     fun notesRelativePath(ecosystem: ManifestKind): String = ManifestRegistry.forKind(ecosystem).notesRelativePath
 
     fun formatCommentLines(ecosystem: ManifestKind?): List<String> = when (ecosystem) {
-        ManifestKind.CARGO, ManifestKind.MAVEN, ManifestKind.GRADLE, ManifestKind.MIX, ManifestKind.ZIG, ManifestKind.PYTHON -> listOf(
+        ManifestKind.CARGO, ManifestKind.MAVEN, ManifestKind.GRADLE, ManifestKind.MIX, ManifestKind.ZIG, ManifestKind.PYTHON, ManifestKind.NUGET -> listOf(
             "<!-- Each \"## name\" below is a package from the ${ecosystem.id} dependency manifest.",
             "  The text under it is written by people. \"$AGENT_NOTES_HEADING\" and everything below",
             "  it is written by AI agents — rules in $AGENT_RULES_RELATIVE_PATH. -->",

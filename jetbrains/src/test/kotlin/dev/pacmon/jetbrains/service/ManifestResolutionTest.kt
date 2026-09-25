@@ -32,6 +32,10 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             ".{ .dependencies = .{ .known_folders = .{ .path = \"../known-folders\" } } }",
         )
         val python = myFixture.tempDirFixture.createFile("pyproject.toml", "[project]\ndependencies = [\"requests>=2\"]")
+        val nuget = myFixture.tempDirFixture.createFile(
+            "App.csproj",
+            "<Project><ItemGroup><PackageReference Include=\"Newtonsoft.Json\" /></ItemGroup></Project>",
+        )
         myFixture.tempDirFixture.createFile(".pacmon/DEPENDENCY-NOTES.md", "## vue\n\nnpm\n")
         myFixture.tempDirFixture.createFile(".pacmon/cargo/DEPENDENCY-NOTES.md", "## serde\n\ncargo\n")
         myFixture.tempDirFixture.createFile(".pacmon/maven/DEPENDENCY-NOTES.md", "## g:a\n\nmaven\n")
@@ -39,6 +43,7 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         myFixture.tempDirFixture.createFile(".pacmon/mix/DEPENDENCY-NOTES.md", "## phoenix\n\nmix\n")
         myFixture.tempDirFixture.createFile(".pacmon/zig/DEPENDENCY-NOTES.md", "## known_folders\n\nzig\n")
         myFixture.tempDirFixture.createFile(".pacmon/python/DEPENDENCY-NOTES.md", "## requests\n\npython\n")
+        myFixture.tempDirFixture.createFile(".pacmon/nuget/DEPENDENCY-NOTES.md", "## newtonsoft.json\n\nnuget\n")
 
         assertTrue(service().resolveNotesFile(npm)!!.path.endsWith(".pacmon/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(cargo)!!.path.endsWith(".pacmon/cargo/DEPENDENCY-NOTES.md"))
@@ -47,10 +52,12 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         assertTrue(service().resolveNotesFile(mix)!!.path.endsWith(".pacmon/mix/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(zig)!!.path.endsWith(".pacmon/zig/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(python)!!.path.endsWith(".pacmon/python/DEPENDENCY-NOTES.md"))
+        assertTrue(service().resolveNotesFile(nuget)!!.path.endsWith(".pacmon/nuget/DEPENDENCY-NOTES.md"))
         assertEquals("cargo", service().noteFor(cargo, "serde")?.layers?.human)
         assertEquals("mix", service().noteFor(mix, "phoenix")?.layers?.human)
         assertEquals("zig", service().noteFor(zig, "known_folders")?.layers?.human)
         assertEquals("python", service().noteFor(python, "requests")?.layers?.human)
+        assertEquals("nuget", service().noteFor(nuget, "Newtonsoft.Json")?.layers?.human)
         assertNull(service().noteFor(cargo, "vue"))
     }
 
@@ -92,6 +99,11 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             "[project]\ndependencies = [\"requests>=2\"]",
         )
         val pythonNotes = service().saveNoteLayers(python, "requests", "HTTP client", "")
+        val nuget = myFixture.tempDirFixture.createFile(
+            "App.csproj",
+            "<Project><PackageReference Include=\"Newtonsoft.Json\" /></Project>",
+        )
+        val nugetNotes = service().saveNoteLayers(nuget, "Newtonsoft.Json", "JSON serialization", "")
 
         assertTrue(cargoNotes.path.endsWith(".pacmon/cargo/DEPENDENCY-NOTES.md"))
         assertTrue(String(cargoNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: cargo"))
@@ -105,6 +117,8 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         assertTrue(String(zigNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: zig"))
         assertTrue(pythonNotes.path.endsWith(".pacmon/python/DEPENDENCY-NOTES.md"))
         assertTrue(String(pythonNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: python"))
+        assertTrue(nugetNotes.path.endsWith(".pacmon/nuget/DEPENDENCY-NOTES.md"))
+        assertTrue(String(nugetNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: nuget"))
         assertNull(cargo.parent.findChild(".pacmon")?.findChild("DEPENDENCY-NOTES.md"))
     }
 
@@ -209,5 +223,115 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         myFixture.tempDirFixture.createFile("crates/new/Cargo.toml", "[dependencies]\nserde = \"1\"")
 
         assertEquals(listOf("serde"), service().dependenciesForNotes(notes).map { it.name })
+    }
+
+    fun testNugetUsesTheClosestCentralManifestForResolutionAndCreation() {
+        val rootCentral = myFixture.tempDirFixture.createFile(
+            "Directory.Packages.props",
+            "<Project><PackageVersion Include=\"Root.Package\" /></Project>",
+        )
+        val nestedCentral = myFixture.tempDirFixture.createFile(
+            "apps/dotnet/Directory.Packages.props",
+            "<Project><PackageVersion Include=\"Nested.Package\" /></Project>",
+        )
+        val rootProject = myFixture.tempDirFixture.createFile(
+            "apps/root/App.csproj",
+            "<Project><PackageReference Include=\"Root.Package\" /></Project>",
+        )
+        val nestedProject = myFixture.tempDirFixture.createFile(
+            "apps/dotnet/src/App.csproj",
+            "<Project><PackageReference Include=\"Nested.Package\" /></Project>",
+        )
+        val rootNotes = myFixture.tempDirFixture.createFile(
+            ".pacmon/nuget/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: nuget\n---\n# Dependency Notes\n",
+        )
+        val nestedNotes = myFixture.tempDirFixture.createFile(
+            "apps/dotnet/.pacmon/nuget/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: nuget\n---\n# Dependency Notes\n\n## nested.package\n\nShared note\n",
+        )
+
+        assertEquals(rootNotes.path, service().resolveNotesFile(rootCentral)?.path)
+        assertEquals(rootNotes.path, service().resolveNotesFile(rootProject)?.path)
+        assertEquals(nestedNotes.path, service().resolveNotesFile(nestedCentral)?.path)
+        assertEquals(nestedNotes.path, service().resolveNotesFile(nestedProject)?.path)
+        assertEquals("Shared note", service().noteFor(nestedCentral, "Nested.Package")?.layers?.human)
+        assertEquals("Shared note", service().noteFor(nestedProject, "Nested.Package")?.layers?.human)
+
+        service().state.monorepoMode = MonorepoModes.ROOT_ONLY
+        assertEquals(rootNotes.path, service().resolveNotesFile(nestedProject)?.path)
+
+    }
+
+    fun testFirstNugetNoteIsCreatedBesideTheClosestCentralManifest() {
+        myFixture.tempDirFixture.createFile(
+            "apps/fresh/Directory.Packages.props",
+            "<Project><PackageVersion Include=\"Fresh.Package\" /></Project>",
+        )
+        val freshProject = myFixture.tempDirFixture.createFile(
+            "apps/fresh/src/App.vbproj",
+            "<Project><PackageReference Include=\"Fresh.Package\" /></Project>",
+        )
+
+        val created = service().saveNoteLayers(freshProject, "Fresh.Package", "Fresh dependency", "")
+
+        assertTrue(created.path.endsWith("apps/fresh/.pacmon/nuget/DEPENDENCY-NOTES.md"))
+        assertTrue(
+            String(created.contentsToByteArray()).replace("\r\n", "\n")
+                .contains("format: dependency-notes/2\necosystem: nuget"),
+        )
+    }
+
+    fun testNugetCoverageAggregatesBeforeNotesExistAndPrefersCentralCasing() {
+        myFixture.tempDirFixture.createFile(
+            "Directory.Packages.props",
+            """
+            <Project><ItemGroup>
+              <PackageVersion Include="Newtonsoft.Json" />
+              <GlobalPackageReference Include="Nerdbank.GitVersioning" />
+            </ItemGroup></Project>
+            """.trimIndent(),
+        )
+        val projectFile = myFixture.tempDirFixture.createFile(
+            "src/App.csproj",
+            """
+            <Project><ItemGroup>
+              <PackageReference Include="newtonsoft.json" />
+              <PackageReference Include="Serilog" />
+            </ItemGroup></Project>
+            """.trimIndent(),
+        )
+        myFixture.tempDirFixture.createFile(
+            "tests/Tests.fsproj",
+            "<Project><PackageReference Include=\"SERILOG\" /></Project>",
+        )
+
+        val dependencies = service().dependenciesForCoverage(projectFile)
+        assertEquals(
+            listOf("Newtonsoft.Json", "Nerdbank.GitVersioning", "Serilog"),
+            dependencies.map { it.displayName },
+        )
+        assertEquals("centralVersion", dependencies.first().section)
+    }
+
+    fun testNugetDiscoveryExcludesBinAndObj() {
+        val notes = myFixture.tempDirFixture.createFile(
+            ".pacmon/nuget/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: nuget\n---\n# Dependency Notes\n",
+        )
+        myFixture.tempDirFixture.createFile(
+            "src/App.csproj",
+            "<Project><PackageReference Include=\"Real.Package\" /></Project>",
+        )
+        myFixture.tempDirFixture.createFile(
+            "src/bin/Generated.csproj",
+            "<Project><PackageReference Include=\"Bin.Package\" /></Project>",
+        )
+        myFixture.tempDirFixture.createFile(
+            "src/obj/Generated.vbproj",
+            "<Project><PackageReference Include=\"Obj.Package\" /></Project>",
+        )
+
+        assertEquals(listOf("Real.Package"), service().dependenciesForNotes(notes).map { it.displayName })
     }
 }

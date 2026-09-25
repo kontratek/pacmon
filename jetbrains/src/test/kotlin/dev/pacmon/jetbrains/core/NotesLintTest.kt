@@ -23,6 +23,27 @@ class NotesLintTest {
         assertTrue(NotesLint.lint(zig, emptyList(), ManifestKind.CARGO).any { it is LintFinding.WrongEcosystem })
     }
 
+    @Test
+    fun `nuget lint matches package ids case insensitively`() {
+        val model = NotesCore.parse(
+            """
+            ---
+            format: dependency-notes/2
+            ecosystem: nuget
+            lang: en
+            ---
+            # Dependency Notes
+
+            ### NEWTONSOFT.JSON
+
+            Wrong heading level.
+            """.trimIndent(),
+        )
+        val findings = NotesLint.lint(model, listOf("Newtonsoft.Json"), ManifestKind.NUGET)
+        assertTrue(findings.any { it is LintFinding.WrongHeadingLevel && it.name == "NEWTONSOFT.JSON" })
+        assertTrue(findings.none { it is LintFinding.WrongEcosystem })
+    }
+
     private val deps = listOf("express", "@scope/util", "lodash")
     private val head = listOf("---", "format: dependency-notes/1", "---", "", "# Dependency Notes", "")
 

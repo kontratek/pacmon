@@ -7,7 +7,7 @@
 
 ## Unreleased
 
-- **Pacmon supports .NET/NuGet projects in VS Code.** Literal `PackageReference`
+- **Pacmon supports .NET/NuGet projects in VS Code and JetBrains.** Literal `PackageReference`
   items in `.csproj`, `.fsproj` and `.vbproj` files, plus central
   `PackageVersion` and `GlobalPackageReference` items in
   `Directory.Packages.props`, get markers, hover, note editing and coverage
