@@ -46,7 +46,12 @@ public sealed class PacmonPackage : AsyncPackage
         var window = await ShowToolWindowAsync(typeof(PacmonToolWindow), 0, true, DisposalToken);
         if (window is null) throw new InvalidOperationException("Pacmon tool window could not be created.");
         if (window.Content is PacmonToolWindowControl control)
-            await control.SetContextAsync(manifestPath, packageName);
+        {
+            if (string.IsNullOrWhiteSpace(manifestPath) && string.IsNullOrWhiteSpace(packageName))
+                await control.ShowSettingsAsync();
+            else
+                await control.SetContextAsync(manifestPath, packageName);
+        }
     }
 
     private async Task RegisterCommandsAsync(CancellationToken cancellationToken)

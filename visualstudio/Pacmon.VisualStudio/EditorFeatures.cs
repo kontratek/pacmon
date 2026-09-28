@@ -42,6 +42,28 @@ internal static class EditorFeatureHelpers
         var length = Math.Max(0, Math.Min(range.Length, snapshot.Length - start));
         return new SnapshotSpan(snapshot, new Span(start, length));
     }
+
+    public static int DeclarationLineEnd(string text, SourceRange declarationRange)
+    {
+        var start = Math.Max(0, Math.Min(declarationRange.Offset + declarationRange.Length, text.Length));
+        for (var index = start; index < text.Length; index++)
+        {
+            if (text[index] is '\r' or '\n') return index;
+        }
+        return text.Length;
+    }
+
+    public static string? InlinePreviewText(
+        bool documented,
+        DecorationMode mode,
+        SectionLayers layers,
+        InlineSource source)
+    {
+        if (!documented || mode == DecorationMode.Off) return null;
+        return mode == DecorationMode.Badge
+            ? "▪ note"
+            : $"▪ {Notes.Preview(layers, source)}";
+    }
 }
 
 [Export(typeof(IAsyncQuickInfoSourceProvider))]
@@ -287,54 +309,67 @@ internal sealed class PacmonInlineAdornmentTagger : ITagger<IntraTextAdornmentTa
             || !EditorFeatureHelpers.IsManifest(buffer, out _, out var path))
             yield break;
         var snapshot = spans[0].Snapshot;
+        var text = snapshot.GetText();
         foreach (var dependency in runtime.Dependencies(buffer))
         {
             var documented = runtime.TryGetLayers(path, dependency.NoteKey, out var layers);
+            var previewText = EditorFeatureHelpers.InlinePreviewText(
+                documented,
+                runtime.Options.Decorations,
+                layers,
+                runtime.Options.InlineSource);
             if (!runtime.Options.MarginIcon
-                && (!documented || runtime.Options.Decorations == DecorationMode.Off))
+                && previewText is null)
                 continue;
-            var anchor = Math.Min(dependency.PrimaryRange.Offset + dependency.PrimaryRange.Length, snapshot.Length);
-            if (anchor < snapshot.Length && (snapshot[anchor] == '"' || snapshot[anchor] == '\'')) anchor++;
-            if (!spans.Any(span => anchor >= span.Start.Position && anchor <= span.End.Position)) continue;
-            var adornment = CreateAdornment(path, dependency, documented, layers);
-            var span = new SnapshotSpan(snapshot, new Span(anchor, 0));
-            yield return new TagSpan<IntraTextAdornmentTag>(
-                span,
-                new IntraTextAdornmentTag(adornment, null, PositionAffinity.Predecessor));
+            if (runtime.Options.MarginIcon)
+            {
+                var iconAnchor = Math.Max(0, Math.Min(dependency.IconRange.Offset, snapshot.Length));
+                if (Contains(spans, iconAnchor))
+                {
+                    var span = new SnapshotSpan(snapshot, new Span(iconAnchor, 0));
+                    yield return new TagSpan<IntraTextAdornmentTag>(
+                        span,
+                        new IntraTextAdornmentTag(
+                            CreatePacmonIcon(path, dependency, documented),
+                            null,
+                            PositionAffinity.Predecessor));
+                }
+            }
+
+            if (previewText is not null)
+            {
+                var previewAnchor = EditorFeatureHelpers.DeclarationLineEnd(text, dependency.DeclarationRange);
+                if (Contains(spans, previewAnchor))
+                {
+                    var span = new SnapshotSpan(snapshot, new Span(previewAnchor, 0));
+                    yield return new TagSpan<IntraTextAdornmentTag>(
+                        span,
+                        new IntraTextAdornmentTag(
+                            CreatePreview(previewText),
+                            null,
+                            PositionAffinity.Predecessor));
+                }
+            }
         }
     }
 
     public void Dispose() => Detach();
 
-    private FrameworkElement CreateAdornment(
-        string manifestPath,
-        DependencyEntry dependency,
-        bool documented,
-        SectionLayers layers)
+    private static bool Contains(NormalizedSnapshotSpanCollection spans, int position) =>
+        spans.Any(span => position >= span.Start.Position && position <= span.End.Position);
+
+    private static FrameworkElement CreatePreview(string text)
     {
-        var panel = new StackPanel
+        var preview = new TextBlock
         {
-            Orientation = Orientation.Horizontal,
+            Text = text,
+            FontStyle = FontStyles.Italic,
+            Margin = new Thickness(18, 0, 3, 0),
             VerticalAlignment = VerticalAlignment.Center,
+            IsHitTestVisible = false,
         };
-        if (runtime!.Options.MarginIcon)
-            panel.Children.Add(CreatePacmonIcon(manifestPath, dependency, documented));
-        if (documented && runtime.Options.Decorations != DecorationMode.Off)
-        {
-            var preview = new TextBlock
-            {
-                Text = runtime.Options.Decorations == DecorationMode.Badge
-                    ? "note"
-                    : Notes.Preview(layers, runtime.Options.InlineSource),
-                Opacity = 0.85,
-                Margin = new Thickness(3, 0, 3, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                IsHitTestVisible = false,
-            };
-            preview.SetResourceReference(TextBlock.ForegroundProperty, VsBrushes.ToolWindowTextKey);
-            panel.Children.Add(preview);
-        }
-        return panel;
+        preview.SetResourceReference(TextBlock.ForegroundProperty, VsBrushes.GrayTextKey);
+        return preview;
     }
 
     private static FrameworkElement CreatePacmonIcon(
@@ -345,9 +380,9 @@ internal sealed class PacmonInlineAdornmentTagger : ITagger<IntraTextAdornmentTa
         var mark = new PacmonMarkControl
         {
             Documented = documented,
-            Width = 16,
-            Height = 16,
-            Margin = new Thickness(4, 0, 2, 0),
+            Width = 14,
+            Height = 14,
+            Margin = new Thickness(0, 0, 5, 0),
             Cursor = Cursors.Hand,
             ToolTip = documented ? "Edit dependency note" : "Add dependency note",
             VerticalAlignment = VerticalAlignment.Center,

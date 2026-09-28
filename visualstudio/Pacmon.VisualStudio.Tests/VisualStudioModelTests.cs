@@ -52,4 +52,63 @@ public sealed class VisualStudioModelTests
     public void RejectsOtherEcosystemNotesPath() =>
         Assert.IsFalse(PacmonRuntime.IsNotesPath("C:/repo/.pacmon/cargo/DEPENDENCY-NOTES.md"));
 
+    [TestMethod]
+    public void InlineAdornmentAnchorsPreviewAtTheOpeningTagsLineEnd()
+    {
+        const string xml = """
+            <Project>
+              <ItemGroup>
+                <PackageReference
+                    Include="Newtonsoft.Json"
+                    Version="13.0.3" />
+              </ItemGroup>
+            </Project>
+            """;
+        var dependency = NugetManifest.ExtractDependencies(xml, "App.csproj").Single();
+
+        var anchor = EditorFeatureHelpers.DeclarationLineEnd(xml, dependency.DeclarationRange);
+
+        Assert.AreEqual(xml.IndexOf('\n', dependency.DeclarationRange.Offset + dependency.DeclarationRange.Length), anchor);
+        Assert.AreEqual('>', xml[anchor - 1]);
+        Assert.AreEqual('<', xml[dependency.IconRange.Offset]);
+    }
+
+    [TestMethod]
+    public void InlineAdornmentAnchorsSingleLinePreviewAfterTheClosingBracket()
+    {
+        const string xml = "  <PackageReference Include=\"Serilog\" Version=\"3.1.1\" />\r\n";
+        var dependency = NugetManifest.ExtractDependencies(xml, "App.csproj").Single();
+
+        var anchor = EditorFeatureHelpers.DeclarationLineEnd(xml, dependency.DeclarationRange);
+
+        Assert.AreEqual(xml.IndexOf('\r'), anchor);
+        Assert.AreEqual('>', xml[anchor - 1]);
+    }
+
+    [TestMethod]
+    public void PacmonMarkPaletteMatchesVsCodeColors()
+    {
+        Assert.AreEqual(0x00ff66, PacmonMarkPalette.Rgb(true, true));
+        Assert.AreEqual(0x00662f, PacmonMarkPalette.Rgb(true, false));
+        Assert.AreEqual(0x9d9d9d, PacmonMarkPalette.Rgb(false, true));
+        Assert.AreEqual(0x8c8c8c, PacmonMarkPalette.Rgb(false, false));
+        Assert.IsTrue(PacmonMarkPalette.IsDark(30, 30, 30));
+        Assert.IsFalse(PacmonMarkPalette.IsDark(245, 245, 245));
+    }
+
+    [TestMethod]
+    public void InlinePreviewModesMatchVsCodeFormatting()
+    {
+        var layers = new SectionLayers("Human note", "Agent note", string.Empty);
+
+        Assert.AreEqual(
+            "▪ Human note",
+            EditorFeatureHelpers.InlinePreviewText(true, DecorationMode.Preview, layers, InlineSource.HumanFirst));
+        Assert.AreEqual(
+            "▪ note",
+            EditorFeatureHelpers.InlinePreviewText(true, DecorationMode.Badge, layers, InlineSource.HumanFirst));
+        Assert.IsNull(EditorFeatureHelpers.InlinePreviewText(true, DecorationMode.Off, layers, InlineSource.HumanFirst));
+        Assert.IsNull(EditorFeatureHelpers.InlinePreviewText(false, DecorationMode.Preview, layers, InlineSource.HumanFirst));
+    }
+
 }

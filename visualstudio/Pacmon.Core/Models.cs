@@ -30,6 +30,7 @@ public sealed record DependencyEntry(
     string Scope,
     SourceRange PrimaryRange,
     SourceRange IconRange,
+    SourceRange DeclarationRange,
     IReadOnlyList<SourceRange> SourceRanges);
 
 public sealed record XmlAttribute(string Name, string Value, SourceRange Range);

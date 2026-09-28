@@ -5,12 +5,15 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell;
 
 namespace Pacmon.VisualStudio;
 
 internal sealed class PacmonMarkControl : Canvas
 {
+    private bool themeSubscribed;
+
     public static readonly DependencyProperty DocumentedProperty = DependencyProperty.Register(
         nameof(Documented),
         typeof(bool),
@@ -22,45 +25,98 @@ internal sealed class PacmonMarkControl : Canvas
         Width = 14;
         Height = 14;
         SnapsToDevicePixels = true;
-        Loaded += (_, _) => Draw();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public bool Documented
     {
         get => (bool)GetValue(DocumentedProperty);
-        set
-        {
-            SetValue(DocumentedProperty, value);
-            Draw();
-        }
+        set => SetValue(DocumentedProperty, value);
     }
 
     private void Draw()
     {
         Children.Clear();
         Opacity = Documented ? 1 : 0.68;
-        AddBar(3.5, 0, 10.5, 3.2);
-        AddBar(0, 5.4, 10.5, 3.2);
-        AddBar(0, 10.8, 10.5, 3.2);
+        var brush = PacmonMarkPalette.Brush(Documented, PacmonMarkPalette.IsDarkTheme());
+        AddBar(3.5, 0, 10.5, 3.2, brush);
+        AddBar(0, 5.4, 10.5, 3.2, brush);
+        AddBar(0, 10.8, 10.5, 3.2, brush);
     }
 
-    private void AddBar(double left, double top, double width, double height)
+    private void AddBar(double left, double top, double width, double height, Brush brush)
     {
         var bar = new Rectangle
         {
             Width = width,
             Height = height,
-            Fill = Documented ? null : Brushes.Transparent,
+            Fill = Documented ? brush : Brushes.Transparent,
+            Stroke = Documented ? null : brush,
             StrokeThickness = Documented ? 0 : 1,
             SnapsToDevicePixels = true,
         };
-        if (Documented)
-            bar.SetResourceReference(Shape.FillProperty, VsBrushes.ToolWindowTextKey);
-        else
-            bar.SetResourceReference(Shape.StrokeProperty, VsBrushes.ToolWindowTextKey);
         SetLeft(bar, left);
         SetTop(bar, top);
         Children.Add(bar);
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        if (!themeSubscribed)
+        {
+            VSColorTheme.ThemeChanged += OnThemeChanged;
+            themeSubscribed = true;
+        }
+        Draw();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs args)
+    {
+        if (!themeSubscribed) return;
+        VSColorTheme.ThemeChanged -= OnThemeChanged;
+        themeSubscribed = false;
+    }
+
+    private void OnThemeChanged(ThemeChangedEventArgs args) => Draw();
+}
+
+internal static class PacmonMarkPalette
+{
+    private const int DocumentedDarkRgb = 0x00ff66;
+    private const int DocumentedLightRgb = 0x00662f;
+    private const int UndocumentedDarkRgb = 0x9d9d9d;
+    private const int UndocumentedLightRgb = 0x8c8c8c;
+    private static readonly Brush DocumentedDark = FrozenBrush(DocumentedDarkRgb);
+    private static readonly Brush DocumentedLight = FrozenBrush(DocumentedLightRgb);
+    private static readonly Brush UndocumentedDark = FrozenBrush(UndocumentedDarkRgb);
+    private static readonly Brush UndocumentedLight = FrozenBrush(UndocumentedLightRgb);
+
+    public static Brush Brush(bool documented, bool darkTheme) => documented
+        ? darkTheme ? DocumentedDark : DocumentedLight
+        : darkTheme ? UndocumentedDark : UndocumentedLight;
+
+    public static int Rgb(bool documented, bool darkTheme) => documented
+        ? darkTheme ? DocumentedDarkRgb : DocumentedLightRgb
+        : darkTheme ? UndocumentedDarkRgb : UndocumentedLightRgb;
+
+    public static bool IsDarkTheme()
+    {
+        var background = VSColorTheme.GetThemedColor(EnvironmentColors.ToolWindowBackgroundColorKey);
+        return IsDark(background.R, background.G, background.B);
+    }
+
+    public static bool IsDark(byte red, byte green, byte blue) =>
+        (red * 299 + green * 587 + blue * 114) < 128000;
+
+    private static Brush FrozenBrush(int rgb)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(
+            (byte)((rgb >> 16) & 0xff),
+            (byte)((rgb >> 8) & 0xff),
+            (byte)(rgb & 0xff)));
+        brush.Freeze();
+        return brush;
     }
 }
 
@@ -81,13 +137,15 @@ internal sealed class MarkdownPresenter : StackPanel
         var lines = Regex.Split(markdown ?? string.Empty, "\\r?\\n");
         if (lines.All(string.IsNullOrWhiteSpace))
         {
-            Children.Add(new TextBlock
+            var empty = new TextBlock
             {
                 Text = emptyText,
                 Opacity = 0.68,
                 TextWrapping = TextWrapping.Wrap,
                 FontStyle = FontStyles.Italic,
-            });
+            };
+            PacmonVisuals.ApplySecondaryTextTheme(empty);
+            Children.Add(empty);
             return;
         }
 
@@ -101,6 +159,7 @@ internal sealed class MarkdownPresenter : StackPanel
             }
 
             var text = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 1, 0, 1) };
+            PacmonVisuals.ApplyPrimaryTextTheme(text);
             var heading = Regex.Match(line, "^(#{1,3})\\s+(.+)$");
             if (heading.Success)
             {
@@ -164,6 +223,18 @@ internal static class PacmonVisuals
     public static void ApplyBorderTheme(Border border) =>
         border.SetResourceReference(Border.BorderBrushProperty, VsBrushes.CommandBarBorderKey);
 
+    public static void ApplyPrimaryTextTheme(FrameworkElement element) =>
+        element.SetResourceReference(TextElement.ForegroundProperty, VsBrushes.ToolWindowTextKey);
+
+    public static void ApplySecondaryTextTheme(FrameworkElement element) =>
+        element.SetResourceReference(TextElement.ForegroundProperty, VsBrushes.GrayTextKey);
+
+    public static void ApplyToolWindowViewTheme(FrameworkElement element)
+    {
+        ApplyToolWindowTheme(element);
+        ApplyNativeControlStyles(element);
+    }
+
     public static void ApplyNativeControlStyles(DependencyObject root)
     {
         if (root is Expander expander)
@@ -177,6 +248,9 @@ internal static class PacmonVisuals
             case CheckBox checkBox:
                 checkBox.SetResourceReference(FrameworkElement.StyleProperty, VsResourceKeys.CheckBoxStyleKey);
                 break;
+            case RadioButton radioButton:
+                radioButton.SetResourceReference(FrameworkElement.StyleProperty, VsResourceKeys.ThemedDialogRadioButtonStyleKey);
+                break;
             case ComboBox comboBox:
                 comboBox.SetResourceReference(FrameworkElement.StyleProperty, VsResourceKeys.ComboBoxStyleKey);
                 break;
@@ -188,6 +262,9 @@ internal static class PacmonVisuals
                 break;
             case ListView listView:
                 listView.SetResourceReference(FrameworkElement.StyleProperty, VsResourceKeys.ThemedDialogListViewStyleKey);
+                break;
+            case ListBox listBox:
+                listBox.SetResourceReference(FrameworkElement.StyleProperty, VsResourceKeys.ThemedDialogListBoxStyleKey);
                 break;
             case ScrollViewer scrollViewer:
                 scrollViewer.SetResourceReference(FrameworkElement.StyleProperty, VsResourceKeys.ScrollViewerStyleKey);

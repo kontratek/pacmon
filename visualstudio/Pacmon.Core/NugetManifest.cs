@@ -78,6 +78,7 @@ public static class NugetManifest
             scope,
             attribute.Range,
             iconRange,
+            new SourceRange(node.OpenStart, node.OpenEnd - node.OpenStart),
             new[] { attribute.Range }));
     }
 }

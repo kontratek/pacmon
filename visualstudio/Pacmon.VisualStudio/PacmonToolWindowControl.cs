@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -57,6 +56,7 @@ internal sealed class NoteLayerControl : StackPanel
         Children.Add(titleRow);
 
         PacmonVisuals.ApplyBorderTheme(preview);
+        PacmonVisuals.ApplyPrimaryTextTheme(preview);
         preview.BorderThickness = new Thickness(1);
         preview.Child = markdown;
         preview.MouseLeftButtonDown += (_, _) => BeginEdit();
@@ -68,6 +68,7 @@ internal sealed class NoteLayerControl : StackPanel
         editor.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
         editor.MinHeight = 95;
         editor.Visibility = Visibility.Collapsed;
+        PacmonVisuals.ApplyPrimaryTextTheme(editor);
         editor.TextChanged += (_, _) =>
         {
             if (!loading) Changed?.Invoke(this, EventArgs.Empty);
@@ -129,10 +130,10 @@ internal sealed class NoteLayerControl : StackPanel
 
 public sealed class PacmonToolWindowControl : UserControl
 {
-    private readonly TextBlock coverageRatio = new();
-    private readonly TextBlock coveragePath = new() { Opacity = 0.7 };
-    private readonly TextBlock coverageProblems = new() { Opacity = 0.8 };
-    private readonly ProgressBar coverageProgress = new() { Height = 4, Margin = new Thickness(0, 5, 0, 4) };
+    private readonly ContentControl viewHost = new();
+    private readonly Button settingsButton = new() { Content = "Settings", Padding = new Thickness(9, 3, 9, 3), Margin = new Thickness(0, 0, 6, 0) };
+    private readonly Button refreshButton = new() { Content = "Refresh", Padding = new Thickness(9, 3, 9, 3) };
+    private readonly Border footer = new() { Padding = new Thickness(0, 7, 0, 0) };
     private readonly TextBlock packageTitle = new();
     private readonly TextBlock packageScope = new() { Opacity = 0.7 };
     private readonly TextBlock notesPath = new() { Opacity = 0.7, TextWrapping = TextWrapping.Wrap };
@@ -147,11 +148,15 @@ public sealed class PacmonToolWindowControl : UserControl
     private readonly Button openNotes = new() { Content = "Open notes file", Padding = new Thickness(8, 3, 8, 3) };
     private readonly Button save = new() { Content = "Save", Padding = new Thickness(12, 3, 12, 3), Margin = new Thickness(6, 0, 0, 0) };
     private readonly DispatcherTimer saveTimer;
+    private PacmonSettingsControl settingsView = null!;
+    private FrameworkElement detailView = null!;
     private CoverageContext? context;
     private DependencyRow? selected;
     private bool loading;
     private bool subscribed;
     private bool dirty;
+    private bool showingSettings = true;
+    private bool initialized;
     private DateTime suppressReloadUntil;
 
     public PacmonToolWindowControl()
@@ -174,6 +179,7 @@ public sealed class PacmonToolWindowControl : UserControl
 
     public async Task SetContextAsync(string? manifestPath, string? packageName)
     {
+        initialized = true;
         await SaveCurrentAsync();
         var runtime = PacmonRuntime.Current;
         if (runtime is null) return;
@@ -194,6 +200,7 @@ public sealed class PacmonToolWindowControl : UserControl
         {
             selected = null;
             RenderDetail();
+            ShowSettingsView();
             return;
         }
 
@@ -206,12 +213,25 @@ public sealed class PacmonToolWindowControl : UserControl
         {
             selected = null;
             RenderDetail();
+            ShowSettingsView();
             return;
         }
 
         var documented = context.Analysis.Documented.Any(item =>
             string.Equals(item.NoteKey, dependency.NoteKey, StringComparison.OrdinalIgnoreCase));
         await SelectAsync(new DependencyRow(dependency, documented));
+    }
+
+    public async Task ShowSettingsAsync()
+    {
+        initialized = true;
+        await SaveCurrentAsync();
+        var runtime = PacmonRuntime.Current;
+        if (runtime is null) return;
+        context = await runtime.CoverageAsync(context?.ManifestPath);
+        RenderCoverage();
+        settingsView.SyncFromOptions();
+        ShowSettingsView();
     }
 
     private Grid BuildUi()
@@ -226,11 +246,14 @@ public sealed class PacmonToolWindowControl : UserControl
         Grid.SetRow(header, 0);
         root.Children.Add(header);
 
-        var detail = BuildDetail();
-        Grid.SetRow(detail, 1);
-        root.Children.Add(detail);
+        detailView = BuildDetail();
+        settingsView = BuildSettings();
+        PacmonVisuals.ApplyToolWindowViewTheme(detailView);
+        PacmonVisuals.ApplyToolWindowViewTheme(settingsView);
+        viewHost.Content = settingsView;
+        Grid.SetRow(viewHost, 1);
+        root.Children.Add(viewHost);
 
-        var footer = new Border { Padding = new Thickness(0, 7, 0, 0) };
         footer.Child = saveStatus;
         Grid.SetRow(footer, 2);
         root.Children.Add(footer);
@@ -241,30 +264,59 @@ public sealed class PacmonToolWindowControl : UserControl
     {
         var header = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
         var titleRow = new DockPanel();
-        var refresh = new Button { Content = "Refresh", Padding = new Thickness(9, 3, 9, 3) };
-        refresh.Click += (_, _) => Run(() => SetContextAsync(context?.ManifestPath, selected?.Dependency.NoteKey));
-        DockPanel.SetDock(refresh, Dock.Right);
-        titleRow.Children.Add(refresh);
+        refreshButton.Click += (_, _) => Run(async () =>
+        {
+            if (showingSettings) await ShowSettingsAsync();
+            else await SetContextAsync(context?.ManifestPath, selected?.Dependency.NoteKey);
+        });
+        settingsButton.Click += (_, _) => Run(ShowSettingsAsync);
+        DockPanel.SetDock(refreshButton, Dock.Right);
+        DockPanel.SetDock(settingsButton, Dock.Right);
+        titleRow.Children.Add(refreshButton);
+        titleRow.Children.Add(settingsButton);
         var title = new StackPanel { Orientation = Orientation.Horizontal };
         title.Children.Add(new PacmonMarkControl { Documented = true, Width = 16, Height = 16, Margin = new Thickness(0, 2, 7, 0) });
         title.Children.Add(new TextBlock { Text = "Pacmon", FontSize = 18, FontWeight = FontWeights.SemiBold });
         titleRow.Children.Add(title);
         header.Children.Add(titleRow);
-
-        coverageRatio.FontWeight = FontWeights.SemiBold;
-        coverageRatio.Margin = new Thickness(0, 6, 0, 0);
-        header.Children.Add(coverageRatio);
-        header.Children.Add(coverageProgress);
-        header.Children.Add(coveragePath);
-        header.Children.Add(coverageProblems);
         return header;
     }
+
+    private PacmonSettingsControl BuildSettings() => new(
+        async () =>
+        {
+            var runtime = PacmonRuntime.Current;
+            if (runtime is not null && context is not null) await runtime.OpenNotesAsync(context.ManifestPath);
+        },
+        async () =>
+        {
+            var runtime = PacmonRuntime.Current;
+            if (runtime is not null && context is not null) await runtime.OpenFileAsync(context.ManifestPath);
+        },
+        ShowDependencyPickerAsync,
+        async () =>
+        {
+            var runtime = PacmonRuntime.Current;
+            if (runtime is null || context?.Notes is null) return;
+            await runtime.NormalizeNotesAsync(context.NotesPath);
+            saveStatus.Text = "Notes file formatted";
+        },
+        async () =>
+        {
+            var runtime = PacmonRuntime.Current;
+            if (runtime is not null) await runtime.SetupAiInstructionsAsync();
+        },
+        status => saveStatus.Text = status);
 
     private FrameworkElement BuildDetail()
     {
         var body = new StackPanel();
         packageTitle.FontSize = 16;
         packageTitle.FontWeight = FontWeights.SemiBold;
+        PacmonVisuals.ApplyPrimaryTextTheme(packageTitle);
+        PacmonVisuals.ApplySecondaryTextTheme(packageScope);
+        PacmonVisuals.ApplySecondaryTextTheme(notesPath);
+        PacmonVisuals.ApplySecondaryTextTheme(saveStatus);
         body.Children.Add(packageTitle);
         body.Children.Add(packageScope);
         notesPath.Margin = new Thickness(0, 2, 0, 12);
@@ -279,13 +331,14 @@ public sealed class PacmonToolWindowControl : UserControl
         agentBox.IsExpanded = false;
         agentBox.Margin = new Thickness(0, 12, 0, 0);
         var agentContent = new StackPanel { Margin = new Thickness(10, 5, 0, 0) };
-        agentContent.Children.Add(new TextBlock
+        var agentHelp = new TextBlock
         {
             Text = "Written by AI agents as '- key: value' lines. Unknown fields can be preserved as note entries.",
             TextWrapping = TextWrapping.Wrap,
-            Opacity = 0.72,
             Margin = new Thickness(0, 0, 0, 7),
-        });
+        };
+        PacmonVisuals.ApplySecondaryTextTheme(agentHelp);
+        agentContent.Children.Add(agentHelp);
         agent.Changed += LayerChanged;
         agent.CommitRequested += (_, _) => Run(SaveCurrentAsync);
         agentContent.Children.Add(agent);
@@ -296,6 +349,8 @@ public sealed class PacmonToolWindowControl : UserControl
         problemRow.Children.Add(fixAgent);
         problemRow.Children.Add(agentProblemsText);
         agentProblems.Child = problemRow;
+        PacmonVisuals.ApplyPrimaryTextTheme(agentHeader);
+        PacmonVisuals.ApplyPrimaryTextTheme(agentProblemsText);
         agentContent.Children.Add(agentProblems);
         agentBox.Content = agentContent;
         fixAgent.Click += (_, _) =>
@@ -343,12 +398,25 @@ public sealed class PacmonToolWindowControl : UserControl
             runtime.Changed += RuntimeChanged;
             subscribed = true;
         }
-        if (context is null) await SetContextAsync(null, null);
+        if (!initialized)
+        {
+            initialized = true;
+            await ShowSettingsAsync();
+        }
     }
 
     private void RuntimeChanged(object sender, EventArgs args) => Run(async () =>
     {
         if (DateTime.UtcNow < suppressReloadUntil) return;
+        if (showingSettings)
+        {
+            var runtime = PacmonRuntime.Current;
+            if (runtime is null) return;
+            context = await runtime.CoverageAsync(context?.ManifestPath);
+            RenderCoverage();
+            settingsView.SyncFromOptions();
+            return;
+        }
         if (dirty || human.IsKeyboardFocusWithin || agent.IsKeyboardFocusWithin)
         {
             saveStatus.Text = "Workspace changed; your unsaved text is preserved.";
@@ -391,6 +459,7 @@ public sealed class PacmonToolWindowControl : UserControl
             loading = false;
         }
         RenderDetail();
+        ShowDetailView();
         if (!row.Documented) human.BeginEdit();
     }
 
@@ -458,31 +527,44 @@ public sealed class PacmonToolWindowControl : UserControl
 
     private void RenderCoverage()
     {
-        if (context is null)
-        {
-            coverageRatio.Text = "Open a supported NuGet manifest to begin.";
-            coveragePath.Text = string.Empty;
-            coverageProblems.Text = string.Empty;
-            coverageProgress.Value = 0;
-            coverageProgress.Maximum = 1;
-            CaptionChanged?.Invoke("Pacmon Dependency Notes");
-            return;
-        }
-
+        settingsView?.SetCoverage(context);
+        if (showingSettings || context is null) return;
         var documented = new HashSet<string>(context.Analysis.Documented.Select(item => item.NoteKey), StringComparer.OrdinalIgnoreCase);
-        var count = context.Dependencies.Count;
-        var lintCount = context.Notes is null
-            ? 0
-            : Notes.Lint(context.Notes, context.Dependencies.Select(item => item.NoteKey)).Count;
+        var lintCount = context.Notes is null ? 0 : Notes.Lint(context.Notes, context.Dependencies.Select(item => item.NoteKey)).Count;
         var problemCount = lintCount + context.Analysis.Orphans.Count;
-        coverageRatio.Text = $"{documented.Count} / {count} documented";
-        coveragePath.Text = Path.GetFileName(context.ManifestPath);
-        coverageProblems.Text = problemCount == 0 ? "No note problems" : $"⚠ {problemCount} note problem{(problemCount == 1 ? string.Empty : "s")}";
-        coverageProgress.Maximum = Math.Max(1, count);
-        coverageProgress.Value = documented.Count;
         CaptionChanged?.Invoke(problemCount == 0
-            ? $"Pacmon — {documented.Count}/{count}"
-            : $"Pacmon — {documented.Count}/{count}, {problemCount} problems");
+            ? $"Pacmon — {documented.Count}/{context.Dependencies.Count}"
+            : $"Pacmon — {documented.Count}/{context.Dependencies.Count}, {problemCount} problems");
+    }
+
+    private void ShowSettingsView()
+    {
+        showingSettings = true;
+        PacmonVisuals.ApplyToolWindowViewTheme(settingsView);
+        viewHost.Content = settingsView;
+        settingsButton.Visibility = Visibility.Collapsed;
+        saveStatus.Text = string.Empty;
+        CaptionChanged?.Invoke("Pacmon — Settings");
+    }
+
+    private void ShowDetailView()
+    {
+        showingSettings = false;
+        PacmonVisuals.ApplyToolWindowViewTheme(detailView);
+        viewHost.Content = detailView;
+        settingsButton.Visibility = Visibility.Visible;
+        RenderCoverage();
+    }
+
+    private async Task ShowDependencyPickerAsync()
+    {
+        var runtime = PacmonRuntime.Current;
+        if (runtime is null) return;
+        context ??= await runtime.CoverageAsync();
+        if (context is null || context.Dependencies.Count == 0) return;
+        var dialog = new DependencyPickerDialog(context);
+        if (dialog.ShowModal() == true && dialog.Selected is { } selectedRow)
+            await SetContextAsync(context.ManifestPath, selectedRow.Dependency.NoteKey);
     }
 
     private void RenderDetail()

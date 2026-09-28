@@ -39,7 +39,27 @@ public sealed class NugetManifestTests
         {
             Assert.AreEqual(dependency.DisplayName, xml.Substring(dependency.PrimaryRange.Offset, dependency.PrimaryRange.Length));
             Assert.AreEqual("<", xml.Substring(dependency.IconRange.Offset, dependency.IconRange.Length));
+            Assert.IsTrue(xml.Substring(dependency.DeclarationRange.Offset, dependency.DeclarationRange.Length).EndsWith(">"));
         }
+    }
+
+    [TestMethod]
+    public void PreservesTheCompleteOpeningTagForInlinePreviewPlacement()
+    {
+        const string xml = """
+            <Project>
+              <ItemGroup>
+                <PackageReference
+                    Include="Newtonsoft.Json"
+                    Version="13.0.3" />
+              </ItemGroup>
+            </Project>
+            """;
+
+        var dependency = NugetManifest.ExtractDependencies(xml, "App.csproj").Single();
+        var declaration = xml.Substring(dependency.DeclarationRange.Offset, dependency.DeclarationRange.Length);
+
+        Assert.AreEqual("<PackageReference\n        Include=\"Newtonsoft.Json\"\n        Version=\"13.0.3\" />", declaration);
     }
 
     [TestMethod]
