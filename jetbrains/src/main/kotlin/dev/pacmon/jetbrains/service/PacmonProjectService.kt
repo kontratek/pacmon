@@ -76,6 +76,7 @@ class PacmonProjectService(private val project: Project) :
         ManifestKind.ZIG to setOf("zig-pkg", ".zig-cache", "zig-cache", "zig-out"),
         ManifestKind.PYTHON to setOf(".venv", "venv", ".tox", ".nox", "site-packages", "dist", "build", ".git"),
         ManifestKind.GO to setOf("vendor", "testdata", ".git"),
+        ManifestKind.NUGET to setOf("bin", "obj"),
     )
 
     init {
@@ -226,13 +227,25 @@ class PacmonProjectService(private val project: Project) :
 
     private fun manifestOwnerDirectory(manifest: VirtualFile): VirtualFile {
         val adapter = ManifestRegistry.forPath(manifest.path)
-        if (adapter?.kind != ManifestKind.PYTHON || manifest.name == "pyproject.toml") return manifest.parent
-        var directory = manifest.parent
-        repeat(64) {
-            if (directory.name == "requirements") return directory.parent ?: directory
-            directory = directory.parent ?: return manifest.parent
+        if (adapter?.kind == ManifestKind.PYTHON && manifest.name != "pyproject.toml") {
+            var directory = manifest.parent
+            repeat(64) {
+                if (directory.name == "requirements") return directory.parent ?: directory
+                directory = directory.parent ?: return manifest.parent
+            }
+            return manifest.parent
         }
-        return manifest.parent
+        if (adapter?.kind != ManifestKind.NUGET || manifest.name == "Directory.Packages.props") return manifest.parent
+        val directOwner = manifest.parent
+        val root = manifestRoot(manifest) ?: return directOwner
+        var directory = directOwner
+        repeat(64) {
+            val central = directory.findChild("Directory.Packages.props")
+            if (central != null && !central.isDirectory) return directory
+            if (directory == root || !VfsUtilCore.isAncestor(root, directory, false)) return directOwner
+            directory = directory.parent ?: return directOwner
+        }
+        return directOwner
     }
 
     fun saveNoteLayers(manifest: VirtualFile, dependency: String, human: String, agent: String): VirtualFile {
@@ -381,17 +394,32 @@ class PacmonProjectService(private val project: Project) :
         val kind = notesKind(notesFile) ?: return emptyList()
         val key = notesFile.path.replace('\\', '/')
         val manifests = manifests(kind).filter { resolveNotesFile(it)?.path?.replace('\\', '/') == key }
-        return manifests.flatMap(::dependencies)
+        return deduplicateDependencies(kind, manifests.flatMap(::dependencies))
+    }
+
+    /** Coverage for NuGet is shared by the central manifest and every project it owns,
+     * even before the first notes file exists. Other ecosystems remain manifest-local. */
+    fun dependenciesForCoverage(manifest: VirtualFile): List<DependencyRef> {
+        val kind = ManifestRegistry.forPath(manifest.path)?.kind ?: return emptyList()
+        if (kind != ManifestKind.NUGET) return dependencies(manifest)
+        resolveNotesFile(manifest)?.let { return dependenciesForNotes(it) }
+        val ownerPath = creationTargetDirectory(manifest).path
+        val shared = manifests(kind)
+            .filter { creationTargetDirectory(it).path == ownerPath }
+            .flatMap(::dependencies)
+        return deduplicateDependencies(kind, shared)
     }
 
     private fun manifests(kind: ManifestKind): List<VirtualFile> = manifestIndex.getOrPut(kind) {
         val adapter = ManifestRegistry.forKind(kind)
         ReadAction.compute<List<VirtualFile>, RuntimeException> {
-            val names = if (kind == ManifestKind.PYTHON) {
-                FilenameIndex.getAllFilenames(project).filter { name ->
+            val names = when (kind) {
+                ManifestKind.PYTHON -> FilenameIndex.getAllFilenames(project).filter { name ->
                     name == "pyproject.toml" || name.endsWith(".txt")
                 }
-            } else adapter.fileNames
+                ManifestKind.NUGET -> FilenameIndex.getAllFilenames(project).filter(adapter::matchesPath)
+                else -> adapter.fileNames
+            }
             names.flatMap { fileName ->
                 FilenameIndex.getVirtualFilesByName(
                     fileName,
@@ -405,23 +433,31 @@ class PacmonProjectService(private val project: Project) :
 
     private fun manifestPriority(file: VirtualFile): String {
         val adapter = ManifestRegistry.forPath(file.path)
-        val rank = if (adapter?.kind == ManifestKind.PYTHON) {
-            when (file.name) {
-                "pyproject.toml" -> 0
-                "requirements.txt" -> 1
-                else -> 2
-            }
-        } else {
-            adapter?.fileNames?.indexOf(file.name)?.takeIf { it >= 0 } ?: 99
+        val rank = when (adapter?.kind) {
+            ManifestKind.PYTHON -> when (file.name) {
+                    "pyproject.toml" -> 0
+                    "requirements.txt" -> 1
+                    else -> 2
+                }
+            ManifestKind.NUGET -> if (file.name == "Directory.Packages.props") 0 else 1
+            else -> adapter?.fileNames?.indexOf(file.name)?.takeIf { it >= 0 } ?: 99
         }
         return "%02d:%s".format(rank, file.path.replace('\\', '/'))
+    }
+
+    private fun deduplicateDependencies(kind: ManifestKind, dependencies: List<DependencyRef>): List<DependencyRef> {
+        if (kind != ManifestKind.NUGET) return dependencies
+        val seen = mutableSetOf<String>()
+        return dependencies.filter { dependency ->
+            seen.add(ManifestRegistry.forKind(kind).normalizeNoteKey(dependency.name))
+        }
     }
 
     private fun isExcludedFromManifestDiscovery(file: VirtualFile, kind: ManifestKind): Boolean {
         val excluded = discoveryExcludedDirectories[kind] ?: return false
         var directory = file.parent
         while (directory != null) {
-            if (directory.name in excluded) return true
+            if (directory.name.lowercase() in excluded) return true
             directory = directory.parent
         }
         return false

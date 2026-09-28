@@ -1,6 +1,6 @@
 # Pacmon
 
-**`package.json`, `Cargo.toml`, `pom.xml`, `build.gradle`, `mix.exs`, `build.zig.zon`, `go.mod` and Python manifests say what you depend on. Pacmon adds why.**
+**JavaScript, Rust, JVM, Elixir, Zig, Python, Go and .NET/NuGet manifests say what you depend on. Pacmon adds why.**
 
 Every dependency gets a short note: why it is here, what must not change, what to check before an upgrade. The note shows in the manifest on hover, and you write it from there.
 
@@ -19,9 +19,12 @@ Notes live in Markdown files under `.pacmon/`, next to the manifest they describ
 | Elixir / Mix | `mix.exs` | `.pacmon/mix/DEPENDENCY-NOTES.md` | the dependency application atom: `## phoenix`, `## ecto_sql` |
 | Zig | `build.zig.zon` | `.pacmon/zig/DEPENDENCY-NOTES.md` | the direct dependency field: `## known_folders` |
 | Python | `pyproject.toml`, `requirements*.txt`, `requirements/*.txt` | `.pacmon/python/DEPENDENCY-NOTES.md` | the normalized distribution name: `## requests`, `## importlib-metadata` |
+| .NET / NuGet | `*.csproj`, `*.fsproj`, `*.vbproj`, `Directory.Packages.props` | `.pacmon/nuget/DEPENDENCY-NOTES.md` | the case-insensitive package ID as written: `## Newtonsoft.Json` |
 | Go | `go.mod` | `.pacmon/go/DEPENDENCY-NOTES.md` | the module path: `## github.com/spf13/cobra`, `## github.com/jackc/pgx/v5` |
 
-Pacmon reads a manifest as text and never runs npm, Cargo, Maven, Gradle, Mix, Zig, Python, pip, Poetry, uv or Go. It sees the direct dependencies written in the file:
+VS Code and JetBrains support every manifest in the table. The Visual Studio 2022+ VSIX currently supports the .NET/NuGet row only and reads the same `.pacmon/nuget/DEPENDENCY-NOTES.md` files, so notes move between all three IDEs without conversion.
+
+Pacmon reads a manifest as text and never runs npm, Cargo, Maven, Gradle, Mix, Zig, Python, pip, Poetry, uv, Go, .NET, MSBuild or NuGet. It sees the direct dependencies written in the file:
 
 - **npm:** `dependencies`, `devDependencies`, `peerDependencies` and `optionalDependencies`.
 - **Rust:** `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]` and their `[target.…]` forms. A member's `serde.workspace = true` counts; `[workspace.dependencies]` itself does not.
@@ -30,6 +33,7 @@ Pacmon reads a manifest as text and never runs npm, Cargo, Maven, Gradle, Mix, Z
 - **Elixir / Mix:** literal dependency tuples in `def/defp deps` or an inline `deps: [...]` list, including Hex, Git, path and umbrella dependencies. Static `only` and `targets` options are shown as scopes; dynamically assembled lists are not run or guessed.
 - **Zig:** direct fields of the top-level `.dependencies` struct in `build.zig.zon`, including URL/hash, path and lazy dependencies. `build.zig`, system libraries and transitive dependencies are not evaluated.
 - **Python:** named dependencies in standard project metadata, optional dependencies, dependency groups and build requirements; Poetry dependency tables and groups; uv legacy development dependencies; and named pip requirements. Includes, constraints, tool options, unnamed paths and lock files are not dependencies. Package names are matched case-insensitively with `.`, `_` and `-` treated alike.
+- **.NET / NuGet:** literal `PackageReference Include` items in C#, F# and VB project files; and `PackageVersion Include/Update` plus `GlobalPackageReference Include` items in `Directory.Packages.props`. Package IDs are matched case-insensitively. Imports, MSBuild expressions, project/framework references, downloads and transitive packages are not evaluated.
 - **Go:** module paths in `require` directives of `go.mod`, including `// indirect` ones, shown with their own scope. A `tool` directive points at the required module that provides it. `replace`, `exclude`, `retract`, `go.work` and `vendor/` are not read as dependencies.
 
 Each ecosystem keeps its own notes file, even when two manifests share a folder. A manifest without a notes file of its own uses the nearest one above it for the same ecosystem.
@@ -73,8 +77,8 @@ generated, and nothing is cached anywhere else.
 
 ## Getting started
 
-1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon). VSCodium, Cursor, Windsurf, code-server and other editors that use [Open VSX](https://open-vsx.org/extension/kontra/pacmon) install it from there. IntelliJ IDEA, RustRover, Android Studio, WebStorm and the other JetBrains IDEs install it from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34295-pacmon).
-2. Open a `package.json`, `Cargo.toml`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `mix.exs`, `build.zig.zon`, `pyproject.toml`, supported requirements file, or `go.mod`. A hollow mark appears before every dependency that has no note yet.
+1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon). VSCodium, Cursor, Windsurf, code-server and other editors that use [Open VSX](https://open-vsx.org/extension/kontra/pacmon) install it from there. Rider, IntelliJ IDEA, RustRover, Android Studio, WebStorm and the other JetBrains IDEs install it from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34295-pacmon). Visual Studio 2022+ users can install `pacmon-visualstudio.vsix` from the Windows CI artifact while its separate Marketplace listing is prepared.
+2. Open a supported manifest, such as `package.json`, `Cargo.toml`, `pom.xml`, `build.gradle`, `mix.exs`, `build.zig.zon`, `pyproject.toml`, a supported requirements file, `go.mod`, `Directory.Packages.props` or a .NET project file. A hollow mark appears before every dependency that has no note yet.
 3. Right-click a dependency and choose **Pacmon: Add/Edit Dependency Note**, or click the mark. Write one line.
 4. The note now shows on hover and at the end of the line. Pacmon created the notes file for that ecosystem next to the manifest, and `.pacmon/AGENT-RULES.md` at the root of the workspace; commit them together with the manifest.
 
@@ -100,13 +104,15 @@ Pacmon does not call any AI service. Agents use their own tools; Pacmon gives th
 
 The **Pacmon** view in the activity bar switches these without opening the settings editor.
 
+Visual Studio exposes the corresponding choices in **Tools → Options → Pacmon** and in its Pacmon tool window, which opens beside Solution Explorer. Its native entry modes are `ToolWindow`, `QuickInput` and `OpenBeside`; it also provides Quick Info, a clickable Pacmon mark beside each package ID, inline previews, Ctrl+click navigation and Quick Actions in NuGet manifests.
+
 ## Requirements
 
-VS Code 1.100 or newer, or a JetBrains IDE 2025.2 or newer. Nothing else: Pacmon reads the manifests itself, so it needs no Rust, Java, Elixir, Zig, Python, Go, TOML, Gradle, Mix, pip, Poetry or uv installation, and it reads and writes files in your workspace without making network requests. In VS Code it also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
+VS Code 1.100 or newer, a JetBrains IDE 2025.2 or newer, or Visual Studio 2022 or newer on Windows. Nothing else: Pacmon reads the manifests itself, so it needs no language runtime or package manager installation, and it reads and writes files in your workspace without making network requests. In VS Code it also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
 
 ## Format reference
 
-npm notes use the `dependency-notes/1` format. Cargo, Maven, Gradle, Mix, Zig, Python and Go notes use `dependency-notes/2`, whose frontmatter also names the ecosystem. Both editor extensions support every listed ecosystem; the reference is [`docs/format.md`](docs/format.md).
+npm notes use the `dependency-notes/1` format. Cargo, Maven, Gradle, Mix, Zig, Python, Go and NuGet notes use `dependency-notes/2`, whose frontmatter also names the ecosystem. VS Code and JetBrains support every listed ecosystem; the Visual Studio VSIX currently supports NuGet. The reference is [`docs/format.md`](docs/format.md).
 
 ## Contributing and license
 

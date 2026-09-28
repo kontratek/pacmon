@@ -83,7 +83,7 @@ intellijPlatform {
     pluginVerification {
         ides {
             // The build target is always verified. Without the property below, so is the
-            // newest release of every IDE branch after it, IntelliJ IDEA only: one
+            // newest release of every IDE branch after it for IntelliJ IDEA and Rider: one
             // plugin.xml serves every product, and the Marketplace verifies the full
             // matrix after an upload. recommended() would add every EAP branch as well,
             // and each IDE is 1.2 GB to download and 3.5 GB unpacked, so a laptop short
@@ -95,6 +95,11 @@ intellijPlatform {
                     types = listOf(IntelliJPlatformType.IntellijIdeaCommunity)
                     channels = listOf(ProductRelease.Channel.RELEASE)
                     sinceBuild = "253"
+                }
+                select {
+                    types = listOf(IntelliJPlatformType.Rider)
+                    channels = listOf(ProductRelease.Channel.RELEASE)
+                    sinceBuild = "252"
                 }
             }
         }

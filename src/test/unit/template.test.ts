@@ -58,6 +58,10 @@ describe('template: frontmatter and header', () => {
     expect(zig).toContain('ecosystem: zig');
     const python = newNotesFileContent('\n', 'requests', 'HTTP client', 'python');
     expect(python).toContain('ecosystem: python');
+    const nuget = newNotesFileContent('\n', 'Newtonsoft.Json', 'JSON serialization', 'nuget');
+    expect(nuget).toContain('ecosystem: nuget');
+    expect(nuget).toContain('nuget dependency manifest');
+    expect(normalizeText(nuget)).toBe(nuget);
     const go = newNotesFileContent('\n', 'github.com/spf13/cobra', 'CLI framework.', 'go');
     expect(go).toContain('ecosystem: go');
     expect(go).toContain('go dependency manifest');
@@ -85,6 +89,7 @@ describe('template: pointer block for the user’s agent files', () => {
     expect(text).toContain('status: removed');
     expect(text).toContain('.pacmon/mix/DEPENDENCY-NOTES.md');
     expect(text).toContain('.pacmon/zig/DEPENDENCY-NOTES.md');
+    expect(text).toContain('.pacmon/nuget/DEPENDENCY-NOTES.md');
   });
 
   it('appends the block once and replaces it on re-run', () => {

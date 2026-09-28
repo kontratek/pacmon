@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import { analyze } from '../../core/analyze';
+import { manifestAdapterForPath } from '../../core/manifest';
 import { normalizeNameForEcosystem } from '../../core/match';
 import { notePreview, sectionLayers } from '../../core/layers';
+import { uniqueNugetDependencies } from '../../core/nuget-manifest';
 import { inlineSource, isManifest } from '../config';
 import type { NotePanel } from '../notePanel';
-import { defaultManifest, resolveNotesFileFor } from '../resolveNotesFile';
+import { creationTargetFor, defaultManifest, dependenciesForNotes, resolveNotesFileFor } from '../resolveNotesFile';
 import type { Store } from '../state';
 import { S } from '../strings';
 import { addOrEditNote } from './addOrEditNote';
@@ -23,8 +25,15 @@ export async function showCoverage(store: Store, panel: NotePanel): Promise<void
     return;
   }
 
-  const deps = await store.getDeps(pkgUri);
   const notesUri = await resolveNotesFileFor(pkgUri);
+  const ownDependencies = await store.getDeps(pkgUri);
+  const isNuget = manifestAdapterForPath(pkgUri.path)?.kind === 'nuget';
+  const sharedDependencies = isNuget
+    ? await dependenciesForNotes(store, notesUri ?? await creationTargetFor(pkgUri))
+    : [];
+  const deps = isNuget
+    ? uniqueNugetDependencies([...sharedDependencies, ...ownDependencies])
+    : ownDependencies;
   const notes = notesUri ? await store.getNotes(notesUri) : undefined;
   const { documented, undocumented, byDep } = analyze(deps, notes);
 

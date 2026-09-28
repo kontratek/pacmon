@@ -5,8 +5,8 @@ console.log(`Pacmon — Dependency Notes
 
 The command line interface is not released yet. Today Pacmon is a VS Code
 extension and a JetBrains plugin that document why each dependency exists,
-right next to your JavaScript, Rust, JVM, Elixir, Zig, Python or Go dependency manifest. Notes
-live in your repository, under .pacmon/.
+right next to your JavaScript, Rust, JVM, Elixir, Zig, Python, Go or .NET/NuGet
+dependency manifest. Notes live in your repository, under .pacmon/.
 
   VS Code    https://marketplace.visualstudio.com/items?itemName=Kontra.pacmon
   JetBrains  https://plugins.jetbrains.com/plugin/34295-pacmon
