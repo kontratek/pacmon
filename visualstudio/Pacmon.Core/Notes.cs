@@ -168,6 +168,38 @@ public static class Notes
         return text.Length > maxLength ? text.Substring(0, maxLength - 1) + "…" : text;
     }
 
+    public static IReadOnlyList<LintFinding> LintAgentText(string agent)
+    {
+        const string packageName = "pacmon-preview";
+        var model = Parse(NewFile(packageName, string.Empty, agent));
+        return Lint(model, new[] { packageName }).Where(IsAgentFinding).ToArray();
+    }
+
+    public static bool IsAgentFinding(LintFinding finding) =>
+        finding.Kind == "unknownAgentKey"
+        || finding.Kind == "emptyAgentValue"
+        || finding.Kind == "removedButPresent";
+
+    /// <summary>
+    /// Preserves unknown agent fields by moving their complete contents under
+    /// the supported <c>note:</c> key. Empty values remain visible for manual
+    /// correction instead of being deleted silently.
+    /// </summary>
+    public static string FixAgentText(string agent)
+    {
+        var lines = Regex.Split(agent, "\\r?\\n");
+        for (var index = 0; index < lines.Length; index++)
+        {
+            var match = AgentFieldPattern.Match(lines[index]);
+            if (!match.Success
+                || AgentFields.Contains(match.Groups[1].Value)
+                || match.Groups[2].Value.StartsWith("//", StringComparison.Ordinal)) continue;
+            var indent = Regex.Match(lines[index], "^\\s*").Value;
+            lines[index] = $"{indent}- note: {match.Groups[1].Value}: {match.Groups[2].Value}".TrimEnd();
+        }
+        return string.Join("\n", lines);
+    }
+
     public static string NewFile(string? packageName = null, string? human = null, string? agent = null)
     {
         var builder = new StringBuilder();

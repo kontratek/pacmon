@@ -32,6 +32,7 @@ internal sealed class QuickInputDialog : DialogWindow
         panel.Children.Add(new TextBlock { Text = "Why is this dependency here?", FontWeight = FontWeights.SemiBold });
         panel.Children.Add(input);
         panel.Children.Add(buttons);
+        PacmonVisuals.ApplyNativeControlStyles(panel);
         Content = panel;
         Loaded += (_, _) => { input.Focus(); input.SelectAll(); };
     }

@@ -155,8 +155,13 @@ internal sealed class PacmonRuntime : IDisposable
 
     public bool TryGetLayers(string manifestPath, string packageName, out SectionLayers layers)
     {
+        return TryGetLayers(manifestPath, packageName, out layers, out _);
+    }
+
+    public bool TryGetLayers(string manifestPath, string packageName, out SectionLayers layers, out string notesPath)
+    {
         var root = KnownRootFor(manifestPath);
-        var model = NotesForManifest(manifestPath, root, out _);
+        var model = NotesForManifest(manifestPath, root, out notesPath);
         var section = model is null ? null : Notes.FindSection(model, packageName);
         if (model is null || section is null)
         {
@@ -166,6 +171,18 @@ internal sealed class PacmonRuntime : IDisposable
         layers = Notes.Layers(model, section);
         return layers.Human.Length > 0 || layers.Agent.Length > 0 || layers.Generated.Length > 0;
     }
+
+    public async Task OpenNotesAsync(string manifestPath, string? packageName = null)
+    {
+        var root = await RootForAsync(manifestPath);
+        var workspace = new NugetWorkspace(fileSystem);
+        var notesPath = workspace.ResolveNotesPath(manifestPath, root, Options.Monorepo)
+            ?? workspace.CreationTarget(manifestPath, root);
+        if (!FileExists(notesPath)) await WriteDocumentAsync(notesPath, Notes.NewFile());
+        await OpenDocumentAsync(notesPath, packageName);
+    }
+
+    public async Task OpenFileAsync(string path) => await OpenDocumentAsync(path);
 
     public IReadOnlyList<LintFinding> LintNotesBuffer(ITextBuffer buffer)
     {

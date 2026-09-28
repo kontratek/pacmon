@@ -1,9 +1,10 @@
 using System.ComponentModel.Composition;
+using System.IO;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.Imaging.Interop;
 using Microsoft.VisualStudio.Language.Intellisense;
@@ -74,26 +75,91 @@ internal sealed class PacmonQuickInfoSource : IAsyncQuickInfoSource
         var dependency = EditorFeatureHelpers.DependencyAt(buffer, point.Value.Position);
         if (dependency is null) return Task.FromResult<QuickInfoItem?>(null);
 
-        var hasNote = runtime.TryGetLayers(path, dependency.NoteKey, out var layers);
+        var hasNote = runtime.TryGetLayers(path, dependency.NoteKey, out var layers, out var notesPath);
+        if (!hasNote) return Task.FromResult<QuickInfoItem?>(null);
         var elements = new List<object>
         {
-            new ClassifiedTextElement(new ClassifiedTextRun("keyword", dependency.DisplayName)),
-            new ClassifiedTextElement(new ClassifiedTextRun(
-                "text",
-                hasNote ? FormatLayers(layers) : "No dependency note yet. Use Pacmon: Add/Edit Dependency Note.")),
+            new ClassifiedTextElement(
+                new ClassifiedTextRun("keyword", dependency.DisplayName, ClassifiedTextRunStyle.Bold),
+                new ClassifiedTextRun("comment", $"  — {Path.GetFileName(notesPath)}")),
         };
+        var ordered = runtime.Options.InlineSource is InlineSource.AiFirst or InlineSource.AiOnly
+            ? new[] { ("Agent notes", layers.Agent), ("Your note", layers.Human) }
+            : new[] { ("Your note", layers.Human), ("Agent notes", layers.Agent) };
+        var shown = ordered.Where(layer => !string.IsNullOrWhiteSpace(layer.Item2)).ToArray();
+        for (var index = 0; index < shown.Length; index++)
+        {
+            if (index > 0) elements.Add(new ClassifiedTextElement(new ClassifiedTextRun("comment", "────────")));
+            elements.Add(new ClassifiedTextElement(
+                new ClassifiedTextRun("text", shown[index].Item1, ClassifiedTextRunStyle.Bold)));
+            elements.AddRange(MarkdownElements(shown[index].Item2));
+        }
+        elements.Add(new ClassifiedTextElement(
+            new ClassifiedTextRun(
+                "text",
+                "Edit note",
+                () => RunAction(() => runtime.AddOrEditAsync(path, dependency.NoteKey)),
+                "Edit this dependency note",
+                ClassifiedTextRunStyle.Underline),
+            new ClassifiedTextRun("text", "  ·  "),
+            new ClassifiedTextRun(
+                "text",
+                "Open notes file",
+                () => RunAction(() => runtime.OpenNotesAsync(path, dependency.NoteKey)),
+                notesPath,
+                ClassifiedTextRunStyle.Underline)));
         var tracking = buffer.CurrentSnapshot.CreateTrackingSpan(
             EditorFeatureHelpers.Span(buffer.CurrentSnapshot, dependency.PrimaryRange).Span,
             SpanTrackingMode.EdgeInclusive);
         return Task.FromResult<QuickInfoItem?>(new QuickInfoItem(tracking, new ContainerElement(ContainerElementStyle.Stacked, elements)));
     }
 
-    private static string FormatLayers(SectionLayers layers)
+    private static void RunAction(Func<Task> action) => ThreadHelper.JoinableTaskFactory.Run(action);
+
+    private static IEnumerable<ClassifiedTextElement> MarkdownElements(string markdown)
     {
-        var blocks = new List<string>();
-        if (!string.IsNullOrWhiteSpace(layers.Human)) blocks.Add(layers.Human.Trim());
-        if (!string.IsNullOrWhiteSpace(layers.Agent)) blocks.Add("Agent notes\n" + layers.Agent.Trim());
-        return blocks.Count == 0 ? "Dependency note" : string.Join("\n\n", blocks);
+        foreach (var rawLine in Regex.Split(markdown.Trim(), "\\r?\\n"))
+        {
+            var line = rawLine;
+            var lineStyle = ClassifiedTextRunStyle.Plain;
+            var heading = Regex.Match(line, "^#{1,3}\\s+(.+)$");
+            if (heading.Success)
+            {
+                line = heading.Groups[1].Value;
+                lineStyle = ClassifiedTextRunStyle.Bold;
+            }
+            else if (Regex.IsMatch(line, "^\\s*[-*]\\s+"))
+            {
+                line = "•  " + Regex.Replace(line, "^\\s*[-*]\\s+", string.Empty);
+            }
+
+            if (line.Length == 0)
+            {
+                yield return new ClassifiedTextElement(new ClassifiedTextRun("text", " "));
+                continue;
+            }
+
+            var runs = new List<ClassifiedTextRun>();
+            var cursor = 0;
+            foreach (Match match in Regex.Matches(line, "(`[^`]+`|\\*\\*[^*]+\\*\\*|\\[[^]]+\\]\\([^)]+\\))"))
+            {
+                if (match.Index > cursor)
+                    runs.Add(new ClassifiedTextRun("text", line.Substring(cursor, match.Index - cursor), lineStyle));
+                var value = match.Value;
+                if (value.StartsWith("`", StringComparison.Ordinal))
+                    runs.Add(new ClassifiedTextRun("identifier", value.Substring(1, value.Length - 2), ClassifiedTextRunStyle.UseClassificationFont));
+                else if (value.StartsWith("**", StringComparison.Ordinal))
+                    runs.Add(new ClassifiedTextRun("text", value.Substring(2, value.Length - 4), lineStyle | ClassifiedTextRunStyle.Bold));
+                else
+                {
+                    var labelEnd = value.IndexOf("](", StringComparison.Ordinal);
+                    runs.Add(new ClassifiedTextRun("text", value.Substring(1, labelEnd - 1), lineStyle | ClassifiedTextRunStyle.Underline));
+                }
+                cursor = match.Index + match.Length;
+            }
+            if (cursor < line.Length) runs.Add(new ClassifiedTextRun("text", line.Substring(cursor), lineStyle));
+            yield return new ClassifiedTextElement(runs);
+        }
     }
 }
 
@@ -165,15 +231,19 @@ internal sealed class PacmonOrphanGlyphFactoryProvider : IGlyphFactoryProvider
 
 internal sealed class PacmonOrphanGlyphFactory : IGlyphFactory
 {
-    public UIElement? GenerateGlyph(IWpfTextViewLine line, IGlyphTag tag) => tag is PacmonOrphanTag orphan
-        ? new TextBlock
+    public UIElement? GenerateGlyph(IWpfTextViewLine line, IGlyphTag tag)
+    {
+        if (tag is not PacmonOrphanTag orphan) return null;
+        var glyph = new TextBlock
         {
             Text = "?",
             ToolTip = $"No current NuGet declaration matches {orphan.PackageName}. The note is kept as an orphan.",
-            Foreground = Brushes.Gray,
             FontWeight = FontWeights.SemiBold,
-        }
-        : null;
+            Opacity = 0.7,
+        };
+        glyph.SetResourceReference(TextBlock.ForegroundProperty, VsBrushes.ToolWindowTextKey);
+        return glyph;
+    }
 }
 
 [Export(typeof(IViewTaggerProvider))]
@@ -251,17 +321,18 @@ internal sealed class PacmonInlineAdornmentTagger : ITagger<IntraTextAdornmentTa
             panel.Children.Add(CreatePacmonIcon(manifestPath, dependency, documented));
         if (documented && runtime.Options.Decorations != DecorationMode.Off)
         {
-            panel.Children.Add(new TextBlock
+            var preview = new TextBlock
             {
                 Text = runtime.Options.Decorations == DecorationMode.Badge
                     ? "note"
                     : Notes.Preview(layers, runtime.Options.InlineSource),
-                Foreground = SystemColors.GrayTextBrush,
                 Opacity = 0.85,
                 Margin = new Thickness(3, 0, 3, 0),
                 VerticalAlignment = VerticalAlignment.Center,
                 IsHitTestVisible = false,
-            });
+            };
+            preview.SetResourceReference(TextBlock.ForegroundProperty, VsBrushes.ToolWindowTextKey);
+            panel.Children.Add(preview);
         }
         return panel;
     }
@@ -271,9 +342,9 @@ internal sealed class PacmonInlineAdornmentTagger : ITagger<IntraTextAdornmentTa
         DependencyEntry dependency,
         bool documented)
     {
-        var color = documented ? Brushes.DodgerBlue : SystemColors.GrayTextBrush;
-        var canvas = new Canvas
+        var mark = new PacmonMarkControl
         {
+            Documented = documented,
             Width = 16,
             Height = 16,
             Margin = new Thickness(4, 0, 2, 0),
@@ -281,39 +352,13 @@ internal sealed class PacmonInlineAdornmentTagger : ITagger<IntraTextAdornmentTa
             ToolTip = documented ? "Edit dependency note" : "Add dependency note",
             VerticalAlignment = VerticalAlignment.Center,
         };
-        AddBar(canvas, 4, 1, 12, 3, color, true);
-        AddBar(canvas, 1, 6.5, 12, 3, color, documented);
-        AddBar(canvas, 1, 12, 12, 3, color, documented);
-        canvas.MouseLeftButtonDown += (_, args) =>
+        mark.MouseLeftButtonDown += (_, args) =>
         {
             args.Handled = true;
             ThreadHelper.JoinableTaskFactory.Run(() =>
                 PacmonRuntime.Current!.AddOrEditAsync(manifestPath, dependency.NoteKey));
         };
-        return canvas;
-    }
-
-    private static void AddBar(
-        Panel canvas,
-        double left,
-        double top,
-        double width,
-        double height,
-        Brush color,
-        bool filled)
-    {
-        var bar = new Rectangle
-        {
-            Width = width,
-            Height = height,
-            Fill = filled ? color : Brushes.Transparent,
-            Stroke = color,
-            StrokeThickness = filled ? 0 : 1,
-            SnapsToDevicePixels = true,
-        };
-        Canvas.SetLeft(bar, left);
-        Canvas.SetTop(bar, top);
-        canvas.Children.Add(bar);
+        return mark;
     }
 
     private void OnBufferChanged(object sender, TextContentChangedEventArgs args) => Raise();

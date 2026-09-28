@@ -89,6 +89,22 @@ public sealed class NotesTests
     }
 
     [TestMethod]
+    public void AgentFixPreservesUnknownFieldsAndReportsRemainingEmptyValues()
+    {
+        const string input = "- purpos: JSON serialization\n- verify:\n- custom: // intentionally ignored\n- runtime: net8.0";
+
+        var fixedText = Notes.FixAgentText(input);
+        var findings = Notes.LintAgentText(fixedText);
+
+        StringAssert.Contains(fixedText, "- note: purpos: JSON serialization");
+        StringAssert.Contains(fixedText, "- custom: // intentionally ignored");
+        StringAssert.Contains(fixedText, "- runtime: net8.0");
+        CollectionAssert.AreEqual(
+            new[] { "emptyAgentValue" },
+            findings.Select(finding => finding.Kind).ToArray());
+    }
+
+    [TestMethod]
     public void NormalizePreservesBomAndCrlfWithoutDoublingCarriageReturns()
     {
         var original = "\ufeff" + Notes.NewFile("Beta", "Second").Replace("\r\n", "\n").Replace("\n", "\r\n")

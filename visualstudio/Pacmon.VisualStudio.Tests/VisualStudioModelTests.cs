@@ -30,9 +30,17 @@ public sealed class VisualStudioModelTests
         var documented = new DependencyRow(dependency, true);
         var undocumented = new DependencyRow(dependency, false);
 
-        Assert.AreEqual("●", documented.Status);
-        Assert.AreEqual("○", undocumented.Status);
+        Assert.IsTrue(documented.Documented);
+        Assert.IsFalse(undocumented.Documented);
         Assert.AreEqual("globalPackageReference", documented.Scope);
+    }
+
+    [TestMethod]
+    public void ToolWindowPreservesAgentExpansionOnlyForTheSamePackage()
+    {
+        Assert.IsTrue(ToolWindowState.PreserveAgentExpansion("Newtonsoft.Json", "newtonsoft.json", true));
+        Assert.IsFalse(ToolWindowState.PreserveAgentExpansion("Newtonsoft.Json", "Serilog", true));
+        Assert.IsFalse(ToolWindowState.PreserveAgentExpansion("Newtonsoft.Json", "Newtonsoft.Json", false));
     }
 
     [DataTestMethod]
