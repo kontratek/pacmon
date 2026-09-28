@@ -5,10 +5,10 @@ The JetBrains counterpart of the [VS Code extension](../README.md): the same eco
 ## What it does
 
 - A **Pacmon** tool window (right stripe) with two views: a dashboard (documentation coverage, click-target and note-marker settings) and a per-dependency editor with separate human and agent layers.
-- Small inlay icons at dependency declarations in `package.json`, `Cargo.toml`, Maven `pom.xml`, `build.gradle`, `build.gradle.kts`, `mix.exs`, `build.zig.zon`, `pyproject.toml`, pip requirements files, .NET project files and `Directory.Packages.props` — filled when they have a note, hollow when they do not — plus an end-of-line preview and a quick-doc hover.
+- Small inlay icons at dependency declarations in `package.json`, `Cargo.toml`, Maven `pom.xml`, `build.gradle`, `build.gradle.kts`, `mix.exs`, `build.zig.zon`, `pyproject.toml`, pip requirements files, `go.mod`, .NET project files and `Directory.Packages.props` — filled when they have a note, hollow when they do not — plus an end-of-line preview and a quick-doc hover.
 - Live `docs/format.md` warnings, underlined with a hover message, wherever `DEPENDENCY-NOTES.md` is open.
 - Five Tools-menu commands — **Open DEPENDENCY-NOTES.md**, **Open Dependency Manifest**, **Documentation Coverage**, **Set Up AI Instructions**, **Format DEPENDENCY-NOTES.md** — and **Add/Edit Dependency Note** in the editor's context menu.
-- Pure Kotlin manifest parsers; Rust, TOML, Maven, Groovy, Kotlin, Gradle, Elixir, Zig, ZON, .NET, MSBuild and NuGet tooling are not required. When optional language plugins such as ZigBrains are installed, Pacmon also registers directly for their language support.
+- Pure Kotlin manifest parsers; Rust, TOML, Maven, Groovy, Kotlin, Gradle, Elixir, Zig, ZON, Go, .NET, MSBuild and NuGet tooling are not required. When optional language plugins such as ZigBrains are installed, Pacmon also registers directly for their language support.
 
 ## Requirements
 
@@ -50,6 +50,7 @@ src/main/kotlin/dev/pacmon/jetbrains/
 │   ├── PythonManifest.kt the static pyproject.toml and pip requirements parsers
 │   ├── NugetManifest.kt  the static .NET project and central package parser
 │   ├── Xml.kt            the shared tolerant XML reader for Maven and NuGet
+│   ├── GoManifest.kt     the static go.mod require/tool parser
 │   ├── AgentNotes.kt     agent-layer field lint used live in the note editor's side panel
 │   └── AiInstructions.kt the AGENTS.md/CLAUDE.md pointer block ("Set Up AI Instructions")
 │

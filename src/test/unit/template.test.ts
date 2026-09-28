@@ -62,6 +62,10 @@ describe('template: frontmatter and header', () => {
     expect(nuget).toContain('ecosystem: nuget');
     expect(nuget).toContain('nuget dependency manifest');
     expect(normalizeText(nuget)).toBe(nuget);
+    const go = newNotesFileContent('\n', 'github.com/spf13/cobra', 'CLI framework.', 'go');
+    expect(go).toContain('ecosystem: go');
+    expect(go).toContain('go dependency manifest');
+    expect(normalizeText(go)).toBe(go);
     expect(zig).toContain('zig dependency manifest');
     expect(normalizeText(zig)).toBe(zig);
   });

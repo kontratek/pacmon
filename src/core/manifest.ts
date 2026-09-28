@@ -12,6 +12,7 @@ import {
   pythonRequirementsScope,
 } from './python-manifest';
 import { extractNugetDependencies, isNugetManifestPath } from './nuget-manifest';
+import { extractGoDependencies } from './go-manifest';
 export { dependencyAtOffset } from './dependency';
 
 export interface ManifestAdapter {
@@ -129,6 +130,15 @@ export const MANIFEST_ADAPTERS: readonly ManifestAdapter[] = [
     matchesPath: isNugetManifestPath,
     extractDependencies: extractNugetDependencies,
     normalizeNoteKey: (raw) => tolerantKey(raw).toLowerCase(),
+  },
+  {
+    kind: 'go',
+    fileNames: ['go.mod'],
+    discoveryGlobs: exactDiscoveryGlobs(['go.mod']),
+    notesRelativePath: '.pacmon/go/DEPENDENCY-NOTES.md',
+    matchesPath: exactPathMatcher(['go.mod']),
+    extractDependencies: extractGoDependencies,
+    normalizeNoteKey: tolerantKey,
   },
 ];
 

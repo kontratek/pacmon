@@ -8,7 +8,8 @@ enum class ManifestKind(val id: String) {
     MIX("mix"),
     ZIG("zig"),
     PYTHON("python"),
-    NUGET("nuget");
+    NUGET("nuget"),
+    GO("go");
 
     companion object {
         fun fromId(value: String?): ManifestKind? = entries.firstOrNull { it.id == value }
@@ -49,6 +50,7 @@ object ManifestRegistry {
         ZigManifestAdapter,
         PythonManifestAdapter,
         NugetManifestAdapter,
+        GoManifestAdapter,
     )
 
     fun forFileName(fileName: String): ManifestAdapter? = forPath(fileName)

@@ -11,9 +11,9 @@
         <p><b>Your dependency manifest says what you depend on. Pacmon adds why.</b></p>
         <p>Every dependency gets a short note: why it is here, what must not change,
         what to check before an upgrade. The note shows in <code>package.json</code>,
-        <code>Cargo.toml</code>, Maven <code>pom.xml</code>, a Gradle build file, <code>mix.exs</code>, or
+        <code>Cargo.toml</code>, Maven <code>pom.xml</code>, a Gradle build file, <code>mix.exs</code>,
         <code>build.zig.zon</code>, <code>pyproject.toml</code>, a pip requirements file, a .NET project file,
-        or <code>Directory.Packages.props</code> as quick documentation,
+        <code>Directory.Packages.props</code>, or <code>go.mod</code> as quick documentation,
         and you write it from there.</p>
         <p>Notes are plain Markdown under <code>.pacmon/</code>, separated by ecosystem.
         No database, no service, no account: files that you read, diff and commit like
@@ -38,8 +38,8 @@
         <p>Pacmon reads and writes files in your project and makes no network
         requests; it does not call any AI service. The
         <a href="https://marketplace.visualstudio.com/items?itemName=kontra.pacmon">VS Code
-        extension</a> reads the same files, and the format is documented in
-        <a href="https://github.com/kontratek/pacmon/blob/main/docs/format.md">docs/format.md</a>.</p>
+        extension</a> reads the same files, and the format is documented at
+        <a href="https://pacmon.dev/format/">pacmon.dev/format</a>.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -53,6 +53,7 @@
     <depends optional="true" config-file="pacmon-elixir.xml">org.elixir_lang</depends>
     <depends optional="true" config-file="pacmon-zig.xml">com.falsepattern.zigbrains</depends>
     <depends optional="true" config-file="pacmon-python.xml">com.intellij.modules.python</depends>
+    <depends optional="true" config-file="pacmon-go.xml">org.jetbrains.plugins.go</depends>
 
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
         <supportsKotlinPluginMode supportsK2="true"/>
@@ -81,19 +82,11 @@
         <!-- The "link" click target: Ctrl+click a package name to open its note. -->
         <gotoDeclarationHandler
             implementation="dev.pacmon.jetbrains.editor.PacmonNoteDeclarationHandler"/>
-        <!-- The "lightbulb" click target: nothing drawn until the caret is on the line. -->
+        <!-- The "lightbulb" click target: nothing drawn until the caret is on the line.
+             Registered once, for every language: the IDE refuses an intention class
+             registered more than once (IntelliJ 2026.3 throws on it), and
+             isAvailable() returns false outside a dependency manifest. -->
         <intentionAction>
-            <language>JSON</language>
-            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
-            <category>Pacmon</category>
-        </intentionAction>
-        <intentionAction>
-            <language>XML</language>
-            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
-            <category>Pacmon</category>
-        </intentionAction>
-        <intentionAction>
-            <language>TEXT</language>
             <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
             <category>Pacmon</category>
         </intentionAction>

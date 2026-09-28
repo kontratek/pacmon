@@ -5,7 +5,7 @@ import { uniqueNugetDependencies } from '../core/nuget-manifest';
 import { AGENT_RULES_REL_PATH } from '../core/template';
 import { monorepoMode, uriBasename } from './config';
 
-const DISCOVERY_EXCLUDE = '**/{node_modules,target,.gradle,_build,deps,zig-pkg,.zig-cache,zig-cache,zig-out,.venv,venv,.tox,.nox,site-packages,dist,build,bin,obj,.git}/**';
+const DISCOVERY_EXCLUDE = '**/{node_modules,target,.gradle,_build,deps,zig-pkg,.zig-cache,zig-cache,zig-out,.venv,venv,.tox,.nox,site-packages,dist,build,bin,obj,vendor,testdata,.git}/**';
 
 const existsCache = new Map<string, boolean>();
 const manifestsForNotesCache = new Map<string, Promise<vscode.Uri[]>>();

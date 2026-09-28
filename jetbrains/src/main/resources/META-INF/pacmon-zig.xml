@@ -4,11 +4,6 @@
             language="Zon"
             id="PacmonDependencyIconsZon"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
-        <intentionAction>
-            <language>Zon</language>
-            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
-            <category>Pacmon</category>
-        </intentionAction>
         <lang.documentationProvider
             language="Zon"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>

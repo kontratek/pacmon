@@ -4,11 +4,6 @@
             language="Elixir"
             id="PacmonDependencyIconsElixir"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
-        <intentionAction>
-            <language>Elixir</language>
-            <className>dev.pacmon.jetbrains.editor.PacmonAddNoteIntention</className>
-            <category>Pacmon</category>
-        </intentionAction>
         <lang.documentationProvider
             language="Elixir"
             implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>

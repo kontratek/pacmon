@@ -1,8 +1,8 @@
 # pacmon
 
-**Pacmon documents *why* each dependency exists — right next to your JavaScript, Rust, JVM, Elixir, Zig, Python, or .NET/NuGet dependency manifest.**
+**Pacmon documents *why* each dependency exists — right next to your JavaScript, Rust, JVM, Elixir, Zig, Python, Go, or .NET/NuGet dependency manifest.**
 
-Today Pacmon ships as a **VS Code extension** and a **JetBrains plugin**: hover a dependency to read its note, right-click to write one. .NET/NuGet support is currently VS Code-only. Notes live in your repository under `.pacmon/`, travel with git, and render on GitHub. Notes are plain Markdown and stay in your repository.
+Today Pacmon ships as a **VS Code extension**, a **JetBrains plugin**, and a **Visual Studio 2022+ VSIX**: hover a dependency to read its note, right-click to write one. The Visual Studio VSIX currently supports .NET/NuGet only. Notes live in your repository under `.pacmon/`, travel with git, and render on GitHub. Notes are plain Markdown and stay in your repository.
 
 - Install: [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Kontra.pacmon), [Open VSX](https://open-vsx.org/extension/kontra/pacmon), [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34295-pacmon)
 - Source and issues: [github.com/kontratek/pacmon](https://github.com/kontratek/pacmon)

@@ -36,7 +36,9 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             "App.csproj",
             "<Project><ItemGroup><PackageReference Include=\"Newtonsoft.Json\" /></ItemGroup></Project>",
         )
+        val go = myFixture.tempDirFixture.createFile("go.mod", "module m\n\nrequire github.com/spf13/cobra v1.8.1\n")
         myFixture.tempDirFixture.createFile(".pacmon/DEPENDENCY-NOTES.md", "## vue\n\nnpm\n")
+        myFixture.tempDirFixture.createFile(".pacmon/go/DEPENDENCY-NOTES.md", "## github.com/spf13/cobra\n\ngo\n")
         myFixture.tempDirFixture.createFile(".pacmon/cargo/DEPENDENCY-NOTES.md", "## serde\n\ncargo\n")
         myFixture.tempDirFixture.createFile(".pacmon/maven/DEPENDENCY-NOTES.md", "## g:a\n\nmaven\n")
         myFixture.tempDirFixture.createFile(".pacmon/gradle/DEPENDENCY-NOTES.md", "## g:a\n\ngradle\n")
@@ -58,6 +60,8 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         assertEquals("zig", service().noteFor(zig, "known_folders")?.layers?.human)
         assertEquals("python", service().noteFor(python, "requests")?.layers?.human)
         assertEquals("nuget", service().noteFor(nuget, "Newtonsoft.Json")?.layers?.human)
+        assertTrue(service().resolveNotesFile(go)!!.path.endsWith(".pacmon/go/DEPENDENCY-NOTES.md"))
+        assertEquals("go", service().noteFor(go, "github.com/spf13/cobra")?.layers?.human)
         assertNull(service().noteFor(cargo, "vue"))
     }
 
@@ -214,6 +218,22 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         }
 
         assertEquals(listOf("real_dep"), service().dependenciesForNotes(notes).map { it.name })
+    }
+
+    fun testGoVendorAndTestdataManifestsAreExcludedFromNotesDiscovery() {
+        val notes = myFixture.tempDirFixture.createFile(
+            ".pacmon/go/DEPENDENCY-NOTES.md",
+            "## github.com/example/real\n\nApplication dependency\n",
+        )
+        myFixture.tempDirFixture.createFile("go.mod", "module m\n\nrequire github.com/example/real v1.0.0\n")
+        for (directory in listOf("vendor/github.com/example/vendored", "internal/testdata/sample")) {
+            myFixture.tempDirFixture.createFile(
+                "$directory/go.mod",
+                "module x\n\nrequire github.com/example/ignored v1.0.0\n",
+            )
+        }
+
+        assertEquals(listOf("github.com/example/real"), service().dependenciesForNotes(notes).map { it.name })
     }
 
     fun testManifestWatcherInvalidatesTheWorkspaceIndex() {

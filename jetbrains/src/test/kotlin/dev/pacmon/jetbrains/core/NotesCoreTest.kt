@@ -16,6 +16,7 @@ class NotesCoreTest {
         val zig = NotesCore.newNotesFile("Known_Folders", "Filesystem paths", ecosystem = ManifestKind.ZIG)
         val python = NotesCore.newNotesFile("requests", "HTTP client", ecosystem = ManifestKind.PYTHON)
         val nuget = NotesCore.newNotesFile("Newtonsoft.Json", "JSON serialization", ecosystem = ManifestKind.NUGET)
+        val go = NotesCore.newNotesFile("github.com/Masterminds/semver/v3", "Version ranges", ecosystem = ManifestKind.GO)
 
         assertTrue(npm.contains("format: dependency-notes/1"))
         assertTrue(cargo.contains("format: dependency-notes/2\necosystem: cargo\nlang: en"))
@@ -25,6 +26,13 @@ class NotesCoreTest {
         assertTrue(zig.contains("format: dependency-notes/2\necosystem: zig\nlang: en"))
         assertTrue(python.contains("format: dependency-notes/2\necosystem: python\nlang: en"))
         assertTrue(nuget.contains("format: dependency-notes/2\necosystem: nuget\nlang: en"))
+        assertTrue(go.contains("format: dependency-notes/2\necosystem: go\nlang: en"))
+        assertTrue(go.contains("package from the go dependency manifest"))
+        assertNull(NotesCore.findSection(NotesCore.parse(go), "github.com/masterminds/semver/v3"))
+        assertEquals(
+            "github.com/Masterminds/semver/v3",
+            NotesCore.findSection(NotesCore.parse(go), "github.com/Masterminds/semver/v3")?.name,
+        )
         assertTrue(zig.contains("package from the zig dependency manifest"))
         assertNull(NotesCore.findSection(NotesCore.parse(cargo), "serde"))
         assertEquals("Serde", NotesCore.findSection(NotesCore.parse(cargo), "Serde")?.name)
