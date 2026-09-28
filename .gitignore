@@ -14,6 +14,11 @@ jetbrains/README.md
 visualstudio/**/bin/
 visualstudio/**/obj/
 
+# Generated when the .NET fixture projects are opened or built manually.
+# Generated.csproj is an intentional fixture that verifies obj/ exclusion.
+fixtures/**/obj/*
+!fixtures/**/obj/Generated.csproj
+
 # JetBrains plugin build artifacts
 jetbrains/.gradle/
 jetbrains/.intellijPlatform/
