@@ -7,12 +7,16 @@
 
 ## Unreleased
 
-- **Pacmon supports .NET/NuGet projects in VS Code and JetBrains.** Literal `PackageReference`
+- **Pacmon supports .NET/NuGet projects in VS Code, JetBrains/Rider and Microsoft Visual Studio 2022+.** Literal `PackageReference`
   items in `.csproj`, `.fsproj` and `.vbproj` files, plus central
   `PackageVersion` and `GlobalPackageReference` items in
   `Directory.Packages.props`, get markers, hover, note editing and coverage
   backed by `.pacmon/nuget/DEPENDENCY-NOTES.md`. Parsing is static: Pacmon does
   not run .NET, MSBuild or NuGet, follow imports, or resolve transitive packages.
+  The new Windows VSIX adds Visual Studio-native Quick Info, clickable inline
+  Pacmon marks, previews, Ctrl+click navigation, Quick Actions, a two-layer note editor,
+  coverage and notes-file linting. CI produces `pacmon-visualstudio.vsix`; its
+  separate Marketplace publication remains a later step.
 
 - **Pacmon supports Python projects in VS Code and JetBrains.** Standard,
   Poetry and uv dependencies in `pyproject.toml`, plus named dependencies in

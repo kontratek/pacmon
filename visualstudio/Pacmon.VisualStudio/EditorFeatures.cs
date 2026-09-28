@@ -1,0 +1,560 @@
+using System.ComponentModel.Composition;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Shapes;
+using Microsoft.VisualStudio.Imaging;
+using Microsoft.VisualStudio.Imaging.Interop;
+using Microsoft.VisualStudio.Language.Intellisense;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Text.Adornments;
+using Microsoft.VisualStudio.Text.Editor;
+using Microsoft.VisualStudio.Text.Formatting;
+using Microsoft.VisualStudio.Text.Tagging;
+using Microsoft.VisualStudio.Utilities;
+using Pacmon.Core;
+
+namespace Pacmon.VisualStudio;
+
+internal static class EditorFeatureHelpers
+{
+    public static bool IsManifest(ITextBuffer buffer, out PacmonRuntime runtime, out string path)
+    {
+        runtime = PacmonRuntime.Current!;
+        path = string.Empty;
+        if (runtime is null) return false;
+        runtime.RegisterBuffer(buffer);
+        path = runtime.PathFor(buffer) ?? string.Empty;
+        return NugetManifest.MatchesPath(path);
+    }
+
+    public static DependencyEntry? DependencyAt(ITextBuffer buffer, int position) =>
+        PacmonRuntime.Current is { } runtime
+            ? NugetManifest.AtOffset(runtime.Dependencies(buffer), position)
+            : null;
+
+    public static SnapshotSpan Span(ITextSnapshot snapshot, SourceRange range)
+    {
+        var start = Math.Max(0, Math.Min(range.Offset, snapshot.Length));
+        var length = Math.Max(0, Math.Min(range.Length, snapshot.Length - start));
+        return new SnapshotSpan(snapshot, new Span(start, length));
+    }
+}
+
+[Export(typeof(IAsyncQuickInfoSourceProvider))]
+[Name("Pacmon NuGet Quick Info")]
+[ContentType("text")]
+[Order(Before = "Default Quick Info Presenter")]
+internal sealed class PacmonQuickInfoProvider : IAsyncQuickInfoSourceProvider
+{
+    public IAsyncQuickInfoSource TryCreateQuickInfoSource(ITextBuffer textBuffer)
+    {
+        PacmonRuntime.Current?.RegisterBuffer(textBuffer);
+        return new PacmonQuickInfoSource(textBuffer);
+    }
+}
+
+internal sealed class PacmonQuickInfoSource : IAsyncQuickInfoSource
+{
+    private readonly ITextBuffer buffer;
+    public PacmonQuickInfoSource(ITextBuffer buffer) => this.buffer = buffer;
+
+    public void Dispose()
+    {
+    }
+
+    public Task<QuickInfoItem?> GetQuickInfoItemAsync(IAsyncQuickInfoSession session, CancellationToken cancellationToken)
+    {
+        var point = session.GetTriggerPoint(buffer.CurrentSnapshot);
+        if (!point.HasValue
+            || !EditorFeatureHelpers.IsManifest(buffer, out var runtime, out var path))
+            return Task.FromResult<QuickInfoItem?>(null);
+        var dependency = EditorFeatureHelpers.DependencyAt(buffer, point.Value.Position);
+        if (dependency is null) return Task.FromResult<QuickInfoItem?>(null);
+
+        var hasNote = runtime.TryGetLayers(path, dependency.NoteKey, out var layers);
+        var elements = new List<object>
+        {
+            new ClassifiedTextElement(new ClassifiedTextRun("keyword", dependency.DisplayName)),
+            new ClassifiedTextElement(new ClassifiedTextRun(
+                "text",
+                hasNote ? FormatLayers(layers) : "No dependency note yet. Use Pacmon: Add/Edit Dependency Note.")),
+        };
+        var tracking = buffer.CurrentSnapshot.CreateTrackingSpan(
+            EditorFeatureHelpers.Span(buffer.CurrentSnapshot, dependency.PrimaryRange).Span,
+            SpanTrackingMode.EdgeInclusive);
+        return Task.FromResult<QuickInfoItem?>(new QuickInfoItem(tracking, new ContainerElement(ContainerElementStyle.Stacked, elements)));
+    }
+
+    private static string FormatLayers(SectionLayers layers)
+    {
+        var blocks = new List<string>();
+        if (!string.IsNullOrWhiteSpace(layers.Human)) blocks.Add(layers.Human.Trim());
+        if (!string.IsNullOrWhiteSpace(layers.Agent)) blocks.Add("Agent notes\n" + layers.Agent.Trim());
+        return blocks.Count == 0 ? "Dependency note" : string.Join("\n\n", blocks);
+    }
+}
+
+internal sealed class PacmonOrphanTag : IGlyphTag
+{
+    public PacmonOrphanTag(string packageName) => PackageName = packageName;
+    public string PackageName { get; }
+}
+
+[Export(typeof(ITaggerProvider))]
+[ContentType("text")]
+[TagType(typeof(PacmonOrphanTag))]
+internal sealed class PacmonOrphanTaggerProvider : ITaggerProvider
+{
+    public ITagger<T>? CreateTagger<T>(ITextBuffer buffer) where T : ITag => new PacmonOrphanTagger(buffer) as ITagger<T>;
+}
+
+internal sealed class PacmonOrphanTagger : ITagger<PacmonOrphanTag>, IDisposable
+{
+    private readonly ITextBuffer buffer;
+    private readonly PacmonRuntime? runtime;
+    public PacmonOrphanTagger(ITextBuffer buffer)
+    {
+        this.buffer = buffer;
+        runtime = PacmonRuntime.Current;
+        runtime?.RegisterBuffer(buffer);
+        buffer.Changed += OnChanged;
+        if (runtime is not null) runtime.Changed += OnRuntimeChanged;
+    }
+
+    public event EventHandler<SnapshotSpanEventArgs>? TagsChanged;
+
+    public IEnumerable<ITagSpan<PacmonOrphanTag>> GetTags(NormalizedSnapshotSpanCollection spans)
+    {
+        if (spans.Count == 0 || runtime is null) yield break;
+        var snapshot = spans[0].Snapshot;
+        foreach (var orphan in runtime.OrphansForNotesBuffer(buffer))
+        {
+            if (orphan.HeadingLine < 0 || orphan.HeadingLine >= snapshot.LineCount) continue;
+            var line = snapshot.GetLineFromLineNumber(orphan.HeadingLine);
+            var span = line.Length > 0 ? new SnapshotSpan(line.Start, 1) : new SnapshotSpan(line.Start, 0);
+            if (spans.IntersectsWith(span)) yield return new TagSpan<PacmonOrphanTag>(span, new PacmonOrphanTag(orphan.Name));
+        }
+    }
+
+    public void Dispose()
+    {
+        buffer.Changed -= OnChanged;
+        if (runtime is not null) runtime.Changed -= OnRuntimeChanged;
+    }
+
+    private void OnChanged(object sender, TextContentChangedEventArgs args) => Raise();
+    private void OnRuntimeChanged(object sender, EventArgs args) => Raise();
+    private void Raise()
+    {
+        var snapshot = buffer.CurrentSnapshot;
+        TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(new SnapshotSpan(snapshot, 0, snapshot.Length)));
+    }
+}
+
+[Export(typeof(IGlyphFactoryProvider))]
+[Name("Pacmon orphan note glyph")]
+[ContentType("text")]
+[TagType(typeof(PacmonOrphanTag))]
+internal sealed class PacmonOrphanGlyphFactoryProvider : IGlyphFactoryProvider
+{
+    public IGlyphFactory GetGlyphFactory(IWpfTextView view, IWpfTextViewMargin margin) => new PacmonOrphanGlyphFactory();
+}
+
+internal sealed class PacmonOrphanGlyphFactory : IGlyphFactory
+{
+    public UIElement? GenerateGlyph(IWpfTextViewLine line, IGlyphTag tag) => tag is PacmonOrphanTag orphan
+        ? new TextBlock
+        {
+            Text = "?",
+            ToolTip = $"No current NuGet declaration matches {orphan.PackageName}. The note is kept as an orphan.",
+            Foreground = Brushes.Gray,
+            FontWeight = FontWeights.SemiBold,
+        }
+        : null;
+}
+
+[Export(typeof(IViewTaggerProvider))]
+[Name("Pacmon inline dependency notes")]
+[ContentType("text")]
+[TextViewRole(PredefinedTextViewRoles.Document)]
+[TagType(typeof(IntraTextAdornmentTag))]
+internal sealed class PacmonInlineAdornmentProvider : IViewTaggerProvider
+{
+    public ITagger<T>? CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
+    {
+        if (textView is not IWpfTextView wpfTextView || textView.TextBuffer != buffer) return null;
+        return wpfTextView.Properties.GetOrCreateSingletonProperty(
+            () => new PacmonInlineAdornmentTagger(wpfTextView, buffer)) as ITagger<T>;
+    }
+}
+
+internal sealed class PacmonInlineAdornmentTagger : ITagger<IntraTextAdornmentTag>, IDisposable
+{
+    private readonly IWpfTextView view;
+    private readonly ITextBuffer buffer;
+    private readonly PacmonRuntime? runtime;
+
+    public PacmonInlineAdornmentTagger(IWpfTextView view, ITextBuffer buffer)
+    {
+        this.view = view;
+        this.buffer = buffer;
+        runtime = PacmonRuntime.Current;
+        runtime?.RegisterBuffer(buffer);
+        buffer.Changed += OnBufferChanged;
+        view.Closed += OnClosed;
+        if (runtime is not null) runtime.Changed += OnRuntimeChanged;
+    }
+
+    public event EventHandler<SnapshotSpanEventArgs>? TagsChanged;
+
+    public IEnumerable<ITagSpan<IntraTextAdornmentTag>> GetTags(NormalizedSnapshotSpanCollection spans)
+    {
+        if (spans.Count == 0
+            || runtime is null
+            || !EditorFeatureHelpers.IsManifest(buffer, out _, out var path))
+            yield break;
+        var snapshot = spans[0].Snapshot;
+        foreach (var dependency in runtime.Dependencies(buffer))
+        {
+            var documented = runtime.TryGetLayers(path, dependency.NoteKey, out var layers);
+            if (!runtime.Options.MarginIcon
+                && (!documented || runtime.Options.Decorations == DecorationMode.Off))
+                continue;
+            var anchor = Math.Min(dependency.PrimaryRange.Offset + dependency.PrimaryRange.Length, snapshot.Length);
+            if (anchor < snapshot.Length && (snapshot[anchor] == '"' || snapshot[anchor] == '\'')) anchor++;
+            if (!spans.Any(span => anchor >= span.Start.Position && anchor <= span.End.Position)) continue;
+            var adornment = CreateAdornment(path, dependency, documented, layers);
+            var span = new SnapshotSpan(snapshot, new Span(anchor, 0));
+            yield return new TagSpan<IntraTextAdornmentTag>(
+                span,
+                new IntraTextAdornmentTag(adornment, null, PositionAffinity.Predecessor));
+        }
+    }
+
+    public void Dispose() => Detach();
+
+    private FrameworkElement CreateAdornment(
+        string manifestPath,
+        DependencyEntry dependency,
+        bool documented,
+        SectionLayers layers)
+    {
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        if (runtime!.Options.MarginIcon)
+            panel.Children.Add(CreatePacmonIcon(manifestPath, dependency, documented));
+        if (documented && runtime.Options.Decorations != DecorationMode.Off)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = runtime.Options.Decorations == DecorationMode.Badge
+                    ? "note"
+                    : Notes.Preview(layers, runtime.Options.InlineSource),
+                Foreground = SystemColors.GrayTextBrush,
+                Opacity = 0.85,
+                Margin = new Thickness(3, 0, 3, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                IsHitTestVisible = false,
+            });
+        }
+        return panel;
+    }
+
+    private static FrameworkElement CreatePacmonIcon(
+        string manifestPath,
+        DependencyEntry dependency,
+        bool documented)
+    {
+        var color = documented ? Brushes.DodgerBlue : SystemColors.GrayTextBrush;
+        var canvas = new Canvas
+        {
+            Width = 16,
+            Height = 16,
+            Margin = new Thickness(4, 0, 2, 0),
+            Cursor = Cursors.Hand,
+            ToolTip = documented ? "Edit dependency note" : "Add dependency note",
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        AddBar(canvas, 4, 1, 12, 3, color, true);
+        AddBar(canvas, 1, 6.5, 12, 3, color, documented);
+        AddBar(canvas, 1, 12, 12, 3, color, documented);
+        canvas.MouseLeftButtonDown += (_, args) =>
+        {
+            args.Handled = true;
+            ThreadHelper.JoinableTaskFactory.Run(() =>
+                PacmonRuntime.Current!.AddOrEditAsync(manifestPath, dependency.NoteKey));
+        };
+        return canvas;
+    }
+
+    private static void AddBar(
+        Panel canvas,
+        double left,
+        double top,
+        double width,
+        double height,
+        Brush color,
+        bool filled)
+    {
+        var bar = new Rectangle
+        {
+            Width = width,
+            Height = height,
+            Fill = filled ? color : Brushes.Transparent,
+            Stroke = color,
+            StrokeThickness = filled ? 0 : 1,
+            SnapsToDevicePixels = true,
+        };
+        Canvas.SetLeft(bar, left);
+        Canvas.SetTop(bar, top);
+        canvas.Children.Add(bar);
+    }
+
+    private void OnBufferChanged(object sender, TextContentChangedEventArgs args) => Raise();
+    private void OnRuntimeChanged(object sender, EventArgs args) => Raise();
+    private void OnClosed(object sender, EventArgs args)
+    {
+        Detach();
+        view.Properties.RemoveProperty(typeof(PacmonInlineAdornmentTagger));
+    }
+
+    private void Detach()
+    {
+        buffer.Changed -= OnBufferChanged;
+        view.Closed -= OnClosed;
+        if (runtime is not null) runtime.Changed -= OnRuntimeChanged;
+    }
+
+    private void Raise()
+    {
+        var snapshot = buffer.CurrentSnapshot;
+        TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(new SnapshotSpan(snapshot, 0, snapshot.Length)));
+    }
+}
+
+[Export(typeof(IMouseProcessorProvider))]
+[Name("Pacmon dependency navigation")]
+[ContentType("text")]
+[TextViewRole(PredefinedTextViewRoles.Interactive)]
+internal sealed class PacmonMouseProcessorProvider : IMouseProcessorProvider
+{
+    public IMouseProcessor GetAssociatedProcessor(IWpfTextView wpfTextView) => new PacmonMouseProcessor(wpfTextView);
+}
+
+internal sealed class PacmonMouseProcessor : MouseProcessorBase
+{
+    private readonly IWpfTextView view;
+    public PacmonMouseProcessor(IWpfTextView view) => this.view = view;
+
+    public override void PreprocessMouseLeftButtonDown(MouseButtonEventArgs args)
+    {
+        var runtime = PacmonRuntime.Current;
+        if (runtime is null || !runtime.Options.Navigation || Keyboard.Modifiers != ModifierKeys.Control) return;
+        var point = args.GetPosition(view.VisualElement);
+        var line = view.TextViewLines.GetTextViewLineContainingYCoordinate(point.Y + view.ViewportTop);
+        var bufferPoint = line?.GetBufferPositionFromXCoordinate(point.X + view.ViewportLeft);
+        if (!bufferPoint.HasValue
+            || !EditorFeatureHelpers.IsManifest(view.TextBuffer, out _, out var path)) return;
+        var dependency = EditorFeatureHelpers.DependencyAt(view.TextBuffer, bufferPoint.Value.Position);
+        if (dependency is null) return;
+        args.Handled = true;
+        ThreadHelper.JoinableTaskFactory.Run(() => runtime.NavigateToNoteAsync(path, dependency.NoteKey));
+    }
+}
+
+[Export(typeof(ITaggerProvider))]
+[ContentType("text")]
+[TagType(typeof(IErrorTag))]
+internal sealed class PacmonErrorTaggerProvider : ITaggerProvider
+{
+    public ITagger<T>? CreateTagger<T>(ITextBuffer buffer) where T : ITag => new PacmonErrorTagger(buffer) as ITagger<T>;
+}
+
+internal sealed class PacmonErrorTagger : ITagger<IErrorTag>, IDisposable
+{
+    private readonly ITextBuffer buffer;
+    private readonly PacmonRuntime? runtime;
+    public PacmonErrorTagger(ITextBuffer buffer)
+    {
+        this.buffer = buffer;
+        runtime = PacmonRuntime.Current;
+        runtime?.RegisterBuffer(buffer);
+        buffer.Changed += OnChanged;
+        if (runtime is not null) runtime.Changed += OnRuntimeChanged;
+    }
+
+    public event EventHandler<SnapshotSpanEventArgs>? TagsChanged;
+
+    public IEnumerable<ITagSpan<IErrorTag>> GetTags(NormalizedSnapshotSpanCollection spans)
+    {
+        if (spans.Count == 0 || runtime is null) yield break;
+        var snapshot = spans[0].Snapshot;
+        foreach (var finding in runtime.LintNotesBuffer(buffer))
+        {
+            if (finding.Line < 0 || finding.Line >= snapshot.LineCount) continue;
+            var line = snapshot.GetLineFromLineNumber(finding.Line);
+            var start = Math.Min(line.End.Position, line.Start.Position + Math.Max(0, finding.StartColumn));
+            var end = finding.EndColumn > finding.StartColumn
+                ? Math.Min(line.End.Position, line.Start.Position + finding.EndColumn)
+                : line.End.Position;
+            var safeStart = start;
+            var safeEnd = Math.Min(snapshot.Length, Math.Max(start + 1, end));
+            if (safeEnd == safeStart && safeStart > 0) safeStart--;
+            var span = new SnapshotSpan(snapshot, Span.FromBounds(safeStart, safeEnd));
+            if (spans.IntersectsWith(span))
+                yield return new TagSpan<IErrorTag>(span, new ErrorTag(PredefinedErrorTypeNames.Warning, finding.Message));
+        }
+    }
+
+    public void Dispose()
+    {
+        buffer.Changed -= OnChanged;
+        if (runtime is not null) runtime.Changed -= OnRuntimeChanged;
+    }
+
+    private void OnChanged(object sender, TextContentChangedEventArgs args) => Raise();
+    private void OnRuntimeChanged(object sender, EventArgs args) => Raise();
+    private void Raise()
+    {
+        var snapshot = buffer.CurrentSnapshot;
+        TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(new SnapshotSpan(snapshot, 0, snapshot.Length)));
+    }
+}
+
+[Export(typeof(ISuggestedActionsSourceProvider))]
+[Name("Pacmon dependency note actions")]
+[ContentType("text")]
+internal sealed class PacmonSuggestedActionsProvider : ISuggestedActionsSourceProvider
+{
+    public ISuggestedActionsSource CreateSuggestedActionsSource(ITextView textView, ITextBuffer textBuffer) =>
+        new PacmonSuggestedActionsSource(textView, textBuffer);
+}
+
+internal sealed class PacmonSuggestedActionsSource : ISuggestedActionsSource
+{
+    private readonly ITextView view;
+    private readonly ITextBuffer buffer;
+    public PacmonSuggestedActionsSource(ITextView view, ITextBuffer buffer)
+    {
+        this.view = view;
+        this.buffer = buffer;
+    }
+
+    public event EventHandler<EventArgs> SuggestedActionsChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public void Dispose()
+    {
+    }
+
+    public Task<bool> HasSuggestedActionsAsync(ISuggestedActionCategorySet requestedActionCategories, SnapshotSpan range, CancellationToken cancellationToken) =>
+        Task.FromResult(ActionAt(range.Start.Position) is not null);
+
+    public IEnumerable<SuggestedActionSet> GetSuggestedActions(
+        ISuggestedActionCategorySet requestedActionCategories,
+        SnapshotSpan range,
+        CancellationToken cancellationToken)
+    {
+        var action = ActionAt(range.Start.Position);
+        return action is null
+            ? Array.Empty<SuggestedActionSet>()
+            : new[]
+            {
+                new SuggestedActionSet(
+                    PredefinedSuggestedActionCategoryNames.Any,
+                    new[] { action },
+                    null,
+                    SuggestedActionSetPriority.Medium,
+                    range.Span),
+            };
+    }
+
+    public bool TryGetTelemetryId(out Guid telemetryId)
+    {
+        telemetryId = Guid.Empty;
+        return false;
+    }
+
+    private ISuggestedAction? ActionAt(int position)
+    {
+        var runtime = PacmonRuntime.Current;
+        if (runtime is null || !runtime.Options.QuickAction) return null;
+        runtime.RegisterBuffer(buffer);
+        var documentPath = runtime.PathFor(buffer);
+        if (documentPath is not null && PacmonRuntime.IsNotesPath(documentPath))
+        {
+            var line = buffer.CurrentSnapshot.GetLineFromPosition(Math.Min(position, buffer.CurrentSnapshot.Length));
+            return runtime.LintNotesBuffer(buffer).Any(finding => finding.Line == line.LineNumber)
+                ? new PacmonNormalizeSuggestedAction(documentPath)
+                : null;
+        }
+        if (!EditorFeatureHelpers.IsManifest(buffer, out _, out var path)) return null;
+        var dependency = EditorFeatureHelpers.DependencyAt(buffer, position);
+        return dependency is null ? null : new PacmonSuggestedAction(path, dependency);
+    }
+}
+
+internal sealed class PacmonSuggestedAction : ISuggestedAction
+{
+    private readonly string path;
+    private readonly DependencyEntry dependency;
+    public PacmonSuggestedAction(string path, DependencyEntry dependency)
+    {
+        this.path = path;
+        this.dependency = dependency;
+    }
+
+    public string DisplayText => $"Add/Edit dependency note for {dependency.DisplayName}";
+    public ImageMoniker IconMoniker => KnownMonikers.Note;
+    public string IconAutomationText => "Pacmon dependency note";
+    public string InputGestureText => string.Empty;
+    public bool HasActionSets => false;
+    public bool HasPreview => false;
+    public Task<IEnumerable<SuggestedActionSet>?> GetActionSetsAsync(CancellationToken cancellationToken) =>
+        Task.FromResult<IEnumerable<SuggestedActionSet>?>(null);
+    public Task<object?> GetPreviewAsync(CancellationToken cancellationToken) => Task.FromResult<object?>(null);
+    public void Invoke(CancellationToken cancellationToken) =>
+        ThreadHelper.JoinableTaskFactory.Run(() => PacmonRuntime.Current!.AddOrEditAsync(path, dependency.NoteKey));
+    public bool TryGetTelemetryId(out Guid telemetryId)
+    {
+        telemetryId = Guid.Empty;
+        return false;
+    }
+    public void Dispose()
+    {
+    }
+}
+
+internal sealed class PacmonNormalizeSuggestedAction : ISuggestedAction
+{
+    private readonly string path;
+    public PacmonNormalizeSuggestedAction(string path) => this.path = path;
+    public string DisplayText => "Format NuGet dependency notes";
+    public ImageMoniker IconMoniker => KnownMonikers.FormatDocument;
+    public string IconAutomationText => "Format dependency notes";
+    public string InputGestureText => string.Empty;
+    public bool HasActionSets => false;
+    public bool HasPreview => false;
+    public Task<IEnumerable<SuggestedActionSet>?> GetActionSetsAsync(CancellationToken cancellationToken) =>
+        Task.FromResult<IEnumerable<SuggestedActionSet>?>(null);
+    public Task<object?> GetPreviewAsync(CancellationToken cancellationToken) => Task.FromResult<object?>(null);
+    public void Invoke(CancellationToken cancellationToken) =>
+        ThreadHelper.JoinableTaskFactory.Run(() => PacmonRuntime.Current!.NormalizeNotesAsync(path));
+    public bool TryGetTelemetryId(out Guid telemetryId)
+    {
+        telemetryId = Guid.Empty;
+        return false;
+    }
+    public void Dispose()
+    {
+    }
+}

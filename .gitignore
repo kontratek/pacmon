@@ -11,6 +11,8 @@ jetbrains/build/
 jetbrains/.idea/
 jetbrains/out/
 jetbrains/README.md
+visualstudio/**/bin/
+visualstudio/**/obj/
 
 # JetBrains plugin build artifacts
 jetbrains/.gradle/

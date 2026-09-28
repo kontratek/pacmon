@@ -57,6 +57,55 @@ jobs:
           name: pacmon-jetbrains
           path: jetbrains/build/distributions/*.zip
 
+  visualstudio:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 9.0.x
+      - uses: microsoft/setup-msbuild@v2
+      - run: dotnet restore visualstudio/Pacmon.VisualStudio.sln
+      - run: dotnet test visualstudio/Pacmon.Core.Tests/Pacmon.Core.Tests.csproj --no-restore --nologo
+      - run: dotnet test visualstudio/Pacmon.VisualStudio.Tests/Pacmon.VisualStudio.Tests.csproj --no-restore --nologo -p:CreateVsixContainer=false -p:DeployExtension=false -m:1
+      - run: msbuild visualstudio/Pacmon.VisualStudio/Pacmon.VisualStudio.csproj /restore /t:Build /p:Configuration=Release /p:DeployExtension=false /p:CreateVsixContainer=true /m:1
+      - name: Verify Visual Studio VSIX
+        shell: pwsh
+        run: |
+          $vsix = Resolve-Path visualstudio/Pacmon.VisualStudio/bin/Release/net472/pacmon-visualstudio.vsix
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($vsix)
+          try {
+            $names = @($archive.Entries | ForEach-Object FullName)
+            foreach ($required in @('extension.vsixmanifest', 'Pacmon.VisualStudio.dll', 'Pacmon.Core.dll', 'Pacmon.VisualStudio.pkgdef', 'Assets/icon.png')) {
+              if ($required -notin $names) { throw "VSIX is missing $required" }
+            }
+            $entry = $archive.GetEntry('extension.vsixmanifest')
+            $reader = [System.IO.StreamReader]::new($entry.Open())
+            try { $manifest = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($manifest -notmatch 'Id="dev\.pacmon\.visualstudio"') { throw 'VSIX identity is wrong.' }
+            if ($manifest -notmatch 'Version="\[17\.0,\)"') { throw 'VSIX does not target Visual Studio 17.0+.' }
+            if ($manifest -notmatch '<ProductArchitecture>amd64</ProductArchitecture>' -or
+                $manifest -notmatch '<ProductArchitecture>arm64</ProductArchitecture>') {
+              throw 'VSIX architecture targets are incomplete.'
+            }
+            $entry = $archive.GetEntry('Pacmon.VisualStudio.pkgdef')
+            $reader = [System.IO.StreamReader]::new($entry.Open())
+            try { $pkgdef = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($pkgdef -notmatch '"CodeBase"="\$PackageFolder\$\\Pacmon\.VisualStudio\.dll"') {
+              throw 'VSIX package registration does not point to Pacmon.VisualStudio.dll.'
+            }
+            if ($pkgdef -notmatch '"Style"="Tabbed"' -or
+                $pkgdef -notmatch '"Window"="3ae79031-e1bc-11d0-8f78-00a0c9110057"') {
+              throw 'Pacmon tool window is not docked with Solution Explorer by default.'
+            }
+          }
+          finally { $archive.Dispose() }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pacmon-visualstudio-vsix
+          path: visualstudio/Pacmon.VisualStudio/bin/Release/net472/pacmon-visualstudio.vsix
+
   # The IntelliJ Plugin Verifier, against the build target and the newest
   # release of every later IDE branch (pluginVerification.ides in
   # jetbrains/build.gradle.kts). The Marketplace approval guidelines ask for

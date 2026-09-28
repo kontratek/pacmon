@@ -3,15 +3,22 @@
 Pacmon is published by the Release workflow, never from a laptop. Merging a pull
 request publishes nothing; a release is a button. The run raises the version,
 names the CHANGELOG's "Unreleased" section, runs the whole test suite, builds one
-VSIX and one JetBrains plugin zip, pushes the version commit and its tag to
-`main`, sends the VSIX to the Visual Studio Marketplace and to Open VSX, submits
+VS Code VSIX and one JetBrains plugin zip, pushes the version commit and its tag to
+`main`, sends that VSIX to the VS Code area of the Visual Studio Marketplace and to Open VSX, submits
 the zip to the JetBrains Marketplace, and attaches both to a GitHub Release.
 
 The JetBrains plugin takes its version from `package.json` and its change notes
 from the CHANGELOG section of that version (`jetbrains/build.gradle.kts`), so one
-version number and one set of notes serve all three registries. The JetBrains
+version number and one set of notes serve all three current registries. The JetBrains
 Marketplace lists a version only after its own review, normally within two
 business days; the run does not wait for that.
+
+The repository also builds a separate `pacmon-visualstudio.vsix` for Microsoft
+Visual Studio 2022+. Its VSIX identity is `dev.pacmon.visualstudio`, and its
+version is read from the same root `package.json`. For now the Windows CI job
+uploads it only as an artifact: it is not sent to either VS Code registry or to
+a Visual Studio Marketplace listing. The existing `pacmon.vsix` remains the VS
+Code/Open VSX package.
 
 ## One-time setup
 

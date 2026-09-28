@@ -21,6 +21,8 @@ Notes live in Markdown files under `.pacmon/`, next to the manifest they describ
 | Python | `pyproject.toml`, `requirements*.txt`, `requirements/*.txt` | `.pacmon/python/DEPENDENCY-NOTES.md` | the normalized distribution name: `## requests`, `## importlib-metadata` |
 | .NET / NuGet | `*.csproj`, `*.fsproj`, `*.vbproj`, `Directory.Packages.props` | `.pacmon/nuget/DEPENDENCY-NOTES.md` | the case-insensitive package ID as written: `## Newtonsoft.Json` |
 
+VS Code and JetBrains support every manifest in the table. The Visual Studio 2022+ VSIX currently supports the .NET/NuGet row only and reads the same `.pacmon/nuget/DEPENDENCY-NOTES.md` files, so notes move between all three IDEs without conversion.
+
 Pacmon reads a manifest as text and never runs npm, Cargo, Maven, Gradle, Mix, Zig, Python, pip, Poetry, uv, .NET, MSBuild or NuGet. It sees the direct dependencies written in the file:
 
 - **npm:** `dependencies`, `devDependencies`, `peerDependencies` and `optionalDependencies`.
@@ -73,7 +75,7 @@ generated, and nothing is cached anywhere else.
 
 ## Getting started
 
-1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon). VSCodium, Cursor, Windsurf, code-server and other editors that use [Open VSX](https://open-vsx.org/extension/kontra/pacmon) install it from there. Rider, IntelliJ IDEA, RustRover, Android Studio, WebStorm and the other JetBrains IDEs install it from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34295-pacmon).
+1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon). VSCodium, Cursor, Windsurf, code-server and other editors that use [Open VSX](https://open-vsx.org/extension/kontra/pacmon) install it from there. Rider, IntelliJ IDEA, RustRover, Android Studio, WebStorm and the other JetBrains IDEs install it from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34295-pacmon). Visual Studio 2022+ users can install `pacmon-visualstudio.vsix` from the Windows CI artifact while its separate Marketplace listing is prepared.
 2. Open a supported manifest, such as `package.json`, `Cargo.toml`, `pom.xml`, `build.gradle`, `mix.exs`, `build.zig.zon`, `pyproject.toml`, `Directory.Packages.props` or a .NET project file. A hollow mark appears before every dependency that has no note yet.
 3. Right-click a dependency and choose **Pacmon: Add/Edit Dependency Note**, or click the mark. Write one line.
 4. The note now shows on hover and at the end of the line. Pacmon created the notes file for that ecosystem next to the manifest, and `.pacmon/AGENT-RULES.md` at the root of the workspace; commit them together with the manifest.
@@ -100,9 +102,11 @@ Pacmon does not call any AI service. Agents use their own tools; Pacmon gives th
 
 The **Pacmon** view in the activity bar switches these without opening the settings editor.
 
+Visual Studio exposes the corresponding choices in **Tools → Options → Pacmon** and in its Pacmon tool window, which opens beside Solution Explorer. Its native entry modes are `ToolWindow`, `QuickInput` and `OpenBeside`; it also provides Quick Info, a clickable Pacmon mark beside each package ID, inline previews, Ctrl+click navigation and Quick Actions in NuGet manifests.
+
 ## Requirements
 
-VS Code 1.100 or newer, or a JetBrains IDE 2025.2 or newer. Nothing else: Pacmon reads the manifests itself, so it needs no language runtime or package manager installation, and it reads and writes files in your workspace without making network requests. In VS Code it also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
+VS Code 1.100 or newer, a JetBrains IDE 2025.2 or newer, or Visual Studio 2022 or newer on Windows. Nothing else: Pacmon reads the manifests itself, so it needs no language runtime or package manager installation, and it reads and writes files in your workspace without making network requests. In VS Code it also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
 
 ## Format reference
 

@@ -1,6 +1,6 @@
 # The dependency notes formats
 
-Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, Gradle, Mix, Zig, Python, and NuGet files use `dependency-notes/2`. These ecosystems are supported by both VS Code and JetBrains. See [Versioning](#versioning).
+Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, Gradle, Mix, Zig, Python, and NuGet files use `dependency-notes/2`. VS Code and JetBrains support every listed ecosystem; Visual Studio 2022+ currently supports NuGet and reads and writes the identical `dependency-notes/2` file. See [Versioning](#versioning).
 
 ## The notes file
 
