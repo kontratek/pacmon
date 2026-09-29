@@ -7,12 +7,12 @@
 
 ## Unreleased
 
-- **Pacmon supports Gleam projects in VS Code.** Direct dependencies in the
+- **Pacmon supports Gleam projects in VS Code and JetBrains IDEs.** Direct dependencies in the
   `[dependencies]` and `[dev_dependencies]` tables of `gleam.toml` get markers,
   hover, note editing and coverage backed by `.pacmon/gleam/DEPENDENCY-NOTES.md`.
   Version, Hex, Git and path declarations are read statically; Pacmon never runs
-  Gleam, reads `manifest.toml` or resolves transitive packages. JetBrains support
-  remains a later step.
+  Gleam, reads `manifest.toml` or resolves transitive packages. JetBrains uses
+  the same behavior without requiring Gleam or a Gleam language plugin.
 
 - **Pacmon is on the Visual Studio Marketplace.** Visual Studio 2022 and newer
   install it from

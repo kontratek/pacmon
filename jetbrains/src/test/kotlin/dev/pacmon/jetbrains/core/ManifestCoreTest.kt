@@ -9,7 +9,7 @@ class ManifestCoreTest {
     @Test
     fun `registry matches only supported manifests in priority order`() {
         assertEquals(
-            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "build.zig.zon", "pyproject.toml", "requirements.txt", "Directory.Packages.props", "go.mod"),
+            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "gleam.toml", "build.zig.zon", "pyproject.toml", "requirements.txt", "Directory.Packages.props", "go.mod"),
             ManifestRegistry.adapters.flatMap { it.fileNames },
         )
         assertEquals(ManifestKind.NPM, ManifestRegistry.forFileName("package.json")?.kind)
@@ -18,6 +18,7 @@ class ManifestCoreTest {
         assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle.kts")?.kind)
         assertEquals(ManifestKind.GRADLE, ManifestRegistry.forFileName("build.gradle")?.kind)
         assertEquals(ManifestKind.MIX, ManifestRegistry.forFileName("mix.exs")?.kind)
+        assertEquals(ManifestKind.GLEAM, ManifestRegistry.forFileName("gleam.toml")?.kind)
         assertEquals(ManifestKind.ZIG, ManifestRegistry.forFileName("build.zig.zon")?.kind)
         assertEquals(ManifestKind.PYTHON, ManifestRegistry.forFileName("pyproject.toml")?.kind)
         assertEquals(ManifestKind.PYTHON, ManifestRegistry.forFileName("requirements-dev.txt")?.kind)
@@ -245,6 +246,7 @@ class ManifestCoreTest {
         assertTrue(MavenManifestAdapter.extractDependencies("<project><dependencies><dependency>").isEmpty())
         assertTrue(GradleManifestAdapter.extractDependencies("dependencies { implementation(\"g:a:1\")").isEmpty())
         assertTrue(MixManifestAdapter.extractDependencies("defp deps do [{:phoenix, \"~> 1.8\"}").isEmpty())
+        assertTrue(GleamManifestAdapter.extractDependencies("[dependencies").isEmpty())
         assertTrue(ZigManifestAdapter.extractDependencies(".{ .dependencies =").isEmpty())
     }
 

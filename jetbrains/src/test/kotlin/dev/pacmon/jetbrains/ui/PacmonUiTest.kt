@@ -160,6 +160,26 @@ class PacmonUiTest : BasePlatformTestCase() {
         assertEquals("1 dependency has no note yet.", coverage.status)
     }
 
+    fun testDashboardCoverageReadsGleamDependenciesAndNotes() {
+        val manifest = myFixture.tempDirFixture.createFile(
+            "apps/gleam/gleam.toml",
+            "[dependencies]\ngleam_stdlib = \"1\"\ngleam_http = { version = \"4\" }",
+        )
+        myFixture.tempDirFixture.createFile(
+            "apps/gleam/.pacmon/gleam/DEPENDENCY-NOTES.md",
+            "---\nformat: dependency-notes/2\necosystem: gleam\nlang: en\n---\n# Dependency Notes\n\n## gleam_stdlib\n\nStandard library\n",
+        )
+        myFixture.configureFromExistingVirtualFile(manifest)
+        val dashboard = PacmonDashboardPanel(project)
+        dashboard.refresh()
+
+        val coverage = dashboard.coverageForTest()
+        assertEquals("1 of 2", coverage.ratio)
+        assertTrue(coverage.packagePath.endsWith("apps/gleam/gleam.toml"))
+        assertEquals(50, coverage.percent)
+        assertEquals("1 dependency has no note yet.", coverage.status)
+    }
+
     fun testDashboardCoverageAggregatesCentralAndProjectNugetDependencies() {
         myFixture.tempDirFixture.createFile(
             "Directory.Packages.props",
