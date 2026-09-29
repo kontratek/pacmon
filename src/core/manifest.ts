@@ -4,6 +4,7 @@ import { extractMavenDependencies } from './mavenManifest';
 import { extractNpmDependencies } from './packageJson';
 import { extractGradleDependencies } from './gradleManifest';
 import { extractMixDependencies } from './mixManifest';
+import { extractGleamDependencies } from './gleam-manifest';
 import { extractZigDependencies } from './zig-manifest';
 import {
   extractPyprojectDependencies,
@@ -94,6 +95,15 @@ export const MANIFEST_ADAPTERS: readonly ManifestAdapter[] = [
     notesRelativePath: '.pacmon/mix/DEPENDENCY-NOTES.md',
     matchesPath: exactPathMatcher(['mix.exs']),
     extractDependencies: extractMixDependencies,
+    normalizeNoteKey: tolerantKey,
+  },
+  {
+    kind: 'gleam',
+    fileNames: ['gleam.toml'],
+    discoveryGlobs: exactDiscoveryGlobs(['gleam.toml']),
+    notesRelativePath: '.pacmon/gleam/DEPENDENCY-NOTES.md',
+    matchesPath: exactPathMatcher(['gleam.toml']),
+    extractDependencies: extractGleamDependencies,
     normalizeNoteKey: tolerantKey,
   },
   {

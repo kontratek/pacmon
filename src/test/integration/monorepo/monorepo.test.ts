@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-// Runs in a copy of fixtures/monorepo: npm, Mix, Zig and Python manifests with
+// Runs in a copy of fixtures/monorepo: npm, Mix, Gleam, Zig and Python manifests with
 // nested notes files, plus downloaded/cache manifests discovery must ignore.
 
 function at(...parts: string[]): vscode.Uri {
@@ -67,6 +67,20 @@ async function mixHoverText(manifest: vscode.Uri, dep: string): Promise<string> 
     .flatMap((h) => h.contents)
     .map((c) => (typeof c === 'string' ? c : c.value))
     .join('\n');
+}
+
+async function gleamHoverText(manifest: vscode.Uri, dep: string): Promise<string> {
+  const doc = await vscode.workspace.openTextDocument(manifest);
+  await vscode.window.showTextDocument(doc);
+  const offset = doc.getText().indexOf(dep);
+  assert.ok(offset >= 0, `${dep} is not in ${manifest.path}`);
+  const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+    'vscode.executeHoverProvider',
+    manifest,
+    doc.positionAt(offset + 2),
+  );
+  return (hovers ?? []).flatMap((hover) => hover.contents)
+    .map((content) => typeof content === 'string' ? content : content.value).join('\n');
 }
 
 async function zigHoverText(manifest: vscode.Uri, dep: string): Promise<string> {
@@ -181,6 +195,16 @@ suite('pacmon monorepo', () => {
     });
     assert.ok(web.includes('Web child note: nearest Mix file wins.'), web);
     assert.ok(!web.includes('Root umbrella web note'), 'the root Mix note must not leak into the web child');
+  });
+
+  test('a nested Gleam manifest uses its nearest Gleam notes', async function () {
+    this.timeout(20000);
+    const text = await poll(async () => {
+      const value = await gleamHoverText(at('apps', 'gleam-app', 'gleam.toml'), 'shared_gleam');
+      return value.includes('Nested Gleam note') ? value : undefined;
+    });
+    assert.ok(text.includes('.pacmon/gleam/DEPENDENCY-NOTES.md'), text);
+    assert.ok(!text.includes('Root Gleam note'), 'the root Gleam note must not leak into the nested project');
   });
 
   test('a nested Zig manifest uses its nearest Zig notes', async function () {
@@ -301,6 +325,20 @@ suite('pacmon monorepo', () => {
         return value.includes('Root umbrella web note') ? value : undefined;
       });
       assert.ok(!text.includes('Web child note'), 'rootOnly must ignore the child Mix notes file');
+    } finally {
+      await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test('pacmon.monorepo = rootOnly makes a nested Gleam manifest use root Gleam notes', async function () {
+    this.timeout(20000);
+    await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
+    try {
+      const text = await poll(async () => {
+        const value = await gleamHoverText(at('apps', 'gleam-app', 'gleam.toml'), 'shared_gleam');
+        return value.includes('Root Gleam note') ? value : undefined;
+      });
+      assert.ok(!text.includes('Nested Gleam note'), 'rootOnly must ignore the child Gleam notes file');
     } finally {
       await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
     }

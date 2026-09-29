@@ -1,0 +1,5 @@
+name = "nested_gleam_fixture"
+version = "1.0.0"
+
+[dependencies]
+shared_gleam = "~> 1.0"
