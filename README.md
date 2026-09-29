@@ -23,7 +23,7 @@ Notes live in Markdown files under `.pacmon/`, next to the manifest they describ
 | .NET / NuGet | `*.csproj`, `*.fsproj`, `*.vbproj`, `Directory.Packages.props` | `.pacmon/nuget/DEPENDENCY-NOTES.md` | the case-insensitive package ID as written: `## Newtonsoft.Json` |
 | Go | `go.mod` | `.pacmon/go/DEPENDENCY-NOTES.md` | the module path: `## github.com/spf13/cobra`, `## github.com/jackc/pgx/v5` |
 
-VS Code and JetBrains support every manifest in the table. The Visual Studio 2022+ VSIX currently supports the .NET/NuGet row only and reads the same `.pacmon/nuget/DEPENDENCY-NOTES.md` files, so notes move between all three IDEs without conversion.
+VS Code and JetBrains support every manifest in the table. The Visual Studio extension, for Visual Studio 2022 and newer, currently supports the .NET/NuGet row only and reads the same `.pacmon/nuget/DEPENDENCY-NOTES.md` files, so notes move between all three IDEs without conversion.
 
 Pacmon reads a manifest as text and never runs npm, Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, pip, Poetry, uv, Go, .NET, MSBuild or NuGet. It sees the direct dependencies written in the file:
 
@@ -77,6 +77,10 @@ generated, and nothing is cached anywhere else.
 - **Documentation Coverage** lists which dependencies have a note and which do not.
 - Problems in the notes file show as warnings, most with a one-click fix.
 
+## Dependency review and allowlisting
+
+A notes file can serve as the allowlist of the packages a project has reviewed and accepted. Each accepted package gets a note that says why it was allowed, and the agent layer records its `risk` (security exposure, native code, licence obligations, maintenance), where it runs (`runtime`), whether it handles untrusted input (`exposure`), and a dated `log` of advisories, upgrades and rejected proposals. A dependency added to a manifest without a note shows a hollow mark and appears in **Documentation Coverage**, so an unreviewed dependency stands out. Pacmon makes it visible; it does not block the dependency.
+
 ## Getting started
 
 1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon). VSCodium, Cursor, Windsurf, code-server and other editors that use [Open VSX](https://open-vsx.org/extension/kontra/pacmon) install it from there. Rider, IntelliJ IDEA, RustRover, Android Studio, WebStorm and the other JetBrains IDEs install it from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34295-pacmon). Visual Studio 2022 and newer install it from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon-visualstudio).
@@ -88,7 +92,7 @@ generated, and nothing is cached anywhere else.
 
 Every section has a second layer, `### Agent notes`, for AI coding agents. They write `- key: value` lines there: `purpose`, `constraint`, `verify`, `log`, `verified` and a few more. Agents never edit the text people wrote.
 
-Run **Pacmon: Set Up AI Instructions** once. It writes the rules and the field list to `.pacmon/AGENT-RULES.md`, and adds a three-line pointer to the instruction files your agents already read: `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/`, `.github/copilot-instructions.md`. The rules say where each ecosystem keeps its notes and how it names its sections. From then on, an agent reads a dependency's section before it adds, upgrades or removes the dependency, and records what it did. Pacmon checks the agent lines: an unknown field or an empty value shows as a warning, with a fix.
+Run **Pacmon: Set Up AI Instructions** once. It writes the rules and the field list to `.pacmon/AGENT-RULES.md` and, in VS Code and JetBrains, adds a three-line pointer to the instruction files your agents already read: `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/`, `.github/copilot-instructions.md`. The rules say where each ecosystem keeps its notes and how it names its sections. From then on, an agent reads a dependency's section before it adds, upgrades or removes the dependency, and records what it did. Pacmon checks the agent lines: an unknown field or an empty value shows as a warning, with a fix.
 
 ![An agent in the terminal fills the notes for react; the package.json line gains its preview and the panel shows the agent lines](docs/media/demo-ai.gif)
 
@@ -114,7 +118,7 @@ VS Code 1.100 or newer, a JetBrains IDE 2025.2 or newer, or Visual Studio 2022 o
 
 ## Format reference
 
-npm notes use the `dependency-notes/1` format. Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, Go and NuGet notes use `dependency-notes/2`, whose frontmatter also names the ecosystem. VS Code and JetBrains support every listed ecosystem, and the Visual Studio VSIX currently supports NuGet. The reference is [`docs/format.md`](docs/format.md).
+npm notes use the `dependency-notes/1` format. Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, Go and NuGet notes use `dependency-notes/2`, whose frontmatter also names the ecosystem. VS Code and JetBrains support every listed ecosystem, and the Visual Studio extension currently supports NuGet. The reference is [`docs/format.md`](docs/format.md).
 
 ## Contributing and license
 

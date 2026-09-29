@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+- **The VS Code and Open VSX pages describe dependency review and
+  allowlisting.** Like the Visual Studio Marketplace page, they say that a notes
+  file can be the allowlist of the packages a project has reviewed and
+  accepted, with their `risk`, `runtime`, `exposure` and advisory `log`, and
+  that a dependency without a note is shown, not blocked. The README also says
+  which editors add the pointer to agent instruction files.
+
 ## 0.9.0 — 2026-09-29
 
 - **Pacmon supports Gleam projects in JetBrains IDEs.** `gleam.toml` gets what
