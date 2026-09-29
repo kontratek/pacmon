@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.8.0 — 2026-09-29
+
 - **Pacmon supports Gleam projects in VS Code.** Direct dependencies in the
   `[dependencies]` and `[dev_dependencies]` tables of `gleam.toml` get markers,
   hover, note editing and coverage backed by `.pacmon/gleam/DEPENDENCY-NOTES.md`.
