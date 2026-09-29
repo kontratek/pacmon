@@ -14,6 +14,8 @@
   Gleam, reads `manifest.toml` or resolves transitive packages. JetBrains support
   remains a later step.
 
+## 0.7.0 — 2026-09-29
+
 - **Pacmon supports .NET/NuGet projects in VS Code, JetBrains/Rider and Microsoft Visual Studio 2022+.** Literal `PackageReference`
   items in `.csproj`, `.fsproj` and `.vbproj` files, plus central
   `PackageVersion` and `GlobalPackageReference` items in
