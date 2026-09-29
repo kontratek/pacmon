@@ -24,6 +24,7 @@ object AiInstructions {
             "`.pacmon/maven/${NotesCore.NOTES_FILE_NAME}` for Maven, " +
             "`.pacmon/gradle/${NotesCore.NOTES_FILE_NAME}` for Gradle, " +
             "`.pacmon/mix/${NotesCore.NOTES_FILE_NAME}` for Mix, " +
+            "`.pacmon/gleam/${NotesCore.NOTES_FILE_NAME}` for Gleam, " +
             "`.pacmon/zig/${NotesCore.NOTES_FILE_NAME}` for Zig, " +
             "`.pacmon/python/${NotesCore.NOTES_FILE_NAME}` for Python, and " +
             "`.pacmon/go/${NotesCore.NOTES_FILE_NAME}` for Go; people write below `## <package>`, " +

@@ -105,6 +105,16 @@ class DependencyPsiTest : BasePlatformTestCase() {
         assertNull(DependencyPsi.atOffset(file, file.text.indexOf("~>")))
     }
 
+    fun testFindsGleamDependencyFromKeyRangeWithoutGleamTooling() {
+        val file = myFixture.configureByText(
+            "gleam.toml",
+            "[dependencies]\ngleam_stdlib = \"1\"\n[dev_dependencies]\ngleeunit = { version = \"1\" }",
+        )
+        assertEquals(listOf("gleam_stdlib", "gleeunit"), DependencyPsi.all(file).map { it.name })
+        assertEquals("gleam_stdlib", DependencyPsi.atOffset(file, file.text.indexOf("gleam_stdlib") + 2)?.name)
+        assertNull(DependencyPsi.atOffset(file, file.text.indexOf("version") + 2))
+    }
+
     fun testFindsZigDependencyFromFieldRangeWithoutZigBrains() {
         val file = myFixture.configureByText(
             "build.zig.zon",

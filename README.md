@@ -32,7 +32,7 @@ Pacmon reads a manifest as text and never runs npm, Cargo, Maven, Gradle, Mix, G
 - **Maven:** the `<dependencies>` of the project and its profiles, not `<dependencyManagement>` or plugin dependencies. Parent POMs are not read.
 - **Gradle:** module coordinates and `libs.*` aliases in a `dependencies` block, not plugins, constraints, `project(…)`, `files(…)` or catalog bundles. The script is never run, so a dependency added by code is not seen.
 - **Elixir / Mix:** literal dependency tuples in `def/defp deps` or an inline `deps: [...]` list, including Hex, Git, path and umbrella dependencies. Static `only` and `targets` options are shown as scopes; dynamically assembled lists are not run or guessed.
-- **Gleam / Hex (VS Code):** direct keys in `[dependencies]` and `[dev_dependencies]` in `gleam.toml`, including version, Hex, Git and path declarations. `manifest.toml`, transitive packages and other tables are not read.
+- **Gleam / Hex:** direct keys in `[dependencies]` and `[dev_dependencies]` in `gleam.toml`, including version, Hex, Git and path declarations. `manifest.toml`, transitive packages and other tables are not read.
 - **Zig:** direct fields of the top-level `.dependencies` struct in `build.zig.zon`, including URL/hash, path and lazy dependencies. `build.zig`, system libraries and transitive dependencies are not evaluated.
 - **Python:** named dependencies in standard project metadata, optional dependencies, dependency groups and build requirements; Poetry dependency tables and groups; uv legacy development dependencies; and named pip requirements. Includes, constraints, tool options, unnamed paths and lock files are not dependencies. Package names are matched case-insensitively with `.`, `_` and `-` treated alike.
 - **.NET / NuGet:** literal `PackageReference Include` items in C#, F# and VB project files; and `PackageVersion Include/Update` plus `GlobalPackageReference Include` items in `Directory.Packages.props`. Package IDs are matched case-insensitively. Imports, MSBuild expressions, project/framework references, downloads and transitive packages are not evaluated.
@@ -114,7 +114,7 @@ VS Code 1.100 or newer, a JetBrains IDE 2025.2 or newer, or Visual Studio 2022 o
 
 ## Format reference
 
-npm notes use the `dependency-notes/1` format. Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, Go and NuGet notes use `dependency-notes/2`, whose frontmatter also names the ecosystem. VS Code supports every listed ecosystem; JetBrains supports every listed ecosystem except Gleam, and the Visual Studio VSIX currently supports NuGet. The reference is [`docs/format.md`](docs/format.md).
+npm notes use the `dependency-notes/1` format. Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, Go and NuGet notes use `dependency-notes/2`, whose frontmatter also names the ecosystem. VS Code and JetBrains support every listed ecosystem, and the Visual Studio VSIX currently supports NuGet. The reference is [`docs/format.md`](docs/format.md).
 
 ## Contributing and license
 

@@ -27,6 +27,7 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             "mix.exs",
             "defmodule Demo.MixProject do\n  defp deps, do: [{:phoenix, \"~> 1.8\"}]\nend",
         )
+        val gleam = myFixture.tempDirFixture.createFile("gleam.toml", "[dependencies]\ngleam_stdlib = \"1\"")
         val zig = myFixture.tempDirFixture.createFile(
             "build.zig.zon",
             ".{ .dependencies = .{ .known_folders = .{ .path = \"../known-folders\" } } }",
@@ -43,6 +44,7 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         myFixture.tempDirFixture.createFile(".pacmon/maven/DEPENDENCY-NOTES.md", "## g:a\n\nmaven\n")
         myFixture.tempDirFixture.createFile(".pacmon/gradle/DEPENDENCY-NOTES.md", "## g:a\n\ngradle\n")
         myFixture.tempDirFixture.createFile(".pacmon/mix/DEPENDENCY-NOTES.md", "## phoenix\n\nmix\n")
+        myFixture.tempDirFixture.createFile(".pacmon/gleam/DEPENDENCY-NOTES.md", "## gleam_stdlib\n\ngleam\n")
         myFixture.tempDirFixture.createFile(".pacmon/zig/DEPENDENCY-NOTES.md", "## known_folders\n\nzig\n")
         myFixture.tempDirFixture.createFile(".pacmon/python/DEPENDENCY-NOTES.md", "## requests\n\npython\n")
         myFixture.tempDirFixture.createFile(".pacmon/nuget/DEPENDENCY-NOTES.md", "## newtonsoft.json\n\nnuget\n")
@@ -52,11 +54,13 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         assertTrue(service().resolveNotesFile(maven)!!.path.endsWith(".pacmon/maven/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(gradle)!!.path.endsWith(".pacmon/gradle/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(mix)!!.path.endsWith(".pacmon/mix/DEPENDENCY-NOTES.md"))
+        assertTrue(service().resolveNotesFile(gleam)!!.path.endsWith(".pacmon/gleam/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(zig)!!.path.endsWith(".pacmon/zig/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(python)!!.path.endsWith(".pacmon/python/DEPENDENCY-NOTES.md"))
         assertTrue(service().resolveNotesFile(nuget)!!.path.endsWith(".pacmon/nuget/DEPENDENCY-NOTES.md"))
         assertEquals("cargo", service().noteFor(cargo, "serde")?.layers?.human)
         assertEquals("mix", service().noteFor(mix, "phoenix")?.layers?.human)
+        assertEquals("gleam", service().noteFor(gleam, "gleam_stdlib")?.layers?.human)
         assertEquals("zig", service().noteFor(zig, "known_folders")?.layers?.human)
         assertEquals("python", service().noteFor(python, "requests")?.layers?.human)
         assertEquals("nuget", service().noteFor(nuget, "Newtonsoft.Json")?.layers?.human)
@@ -93,6 +97,11 @@ class ManifestResolutionTest : BasePlatformTestCase() {
             "defmodule Demo.MixProject do\n  defp deps, do: [{:phoenix, \"~> 1.8\"}]\nend",
         )
         val mixNotes = service().saveNoteLayers(mix, "phoenix", "Framework", "")
+        val gleam = myFixture.tempDirFixture.createFile(
+            "gleam.toml",
+            "[dependencies]\ngleam_stdlib = \"1\"",
+        )
+        val gleamNotes = service().saveNoteLayers(gleam, "gleam_stdlib", "Standard library", "")
         val zig = myFixture.tempDirFixture.createFile(
             "build.zig.zon",
             ".{ .dependencies = .{ .known_folders = .{ .path = \"../known-folders\" } } }",
@@ -117,6 +126,8 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         assertTrue(String(gradleNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: gradle"))
         assertTrue(mixNotes.path.endsWith(".pacmon/mix/DEPENDENCY-NOTES.md"))
         assertTrue(String(mixNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: mix"))
+        assertTrue(gleamNotes.path.endsWith(".pacmon/gleam/DEPENDENCY-NOTES.md"))
+        assertTrue(String(gleamNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: gleam"))
         assertTrue(zigNotes.path.endsWith(".pacmon/zig/DEPENDENCY-NOTES.md"))
         assertTrue(String(zigNotes.contentsToByteArray()).replace("\r\n", "\n").contains("format: dependency-notes/2\necosystem: zig"))
         assertTrue(pythonNotes.path.endsWith(".pacmon/python/DEPENDENCY-NOTES.md"))
@@ -146,6 +157,31 @@ class ManifestResolutionTest : BasePlatformTestCase() {
         service().state.monorepoMode = MonorepoModes.ROOT_ONLY
         assertEquals(rootNotes.path, service().resolveNotesFile(zig)?.path)
         assertEquals("root", service().noteFor(zig, "known_folders")?.layers?.human)
+    }
+
+    fun testGleamNearestAndRootOnlyResolutionStaysInItsNamespace() {
+        val gleam = myFixture.tempDirFixture.createFile(
+            "apps/gleam-app/gleam.toml",
+            "[dependencies]\nshared_gleam = \"~> 1.0\"",
+        )
+        val rootNotes = myFixture.tempDirFixture.createFile(
+            ".pacmon/gleam/DEPENDENCY-NOTES.md",
+            "## shared_gleam\n\nroot\n",
+        )
+        val nearNotes = myFixture.tempDirFixture.createFile(
+            "apps/gleam-app/.pacmon/gleam/DEPENDENCY-NOTES.md",
+            "## shared_gleam\n\nnear\n",
+        )
+        myFixture.tempDirFixture.createFile(
+            "apps/gleam-app/.pacmon/cargo/DEPENDENCY-NOTES.md",
+            "## shared_gleam\n\ncargo\n",
+        )
+
+        assertEquals(nearNotes.path, service().resolveNotesFile(gleam)?.path)
+        assertEquals("near", service().noteFor(gleam, "shared_gleam")?.layers?.human)
+        service().state.monorepoMode = MonorepoModes.ROOT_ONLY
+        assertEquals(rootNotes.path, service().resolveNotesFile(gleam)?.path)
+        assertEquals("root", service().noteFor(gleam, "shared_gleam")?.layers?.human)
     }
 
     fun testDefaultManifestUsesActiveThenRootPriority() {
