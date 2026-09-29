@@ -7,7 +7,12 @@
 
 ## Unreleased
 
-## 0.7.0 — 2026-09-29
+- **Pacmon supports Gleam projects in VS Code.** Direct dependencies in the
+  `[dependencies]` and `[dev_dependencies]` tables of `gleam.toml` get markers,
+  hover, note editing and coverage backed by `.pacmon/gleam/DEPENDENCY-NOTES.md`.
+  Version, Hex, Git and path declarations are read statically; Pacmon never runs
+  Gleam, reads `manifest.toml` or resolves transitive packages. JetBrains support
+  remains a later step.
 
 - **Pacmon supports .NET/NuGet projects in VS Code, JetBrains/Rider and Microsoft Visual Studio 2022+.** Literal `PackageReference`
   items in `.csproj`, `.fsproj` and `.vbproj` files, plus central

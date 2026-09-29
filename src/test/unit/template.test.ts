@@ -52,6 +52,8 @@ describe('template: frontmatter and header', () => {
     expect(normalizeText(gradle)).toBe(gradle);
     const mix = newNotesFileContent('\n', 'phoenix', 'Framework.', 'mix');
     expect(mix).toContain('ecosystem: mix');
+    const gleam = newNotesFileContent('\n', 'gleam_stdlib', 'Standard library.', 'gleam');
+    expect(gleam).toContain('ecosystem: gleam');
     expect(mix).toContain('mix dependency manifest');
     expect(normalizeText(mix)).toBe(mix);
     const zig = newNotesFileContent('\n', 'known_folders', 'Platform directories.', 'zig');

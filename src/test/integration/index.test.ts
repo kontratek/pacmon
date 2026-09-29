@@ -184,6 +184,22 @@ suite('pacmon integration', () => {
     assert.ok(text.includes('.pacmon/mix/DEPENDENCY-NOTES.md'));
   });
 
+  test('gleam.toml keys use the Gleam notes namespace', async () => {
+    const manifest = fixtureUri('gleam.toml');
+    const doc = await vscode.workspace.openTextDocument(manifest);
+    await vscode.window.showTextDocument(doc);
+    const offset = doc.getText().indexOf('gleam_stdlib');
+    const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+      'vscode.executeHoverProvider',
+      manifest,
+      doc.positionAt(offset + 2),
+    );
+    const text = (hovers ?? []).flatMap((hover) => hover.contents)
+      .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+    assert.ok(text.includes('Core Gleam standard library'), `Gleam note missing, got: ${text}`);
+    assert.ok(text.includes('.pacmon/gleam/DEPENDENCY-NOTES.md'));
+  });
+
   test('build.zig.zon fields use the Zig notes namespace', async () => {
     const manifest = fixtureUri('build.zig.zon');
     const doc = await vscode.workspace.openTextDocument(manifest);
@@ -308,6 +324,31 @@ suite('pacmon integration', () => {
     }
   });
 
+  test('the first Gleam note creates a v2 Gleam notes file', async function () {
+    this.timeout(20000);
+    const notes = fixtureUri('.pacmon', 'gleam', 'DEPENDENCY-NOTES.md');
+    const original = await vscode.workspace.fs.readFile(notes);
+    try {
+      await vscode.workspace.fs.delete(notes);
+      await sleep(500);
+      const manifest = fixtureUri('gleam.toml');
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(manifest));
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'gleeunit', 'Gleam test framework.');
+      const text = await poll(async () => {
+        try {
+          const value = await readText(notes);
+          return value.includes('## gleeunit') ? value : undefined;
+        } catch {
+          return undefined;
+        }
+      });
+      assert.ok(text.includes('format: dependency-notes/2\necosystem: gleam\nlang: en'));
+      assert.ok(text.includes('Gleam test framework.'));
+    } finally {
+      await vscode.workspace.fs.writeFile(notes, original);
+    }
+  });
+
   test('the first Zig note creates a v2 Zig notes file', async function () {
     this.timeout(20000);
     const notes = fixtureUri('.pacmon', 'zig', 'DEPENDENCY-NOTES.md');
@@ -365,9 +406,10 @@ suite('pacmon integration', () => {
     const mavenNotes = fixtureUri('.pacmon', 'maven', 'DEPENDENCY-NOTES.md');
     const gradleNotes = fixtureUri('.pacmon', 'gradle', 'DEPENDENCY-NOTES.md');
     const mixNotes = fixtureUri('.pacmon', 'mix', 'DEPENDENCY-NOTES.md');
+    const gleamNotes = fixtureUri('.pacmon', 'gleam', 'DEPENDENCY-NOTES.md');
     const zigNotes = fixtureUri('.pacmon', 'zig', 'DEPENDENCY-NOTES.md');
     const goNotes = fixtureUri('.pacmon', 'go', 'DEPENDENCY-NOTES.md');
-    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes, mixNotes, zigNotes, goNotes];
+    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes, mixNotes, gleamNotes, zigNotes, goNotes];
     const originals = await Promise.all(notesFiles.map((uri) => vscode.workspace.fs.readFile(uri)));
     try {
       const cargo = fixtureUri('Cargo.toml');
@@ -382,8 +424,9 @@ suite('pacmon integration', () => {
       assert.strictEqual(await readText(mavenNotes), new TextDecoder().decode(originals[2]!));
       assert.strictEqual(await readText(gradleNotes), new TextDecoder().decode(originals[3]!));
       assert.strictEqual(await readText(mixNotes), new TextDecoder().decode(originals[4]!));
-      assert.strictEqual(await readText(zigNotes), new TextDecoder().decode(originals[5]!));
-      assert.strictEqual(await readText(goNotes), new TextDecoder().decode(originals[6]!));
+      assert.strictEqual(await readText(gleamNotes), new TextDecoder().decode(originals[5]!));
+      assert.strictEqual(await readText(zigNotes), new TextDecoder().decode(originals[6]!));
+      assert.strictEqual(await readText(goNotes), new TextDecoder().decode(originals[7]!));
     } finally {
       await Promise.all(notesFiles.map((uri, index) =>
         vscode.workspace.fs.writeFile(uri, originals[index]!),
