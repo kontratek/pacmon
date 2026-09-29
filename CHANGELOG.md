@@ -14,6 +14,14 @@
   Gleam, reads `manifest.toml` or resolves transitive packages. JetBrains support
   remains a later step.
 
+- **Pacmon is on the Visual Studio Marketplace.** Visual Studio 2022 and newer
+  install it from
+  [its listing](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon-visualstudio)
+  or from Extensions → Manage Extensions, and every release now publishes it
+  there alongside the VS Code and JetBrains versions. `pacmon-visualstudio.vsix`
+  is also attached to each GitHub Release. The extension links to
+  https://pacmon.dev and to this changelog.
+
 - **Visual Studio reads and formats notes the way VS Code and JetBrains do.**
   It no longer reports `risk`, `usage`, `owner`, `alternatives`, `remove-when`
   and `links` as unknown fields, a warning whose fix moved the line under

@@ -3,10 +3,17 @@ name: Release
 # Publishing is a button, never a side effect of merging. Actions -> Release ->
 # Run workflow, pick patch / minor / major. The run raises the version, turns the
 # CHANGELOG's "Unreleased" section into that version, runs the whole test suite,
-# builds one VSIX and one JetBrains plugin zip, pushes the version commit and its
-# tag to main, sends the VSIX to the Visual Studio Marketplace and to Open VSX,
-# and submits the zip to the JetBrains Marketplace, which lists it after its own
-# review. Both files go on the GitHub Release.
+# builds one VS Code VSIX, one JetBrains plugin zip and one Visual Studio VSIX,
+# pushes the version commit and its tag to main, sends the VS Code VSIX to the
+# Visual Studio Marketplace and to Open VSX, submits the zip to the JetBrains
+# Marketplace, which lists it after its own review, and sends the Visual Studio
+# VSIX to the Visual Studio Marketplace. All three files go on the GitHub Release.
+#
+# The Visual Studio VSIX builds and publishes only on Windows, so the run is four
+# jobs: `version` decides the version and the release notes once; `visualstudio`
+# builds and tests the Visual Studio VSIX from them; `release` tests and builds
+# the rest, commits, tags and publishes, and starts only once that VSIX is good;
+# `visualstudio-publish` sends the VSIX after the tag is on the remote.
 #
 # A version number is spent the moment a registry accepts it, so nothing here is
 # retried blindly. Every publish step skips a version the registry already has,
@@ -16,8 +23,9 @@ name: Release
 # version already in package.json to whichever registry still lacks it and
 # commits nothing: the path for a registry that joined after a release.
 #
-# Tokens are the VSCE_PAT, OVSX_PAT and JETBRAINS_TOKEN repository secrets. See
-# docs/releasing.md.
+# Tokens are the VSCE_PAT, OVSX_PAT and JETBRAINS_TOKEN repository secrets;
+# VSCE_PAT publishes to both the VS Code and the Visual Studio side of the
+# Visual Studio Marketplace. See docs/releasing.md.
 
 on:
   workflow_dispatch:
@@ -41,9 +49,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  # The version and the release notes are decided here, once. The jobs below
+  # copy package.json, CHANGELOG.md and release-notes.md from this job, so the
+  # Windows build and the Linux one carry the same version.
+  version:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       # Anyone with write access can press the button; only these accounts get
       # past this step, and nothing has run yet when it fails. ACTOR arrives as
@@ -116,6 +130,78 @@ jobs:
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
           echo "Releasing $version"
 
+      # Every upload in this workflow overwrites: a job that runs again under
+      # "Re-run failed jobs" finds its own artifact from the first attempt, and
+      # an upload that may not replace it fails the job before it publishes.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-version
+          path: |
+            package.json
+            CHANGELOG.md
+            release-notes.md
+          overwrite: true
+
+  # The Visual Studio VSIX, from the same tree at the same version. The VSSDK
+  # build runs only on Windows. A failure here stops the release before anything
+  # is committed or published, like a failing test in the job below.
+  visualstudio:
+    needs: version
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-version
+          path: ${{ runner.temp }}/release-version
+      # The project reads its version from the root package.json.
+      - name: Apply the release version
+        shell: pwsh
+        run: Copy-Item "$env:RUNNER_TEMP/release-version/package.json", "$env:RUNNER_TEMP/release-version/CHANGELOG.md" -Destination .
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 9.0.x
+      - uses: microsoft/setup-msbuild@v2
+      - run: dotnet restore visualstudio/Pacmon.VisualStudio.sln
+      - run: dotnet test visualstudio/Pacmon.Core.Tests/Pacmon.Core.Tests.csproj --no-restore --nologo
+      - run: dotnet test visualstudio/Pacmon.VisualStudio.Tests/Pacmon.VisualStudio.Tests.csproj --no-restore --nologo -p:CreateVsixContainer=false -p:DeployExtension=false -m:1
+      - run: msbuild visualstudio/Pacmon.VisualStudio/Pacmon.VisualStudio.csproj /restore /t:Build /p:Configuration=Release /p:DeployExtension=false /p:CreateVsixContainer=true /m:1
+      - name: Verify the Visual Studio VSIX
+        shell: pwsh
+        run: ./visualstudio/verify-vsix.ps1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pacmon-visualstudio-vsix
+          path: visualstudio/Pacmon.VisualStudio/bin/Release/net472/pacmon-visualstudio.vsix
+          overwrite: true
+
+  release:
+    needs: [version, visualstudio]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-version
+          path: ${{ runner.temp }}/release-version
+      - name: Apply the release version
+        run: cp "$RUNNER_TEMP"/release-version/{package.json,CHANGELOG.md,release-notes.md} .
+
       # Everything below runs against the tree that actually ships.
       - run: pnpm run lint
       - run: pnpm run typecheck
@@ -129,6 +215,7 @@ jobs:
         with:
           name: pacmon-vsix
           path: pacmon.vsix
+          overwrite: true
 
       # The JetBrains plugin, from the same tree at the same version: its
       # build.gradle.kts reads the version the step above wrote to package.json
@@ -145,6 +232,13 @@ jobs:
         with:
           name: pacmon-jetbrains
           path: jetbrains/build/distributions/*.zip
+          overwrite: true
+
+      # The Visual Studio VSIX the job before this one built and verified, for
+      # the GitHub Release.
+      - uses: actions/download-artifact@v8
+        with:
+          name: pacmon-visualstudio-vsix
 
       # Git first: the history should record a release before the registries
       # can hand it to anyone. A push with the built-in token starts no further
@@ -152,7 +246,7 @@ jobs:
       - name: Push the version commit and its tag
         if: github.event_name == 'workflow_dispatch' && inputs.bump != 'none'
         env:
-          TAG: ${{ steps.version.outputs.tag }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
           set -euo pipefail
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null 2>&1; then
@@ -185,7 +279,7 @@ jobs:
         env:
           JETBRAINS_TOKEN: ${{ secrets.JETBRAINS_TOKEN }}
           PLUGIN_ID: 34295 # plugins.jetbrains.com/plugin/34295-pacmon
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
         working-directory: jetbrains
         run: |
           set -euo pipefail
@@ -197,16 +291,71 @@ jobs:
             ./gradlew publishPlugin
           fi
 
-      # The Release carries the VSIX and the JetBrains zip, for anyone installing
-      # without a registry.
+      # The Release carries the three packages, for anyone installing without a
+      # registry.
       - name: Publish the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
           set -euo pipefail
           if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release upload "$TAG" pacmon.vsix jetbrains/build/distributions/*.zip --clobber
+            gh release upload "$TAG" pacmon.vsix jetbrains/build/distributions/*.zip pacmon-visualstudio.vsix --clobber
           else
-            gh release create "$TAG" pacmon.vsix jetbrains/build/distributions/*.zip --title "$TAG" --notes-file release-notes.md
+            gh release create "$TAG" pacmon.vsix jetbrains/build/distributions/*.zip pacmon-visualstudio.vsix --title "$TAG" --notes-file release-notes.md
           fi
+
+  # Visual Studio extensions go to their own side of the Visual Studio
+  # Marketplace through VsixPublisher, a Windows tool, so this runs on Windows
+  # after the job above has pushed the tag. The listing is
+  # marketplace.visualstudio.com/items?itemName=kontra.pacmon-visualstudio; its
+  # page and categories are visualstudio/marketplace/.
+  visualstudio-publish:
+    needs: [version, release]
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: pacmon-visualstudio-vsix
+
+      # VsixPublisher ships in the Microsoft.VSSDK.BuildTools package. The 17.14
+      # the project builds with crashes in its telemetry and exits with a failure
+      # code even after a successful upload; 18.9 exits cleanly.
+      - name: Fetch VsixPublisher
+        shell: pwsh
+        env:
+          VSSDK_VERSION: 18.9.820
+        run: |
+          $package = Join-Path $env:RUNNER_TEMP vssdk
+          Invoke-WebRequest "https://api.nuget.org/v3-flatcontainer/microsoft.vssdk.buildtools/$env:VSSDK_VERSION/microsoft.vssdk.buildtools.$env:VSSDK_VERSION.nupkg" -OutFile "$package.zip"
+          Expand-Archive "$package.zip" $package -Force
+          "VSIXPUBLISHER=$package\tools\vssdk\bin\VsixPublisher.exe" >> $env:GITHUB_ENV
+
+      # The Visual Studio Marketplace overwrites a version it already has
+      # instead of refusing it, so this asks first and skips, the way
+      # --skip-duplicate does for VS Code: a re-run, or "none" from a later
+      # commit, must not replace a build that is already out.
+      - name: Publish to the Visual Studio Marketplace
+        shell: pwsh
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          $manifest = Resolve-Path visualstudio/marketplace/publishManifest.json
+          $listing = Get-Content $manifest -Raw | ConvertFrom-Json
+          $item = "$($listing.publisher).$($listing.identity.internalName)"
+          # filterType 7 looks the extension up by "publisher.name"; flags 1
+          # includes every version.
+          $query = @{ filters = @(@{ criteria = @(@{ filterType = 7; value = $item }) }); flags = 1 } | ConvertTo-Json -Depth 5 -Compress
+          $result = Invoke-RestMethod -Method Post -Uri https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery `
+            -Headers @{ Accept = 'application/json;api-version=3.0-preview.1' } -ContentType application/json -Body $query
+          if (@($result.results[0].extensions.versions.version) -contains $env:VERSION) {
+            "The Visual Studio Marketplace already has $item $env:VERSION - skipping."
+            exit 0
+          }
+          & $env:VSIXPUBLISHER publish -payload (Resolve-Path pacmon-visualstudio.vsix) -publishManifest $manifest -personalAccessToken $env:VSCE_PAT
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

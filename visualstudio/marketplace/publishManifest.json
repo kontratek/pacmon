@@ -1,0 +1,12 @@
+{
+  "categories": ["coding", "documentation", "security"],
+  "identity": {
+    "internalName": "pacmon-visualstudio"
+  },
+  "overview": "overview.md",
+  "priceCategory": "free",
+  "publisher": "kontra",
+  "private": false,
+  "qna": true,
+  "repo": "https://github.com/kontratek/pacmon"
+}

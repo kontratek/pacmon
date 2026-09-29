@@ -3,22 +3,33 @@
 Pacmon is published by the Release workflow, never from a laptop. Merging a pull
 request publishes nothing; a release is a button. The run raises the version,
 names the CHANGELOG's "Unreleased" section, runs the whole test suite, builds one
-VS Code VSIX and one JetBrains plugin zip, pushes the version commit and its tag to
-`main`, sends that VSIX to the VS Code area of the Visual Studio Marketplace and to Open VSX, submits
-the zip to the JetBrains Marketplace, and attaches both to a GitHub Release.
+VS Code VSIX, one JetBrains plugin zip and one Visual Studio VSIX, pushes the
+version commit and its tag to `main`, sends the VS Code VSIX to the VS Code area
+of the Visual Studio Marketplace and to Open VSX, submits the zip to the
+JetBrains Marketplace, sends the Visual Studio VSIX to the Visual Studio area of
+the same Marketplace, and attaches all three to a GitHub Release.
 
 The JetBrains plugin takes its version from `package.json` and its change notes
-from the CHANGELOG section of that version (`jetbrains/build.gradle.kts`), so one
-version number and one set of notes serve all three current registries. The JetBrains
-Marketplace lists a version only after its own review, normally within two
-business days; the run does not wait for that.
+from the CHANGELOG section of that version (`jetbrains/build.gradle.kts`); the
+Visual Studio extension takes the same version (`Pacmon.VisualStudio.csproj`)
+and links to the CHANGELOG. One version number and one set of notes serve every
+registry. The JetBrains Marketplace lists a version only after its own review,
+normally within two business days; the run does not wait for that.
 
-The repository also builds a separate `pacmon-visualstudio.vsix` for Microsoft
-Visual Studio 2022+. Its VSIX identity is `dev.pacmon.visualstudio`, and its
-version is read from the same root `package.json`. For now the Windows CI job
-uploads it only as an artifact: it is not sent to either VS Code registry or to
-a Visual Studio Marketplace listing. The existing `pacmon.vsix` remains the VS
-Code/Open VSX package.
+The Visual Studio VSIX, `pacmon-visualstudio.vsix` for Visual Studio 2022 and
+newer, builds and publishes only on Windows, so the workflow is four jobs:
+`version` decides the version and the notes; `visualstudio` builds and tests the
+Visual Studio VSIX from them and checks it with `visualstudio/verify-vsix.ps1`;
+`release` tests and builds the rest, pushes the commit and the tag and publishes;
+`visualstudio-publish` then sends the VSIX with VsixPublisher. Its listing,
+`kontra.pacmon-visualstudio`, is an item of its own under the same publisher as
+the VS Code extension, `kontra.pacmon`; the listing page and its categories are
+in `visualstudio/marketplace/`. The workflow publishes every version, the first
+included: unlike JetBrains, the Visual Studio Marketplace creates the listing on
+the first upload. The VSIX identity is `dev.pacmon.visualstudio`, and its
+publisher must stay `Kontra`, the display name of the Marketplace publisher —
+VsixPublisher refuses anything else, and `verify-vsix.ps1` checks it on every
+CI run.
 
 ## One-time setup
 
@@ -26,7 +37,7 @@ Repository → Settings → Secrets and variables → Actions → New repository
 
 | Secret | Where it comes from |
 |---|---|
-| `VSCE_PAT` | Azure DevOps personal access token for the `kontra` publisher: https://dev.azure.com → User settings → Personal access tokens. Organization "All accessible organizations", scope Marketplace → **Manage**. Azure DevOps caps the lifetime at one year, so note the expiry. |
+| `VSCE_PAT` | Azure DevOps personal access token for the `kontra` publisher: https://dev.azure.com → User settings → Personal access tokens. Organization "All accessible organizations", scope Marketplace → **Manage**. It publishes both the VS Code extension and the Visual Studio extension. Azure DevOps caps the lifetime at one year, so note the expiry — and it retires these global tokens on 1 December 2026, whatever their expiry, after which the Marketplace needs Microsoft Entra ID instead. |
 | `OVSX_PAT` | Open VSX access token: https://open-vsx.org/user-settings/tokens. Publishing also needs the `kontra` namespace, created once with `pnpm exec ovsx create-namespace kontra -p <token>`. It already exists. |
 | `JETBRAINS_TOKEN` | JetBrains Marketplace permanent token: https://plugins.jetbrains.com → your profile → **My Tokens** → Generate Token. The plugin is `dev.pacmon.jetbrains`, Marketplace id 34295, under the `Kontra` vendor, and its first version was uploaded by hand, as the Marketplace requires; the workflow only ever uploads the next ones. |
 
@@ -101,4 +112,17 @@ already say what is being published.
 
 ```sh
 ./gradlew publishPlugin
+```
+
+The Visual Studio extension, on Windows, with the same token as `VSCE_PAT`.
+VsixPublisher is `tools\vssdk\bin\VsixPublisher.exe` in the
+`Microsoft.VSSDK.BuildTools` NuGet package, 18.9 or newer, or
+`VSSDK\VisualStudioIntegration\Tools\Bin\VsixPublisher.exe` in a Visual Studio
+installation. Unlike the other registries, the Visual Studio Marketplace
+replaces a version it already has instead of refusing it, so check the listing
+first.
+
+```sh
+msbuild visualstudio/Pacmon.VisualStudio/Pacmon.VisualStudio.csproj /restore /t:Build /p:Configuration=Release /p:DeployExtension=false /p:CreateVsixContainer=true
+VsixPublisher.exe publish -payload visualstudio/Pacmon.VisualStudio/bin/Release/net472/pacmon-visualstudio.vsix -publishManifest visualstudio/marketplace/publishManifest.json -personalAccessToken <token>
 ```
