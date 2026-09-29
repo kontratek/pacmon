@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.9.0 — 2026-09-29
+
 - **Pacmon supports Gleam projects in JetBrains IDEs.** `gleam.toml` gets what
   VS Code has had since 0.8.0: markers, hover, note editing and coverage for the
   direct dependencies in `[dependencies]` and `[dev_dependencies]`, backed by the
