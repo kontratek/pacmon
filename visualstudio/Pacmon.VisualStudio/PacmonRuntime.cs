@@ -178,7 +178,11 @@ internal sealed class PacmonRuntime : IDisposable
         var workspace = new NugetWorkspace(fileSystem);
         var notesPath = workspace.ResolveNotesPath(manifestPath, root, Options.Monorepo)
             ?? workspace.CreationTarget(manifestPath, root);
-        if (!FileExists(notesPath)) await WriteDocumentAsync(notesPath, Notes.NewFile());
+        if (!FileExists(notesPath))
+        {
+            await WriteDocumentAsync(notesPath, Notes.NewFile());
+            await WriteAgentRulesAsync(root, overwrite: false);
+        }
         await OpenDocumentAsync(notesPath, packageName);
     }
 
@@ -315,6 +319,7 @@ internal sealed class PacmonRuntime : IDisposable
             ?? workspace.CreationTarget(manifestPath, root);
         var original = FileExists(notesPath) ? ReadDocument(notesPath) : Notes.NewFile();
         await WriteDocumentAsync(notesPath, Notes.UpsertLayers(original, packageName, human, agent));
+        await WriteAgentRulesAsync(root, overwrite: false);
     }
 
     public async Task OpenNotesForActiveManifestAsync()
@@ -329,7 +334,11 @@ internal sealed class PacmonRuntime : IDisposable
         var root = await RootForAsync(path);
         var workspace = new NugetWorkspace(fileSystem);
         var notesPath = workspace.ResolveNotesPath(path, root, Options.Monorepo) ?? workspace.CreationTarget(path, root);
-        if (!FileExists(notesPath)) await WriteDocumentAsync(notesPath, Notes.NewFile());
+        if (!FileExists(notesPath))
+        {
+            await WriteDocumentAsync(notesPath, Notes.NewFile());
+            await WriteAgentRulesAsync(root, overwrite: false);
+        }
         await OpenDocumentAsync(notesPath);
     }
 
@@ -402,17 +411,21 @@ internal sealed class PacmonRuntime : IDisposable
             return;
         }
         var root = await RootForAsync(active);
-        var rulesPath = Path.Combine(root, ".pacmon", "AGENT-RULES.md");
-        const string rules = """
-            # Pacmon dependency notes
+        // Rewritten on every run, as the VS Code extension does, so an old copy
+        // gets the current rules.
+        await OpenDocumentAsync(await WriteAgentRulesAsync(root, overwrite: true));
+    }
 
-            Before adding, upgrading, or removing a NuGet package, read its section in `.pacmon/nuget/DEPENDENCY-NOTES.md`.
-            NuGet package headings are case-insensitive and use `## <package-id>`.
-            Preserve human-written text. Put agent-maintained facts under `### Agent notes` as `- key: value` lines.
-            Pacmon reads manifests statically; do not record transitive packages as direct dependencies.
-            """;
-        if (!FileExists(rulesPath)) await WriteDocumentAsync(rulesPath, rules.Replace("\r\n", "\n") + "\n");
-        await OpenDocumentAsync(rulesPath);
+    /// <summary>
+    /// .pacmon/AGENT-RULES.md at the workspace root, the rules every notes file's
+    /// header comment points agents to: written when it is missing, and always
+    /// when <paramref name="overwrite"/> is set.
+    /// </summary>
+    private async Task<string> WriteAgentRulesAsync(string root, bool overwrite)
+    {
+        var rulesPath = Path.Combine(root, ".pacmon", "AGENT-RULES.md");
+        if (overwrite || !FileExists(rulesPath)) await WriteDocumentAsync(rulesPath, AgentRules.Text);
+        return rulesPath;
     }
 
     public void NotifyChanged()

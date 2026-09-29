@@ -14,6 +14,17 @@
   Gleam, reads `manifest.toml` or resolves transitive packages. JetBrains support
   remains a later step.
 
+- **Visual Studio reads and formats notes the way VS Code and JetBrains do.**
+  It no longer reports `risk`, `usage`, `owner`, `alternatives`, `remove-when`
+  and `links` as unknown fields, a warning whose fix moved the line under
+  `note:`, and it now checks the values of `runtime`, `exposure`, `status` and
+  `verified`. **Format NuGet Dependency Notes** keeps duplicate sections, the
+  text under the title and the frontmatter as written, all of which it used to
+  drop, and writes the same header comment as the other editors. **Set Up AI
+  Instructions** writes the same `.pacmon/AGENT-RULES.md` as VS Code and
+  JetBrains, with the field list agents need, and the first note written in
+  Visual Studio now creates it.
+
 ## 0.7.0 — 2026-09-29
 
 - **Pacmon supports .NET/NuGet projects in VS Code, JetBrains/Rider and Microsoft Visual Studio 2022+.** Literal `PackageReference`

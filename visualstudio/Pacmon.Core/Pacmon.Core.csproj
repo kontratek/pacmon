@@ -6,4 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\assets\AGENT-RULES.md" LogicalName="Pacmon.Core.AGENT-RULES.md" />
+  </ItemGroup>
 </Project>

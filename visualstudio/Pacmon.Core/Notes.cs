@@ -20,9 +20,41 @@ public static class Notes
         "^\\s*[-*]\\s+([a-z][a-z0-9_-]*)\\s*:\\s*(.*)$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    private static readonly HashSet<string> AgentFields = new(StringComparer.OrdinalIgnoreCase)
+    /// <summary>
+    /// The agent layer's fields, core first, in the order docs/format.md and
+    /// assets/AGENT-RULES.md list them; NotesTests checks the rules file against it.
+    /// </summary>
+    public static IReadOnlyList<string> AgentFieldKeys { get; } = new[]
     {
-        "purpose", "constraint", "verify", "log", "verified", "runtime", "exposure", "status", "note", "bump-with",
+        "purpose", "usage", "constraint", "verify", "log", "verified",
+        "risk", "runtime", "exposure", "bump-with", "remove-when", "alternatives", "owner", "status", "links", "note",
+    };
+
+    private static readonly HashSet<string> AgentFields = new(AgentFieldKeys, StringComparer.OrdinalIgnoreCase);
+    private static readonly string[] RuntimeValues = { "server", "client", "build", "dev", "deploy" };
+    private static readonly string[] ExposureValues = { "untrusted-input", "internal" };
+    private static readonly Regex StatusPattern = new(
+        "^(dead|removal-planned|removed\\s+\\d{4}-\\d{2}(\\b.*)?)$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex VersionPattern = new("^v?\\d+(\\.\\d+)*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex TitlePattern = new("^#(?!#)\\s+", RegexOptions.Compiled);
+
+    /// <summary>
+    /// The header comment belongs to the format: new files get it and Normalize
+    /// rewrites it, in the words src/core/template.ts uses for every v2 file.
+    /// </summary>
+    private static readonly string[] HeaderCommentLines =
+    {
+        $"<!-- Each \"## name\" below is a package from the {Ecosystem} dependency manifest.",
+        $"  The text under it is written by people. \"{AgentHeading}\" and everything below",
+        "  it is written by AI agents — rules in .pacmon/AGENT-RULES.md. -->",
+    };
+
+    private static readonly (string Key, string Value)[] FrontmatterDefaults =
+    {
+        ("format", FormatVersion),
+        ("ecosystem", Ecosystem),
+        ("lang", "en"),
     };
 
     public static string NormalizeName(string value) => StripQuotes(value).Trim().ToLowerInvariant();
@@ -178,6 +210,7 @@ public static class Notes
     public static bool IsAgentFinding(LintFinding finding) =>
         finding.Kind == "unknownAgentKey"
         || finding.Kind == "emptyAgentValue"
+        || finding.Kind == "badAgentValue"
         || finding.Kind == "removedButPresent";
 
     /// <summary>
@@ -204,13 +237,10 @@ public static class Notes
     {
         var builder = new StringBuilder();
         builder.AppendLine("---");
-        builder.AppendLine($"format: {FormatVersion}");
-        builder.AppendLine($"ecosystem: {Ecosystem}");
-        builder.AppendLine("lang: en");
+        foreach (var (key, value) in FrontmatterDefaults) builder.AppendLine($"{key}: {value}");
         builder.AppendLine("---");
         builder.AppendLine();
-        builder.AppendLine("<!-- Each \"## name\" below is a package from the nuget dependency manifest.");
-        builder.AppendLine("     People write directly below it; AI agents write under \"### Agent notes\". -->");
+        foreach (var line in HeaderCommentLines) builder.AppendLine(line);
         builder.AppendLine();
         builder.AppendLine(Title);
         if (!string.IsNullOrWhiteSpace(packageName))
@@ -247,25 +277,83 @@ public static class Notes
         return model.HadBom ? "\ufeff" + output : output;
     }
 
+    /// <summary>
+    /// The canonical form of docs/format.md, as the VS Code and JetBrains
+    /// formatters write it: the frontmatter as written, with the format's own
+    /// keys appended when missing; the format's header comment and title; the
+    /// introduction; then every section in name order, duplicates included and in
+    /// their original order, each body kept as written. Nothing else changes.
+    /// </summary>
     public static string Normalize(string input)
     {
         var model = Parse(input);
-        var sections = model.Sections
-            .GroupBy(section => NormalizeName(section.Name))
-            .Select(group => group.First())
-            .OrderBy(section => NormalizeName(section.Name), StringComparer.Ordinal)
-            .ToArray();
-        var builder = new StringBuilder(NewFile().TrimEnd('\r', '\n'));
-        foreach (var section in sections)
+        var lines = model.Lines;
+        var output = new List<string> { "---" };
+        var cursor = 0;
+        if (model.Frontmatter is { } frontmatter)
         {
-            var layers = Layers(model, section);
-            builder.AppendLine();
-            builder.AppendLine();
-            builder.Append(BuildSection(section.Name, layers.Human, layers.Agent, layers.Generated, "\n"));
+            var inner = lines.Skip(frontmatter.StartLine + 1).Take(frontmatter.EndLine - frontmatter.StartLine - 1).ToList();
+            var present = new HashSet<string>(
+                inner.Select(line => FrontmatterPattern.Match(line)).Where(match => match.Success).Select(match => match.Groups[1].Value),
+                StringComparer.Ordinal);
+            output.AddRange(inner);
+            output.AddRange(FrontmatterDefaults.Where(field => !present.Contains(field.Key)).Select(field => $"{field.Key}: {field.Value}"));
+            cursor = frontmatter.EndLine + 1;
         }
-        builder.AppendLine();
-        var normalized = builder.ToString().Replace("\r\n", "\n").Replace("\n", model.Eol);
+        else output.AddRange(FrontmatterDefaults.Select(field => $"{field.Key}: {field.Value}"));
+        output.Add("---");
+
+        // The header comment and the title belong to the format, so the ones the
+        // file has are replaced; the comment is the first thing after the
+        // frontmatter, when it is a complete HTML comment.
+        cursor = SkipBlankLines(lines, cursor);
+        if (cursor < lines.Count && lines[cursor].TrimStart().StartsWith("<!--", StringComparison.Ordinal))
+        {
+            var end = cursor;
+            while (end < lines.Count && !lines[end].Contains("-->")) end++;
+            if (end < lines.Count) cursor = end + 1;
+        }
+        cursor = SkipBlankLines(lines, cursor);
+        if (cursor < lines.Count && TitlePattern.IsMatch(lines[cursor])) cursor++;
+
+        output.Add(string.Empty);
+        output.AddRange(HeaderCommentLines);
+        output.Add(string.Empty);
+        output.Add(Title);
+        var firstHeading = model.Sections.Select(section => section.HeadingLine).Where(line => line >= cursor).DefaultIfEmpty(lines.Count).Min();
+        var introduction = TrimmedLines(lines, cursor, firstHeading);
+        if (introduction.Count > 0)
+        {
+            output.Add(string.Empty);
+            output.AddRange(introduction);
+        }
+
+        // OrderBy is stable, so duplicate sections keep their order.
+        foreach (var section in model.Sections.OrderBy(section => NormalizeName(section.Name), StringComparer.Ordinal))
+        {
+            output.Add(string.Empty);
+            output.Add("## " + section.Name);
+            var body = TrimmedLines(lines, section.BodyStart, section.BodyEnd);
+            if (body.Count == 0) continue;
+            output.Add(string.Empty);
+            output.AddRange(body);
+        }
+
+        var normalized = string.Join(model.Eol, output) + model.Eol;
         return model.HadBom ? "\ufeff" + normalized : normalized;
+    }
+
+    private static int SkipBlankLines(IReadOnlyList<string> lines, int line)
+    {
+        while (line < lines.Count && string.IsNullOrWhiteSpace(lines[line])) line++;
+        return line;
+    }
+
+    private static List<string> TrimmedLines(IReadOnlyList<string> lines, int start, int end)
+    {
+        while (start < end && string.IsNullOrWhiteSpace(lines[start])) start++;
+        while (end > start && string.IsNullOrWhiteSpace(lines[end - 1])) end--;
+        return lines.Skip(start).Take(end - start).ToList();
     }
 
     public static NotesAnalysis Analyze(IEnumerable<DependencyEntry> dependencies, NotesFileModel? notes)
@@ -340,9 +428,31 @@ public static class Notes
                          && value.StartsWith("removed", StringComparison.OrdinalIgnoreCase)
                          && deps.Contains(section.Name))
                     findings.Add(new LintFinding("removedButPresent", line, $"{section.Name} is still declared.", keyStart, keyStart + key.Length));
+                else if (ValueProblem(key, value) is { } expected)
+                {
+                    var valueStart = model.Lines[line].Length - match.Groups[2].Value.Length;
+                    findings.Add(new LintFinding("badAgentValue", line, $"\"{key}:\" expects {expected}.", valueStart, valueStart + value.Length));
+                }
             }
         }
         return findings;
+    }
+
+    /// <summary>What the value of an enumerated field must look like, or null when it is fine.</summary>
+    private static string? ValueProblem(string key, string value)
+    {
+        string? OneOf(string[] allowed) =>
+            Regex.Split(value.ToLowerInvariant(), "\\s*[,|/]\\s*").All(item => allowed.Contains(item))
+                ? null
+                : "one of " + string.Join(" | ", allowed);
+        switch (key.ToLowerInvariant())
+        {
+            case "runtime": return OneOf(RuntimeValues);
+            case "exposure": return OneOf(ExposureValues);
+            case "status": return StatusPattern.IsMatch(value) ? null : "dead | removal-planned | removed YYYY-MM — reason";
+            case "verified": return VersionPattern.IsMatch(value) ? null : "a version, e.g. 4.18.2";
+            default: return null;
+        }
     }
 
     private static List<(string Key, string Value)> ParseAgentFields(string agent)
