@@ -4,6 +4,7 @@ import { manifestAdapterForPath } from '../../core/manifest';
 import { normalizeNameForEcosystem } from '../../core/match';
 import { notePreview, sectionLayers } from '../../core/layers';
 import { uniqueNugetDependencies } from '../../core/nuget-manifest';
+import { uniqueRubyDependencies } from '../../core/ruby-manifest';
 import { inlineSource, isManifest } from '../config';
 import type { NotePanel } from '../notePanel';
 import { creationTargetFor, defaultManifest, dependenciesForNotes, resolveNotesFileFor } from '../resolveNotesFile';
@@ -27,13 +28,17 @@ export async function showCoverage(store: Store, panel: NotePanel): Promise<void
 
   const notesUri = await resolveNotesFileFor(pkgUri);
   const ownDependencies = await store.getDeps(pkgUri);
-  const isNuget = manifestAdapterForPath(pkgUri.path)?.kind === 'nuget';
-  const sharedDependencies = isNuget
+  const kind = manifestAdapterForPath(pkgUri.path)?.kind;
+  const usesSharedCoverage = kind === 'nuget' || kind === 'ruby';
+  const sharedDependencies = usesSharedCoverage
     ? await dependenciesForNotes(store, notesUri ?? await creationTargetFor(pkgUri))
     : [];
-  const deps = isNuget
-    ? uniqueNugetDependencies([...sharedDependencies, ...ownDependencies])
-    : ownDependencies;
+  const candidates = [...sharedDependencies, ...ownDependencies];
+  const deps = kind === 'nuget'
+    ? uniqueNugetDependencies(candidates)
+    : kind === 'ruby'
+      ? uniqueRubyDependencies(candidates)
+      : ownDependencies;
   const notes = notesUri ? await store.getNotes(notesUri) : undefined;
   const { documented, undocumented, byDep } = analyze(deps, notes);
 

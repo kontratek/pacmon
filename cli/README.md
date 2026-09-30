@@ -1,6 +1,6 @@
 # pacmon
 
-**Pacmon documents *why* each dependency exists — right next to your JavaScript, Rust, JVM, Elixir, Gleam, Zig, Python, Go, or .NET/NuGet dependency manifest.**
+**Pacmon documents *why* each dependency exists — right next to your JavaScript, Rust, JVM, Elixir, Gleam, Zig, Python, Ruby, PHP/Composer, Go, .NET/NuGet, or C/C++ dependency manifest.**
 
 Today Pacmon ships as a **VS Code extension**, a **JetBrains plugin**, and a **Visual Studio extension** for Visual Studio 2022 and newer: hover a dependency to read its note, right-click to write one. The Visual Studio extension currently supports .NET/NuGet only. Notes live in your repository under `.pacmon/`, travel with git, and render on GitHub. Notes are plain Markdown and stay in your repository.
 

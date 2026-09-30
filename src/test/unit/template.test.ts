@@ -60,6 +60,10 @@ describe('template: frontmatter and header', () => {
     expect(zig).toContain('ecosystem: zig');
     const python = newNotesFileContent('\n', 'requests', 'HTTP client', 'python');
     expect(python).toContain('ecosystem: python');
+    const ruby = newNotesFileContent('\n', 'rack', 'Web server interface.', 'ruby');
+    expect(ruby).toContain('ecosystem: ruby');
+    expect(ruby).toContain('ruby dependency manifest');
+    expect(normalizeText(ruby)).toBe(ruby);
     const nuget = newNotesFileContent('\n', 'Newtonsoft.Json', 'JSON serialization', 'nuget');
     expect(nuget).toContain('ecosystem: nuget');
     expect(nuget).toContain('nuget dependency manifest');
@@ -102,6 +106,7 @@ describe('template: pointer block for the user’s agent files', () => {
     expect(text).toContain('.pacmon/mix/DEPENDENCY-NOTES.md');
     expect(text).toContain('.pacmon/zig/DEPENDENCY-NOTES.md');
     expect(text).toContain('.pacmon/nuget/DEPENDENCY-NOTES.md');
+    expect(text).toContain('.pacmon/ruby/DEPENDENCY-NOTES.md');
     expect(text).toContain('.pacmon/composer/DEPENDENCY-NOTES.md');
   });
 

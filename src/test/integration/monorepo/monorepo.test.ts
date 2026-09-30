@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-// Runs in a copy of fixtures/monorepo: npm, Mix, Gleam, Zig, Python and Composer manifests with
+// Runs in a copy of fixtures/monorepo: npm, Mix, Gleam, Zig, Python, Ruby and Composer manifests with
 // nested notes files, plus downloaded/cache manifests discovery must ignore.
 
 function at(...parts: string[]): vscode.Uri {
@@ -311,6 +311,21 @@ suite('pacmon monorepo', () => {
     assert.ok(!text.includes('Root Composer note'), 'the root Composer note must not leak into the nested project');
   });
 
+  test('nested Gemfile and gemspec manifests use their nearest shared Ruby notes', async function () {
+    this.timeout(20000);
+    for (const [manifestName, dependency, expected] of [
+      ['Gemfile', 'shared-ruby', 'Nested Ruby note'],
+      ['nested.gemspec', 'nested-runtime', 'Nested gemspec runtime note'],
+    ] as const) {
+      const text = await poll(async () => {
+        const value = await hoverText(at('apps', 'ruby-app', manifestName), dependency);
+        return value.includes(expected) ? value : undefined;
+      });
+      assert.ok(text.includes('.pacmon/ruby/DEPENDENCY-NOTES.md'), text);
+      assert.ok(!text.includes('Root Ruby note'), 'root Ruby notes must not leak into the nested project');
+    }
+  });
+
   test('nested vcpkg and Conan manifests use separate nearest notes', async function () {
     this.timeout(20000);
     for (const [manifestName, dependency, expected, other] of [
@@ -425,6 +440,20 @@ suite('pacmon monorepo', () => {
     }
   });
 
+  test('pacmon.monorepo = rootOnly makes nested Ruby manifests use root Ruby notes', async function () {
+    this.timeout(20000);
+    await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
+    try {
+      const text = await poll(async () => {
+        const value = await hoverText(at('apps', 'ruby-app', 'Gemfile'), 'shared-ruby');
+        return value.includes('Root Ruby note') ? value : undefined;
+      });
+      assert.ok(!text.includes('Nested Ruby note'), 'rootOnly must ignore the nested Ruby notes file');
+    } finally {
+      await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
   test('pacmon.monorepo = rootOnly makes nested C/C++ manifests use their matching root notes', async function () {
     this.timeout(20000);
     await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
@@ -482,6 +511,28 @@ suite('pacmon monorepo', () => {
       assert.ok(
         !mine.some((item) => item.code === 'removed-but-present'),
         'a dependency found only under vendor/ must not count as a project dependency',
+      );
+    } finally {
+      await vscode.commands.executeCommand('workbench.action.files.revert');
+    }
+  });
+
+  test('Ruby vendor manifests are excluded from note dependency discovery', async function () {
+    this.timeout(15000);
+    const notes = at('.pacmon', 'ruby', 'DEPENDENCY-NOTES.md');
+    const doc = await vscode.workspace.openTextDocument(notes);
+    const editor = await vscode.window.showTextDocument(doc);
+    const ecosystemLine = doc.getText().split(/\r?\n/).findIndex((line) => line === 'ecosystem: ruby');
+    assert.ok(ecosystemLine > 0, 'fixture changed: no Ruby ecosystem line');
+    await editor.edit((edit) => edit.replace(doc.lineAt(ecosystemLine).range, 'ecosystem: cargo'));
+    try {
+      const mine = await poll(() => {
+        const diagnostics = vscode.languages.getDiagnostics(notes).filter((item) => item.source === 'pacmon');
+        return diagnostics.some((item) => item.code === 'wrong-ecosystem') ? diagnostics : undefined;
+      });
+      assert.ok(
+        !mine.some((item) => item.code === 'removed-but-present'),
+        'a dependency found only under vendor/ must not count as a Ruby project dependency',
       );
     } finally {
       await vscode.commands.executeCommand('workbench.action.files.revert');

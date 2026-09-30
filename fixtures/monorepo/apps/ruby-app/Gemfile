@@ -1,0 +1,4 @@
+source "https://rubygems.org"
+
+gem "shared-ruby"
+gemspec

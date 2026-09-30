@@ -7,6 +7,14 @@
 
 ## Unreleased
 
+- **Pacmon supports Ruby projects in VS Code and JetBrains/RubyMine.** Literal
+  gems in `Gemfile`, `gems.rb` and `*.gemspec` get markers, hover, note editing
+  and shared coverage backed by `.pacmon/ruby/DEPENDENCY-NOTES.md`. Groups,
+  platforms, runtime dependencies and development dependencies retain their
+  scopes. Parsing is static: Pacmon never runs Ruby, Bundler or RubyGems, and
+  ignores dynamic declarations, `eval_gemfile`, `Gemfile.lock` and transitive
+  gems.
+
 - **Pacmon supports PHP/Composer projects in VS Code.** Package and platform
   requirements in the root `require` and `require-dev` objects of
   `composer.json` get markers, hover, note editing and coverage backed by

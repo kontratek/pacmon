@@ -268,6 +268,50 @@ suite('pacmon integration', () => {
     await poll(() => vscode.window.activeTextEditor?.document.uri.path.endsWith('/pyproject.toml') ? true : undefined);
   });
 
+  test('Gemfile and gemspec dependencies share the Ruby notes namespace', async () => {
+    for (const [manifestName, dependency, expected] of [
+      ['Gemfile', 'rack', 'Rack interface used by the Ruby fixture'],
+      ['pacmon-fixture.gemspec', 'zeitwerk', 'Code loader declared by the fixture gemspec'],
+    ] as const) {
+      const manifest = fixtureUri(manifestName);
+      const doc = await vscode.workspace.openTextDocument(manifest);
+      await vscode.window.showTextDocument(doc);
+      const offset = doc.getText().indexOf(`"${dependency}"`);
+      assert.ok(offset >= 0, `${dependency} missing from ${manifestName}`);
+      const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+        'vscode.executeHoverProvider',
+        manifest,
+        doc.positionAt(offset + 2),
+      );
+      const text = (hovers ?? []).flatMap((hover) => hover.contents)
+        .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+      assert.ok(text.includes(expected), `Ruby note missing for ${dependency}: ${text}`);
+      assert.ok(text.includes('.pacmon/ruby/DEPENDENCY-NOTES.md'));
+    }
+  });
+
+  test('Ruby notes aggregate gemspec dependencies and open Gemfile first', async function () {
+    this.timeout(15000);
+    const notes = fixtureUri('.pacmon', 'ruby', 'DEPENDENCY-NOTES.md');
+    const doc = await vscode.workspace.openTextDocument(notes);
+    const editor = await vscode.window.showTextDocument(doc);
+    const zeitwerk = doc.getText().indexOf('Code loader declared by the fixture gemspec.');
+    assert.ok(zeitwerk > 0);
+    await editor.edit((edit) => edit.insert(doc.positionAt(zeitwerk + 'Code loader declared by the fixture gemspec.'.length),
+      '\n\n### Agent notes\n\n- status: removed 2026-09 - test'));
+    try {
+      const diagnostics = await poll(() => {
+        const mine = vscode.languages.getDiagnostics(notes).filter((item) => item.source === 'pacmon');
+        return mine.some((item) => item.code === 'removed-but-present') ? mine : undefined;
+      });
+      assert.ok(diagnostics.some((item) => item.code === 'removed-but-present'));
+    } finally {
+      await vscode.commands.executeCommand('workbench.action.files.revert');
+    }
+    await vscode.commands.executeCommand('pacmon.openManifest');
+    await poll(() => vscode.window.activeTextEditor?.document.uri.path.endsWith('/Gemfile') ? true : undefined);
+  });
+
   test('.NET project and central package declarations use NuGet notes', async () => {
     for (const [parts, packageName] of [
       [['Pacmon.DotNet.csproj'], 'Newtonsoft.Json'],

@@ -17,6 +17,7 @@ import { extractGoDependencies } from './go-manifest';
 import { extractVcpkgDependencies } from './vcpkg-manifest';
 import { extractConanDependencies } from './conan-manifest';
 import { extractComposerDependencies } from './composer-manifest';
+import { extractRubyDependencies, isRubyManifestPath } from './ruby-manifest';
 export { dependencyAtOffset } from './dependency';
 
 export interface ManifestAdapter {
@@ -134,6 +135,15 @@ export const MANIFEST_ADAPTERS: readonly ManifestAdapter[] = [
       ? extractPyprojectDependencies(text)
       : extractRequirementsDependencies(text, pythonRequirementsScope(path)),
     normalizeNoteKey: (raw) => normalizePythonPackageName(tolerantKey(raw)),
+  },
+  {
+    kind: 'ruby',
+    fileNames: ['Gemfile', 'gems.rb'],
+    discoveryGlobs: ['**/Gemfile', '**/gems.rb', '**/*.gemspec'],
+    notesRelativePath: '.pacmon/ruby/DEPENDENCY-NOTES.md',
+    matchesPath: isRubyManifestPath,
+    extractDependencies: extractRubyDependencies,
+    normalizeNoteKey: tolerantKey,
   },
   {
     kind: 'nuget',
