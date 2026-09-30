@@ -1,0 +1,6 @@
+{
+  "name": "pacmon/composer-root-fixture",
+  "require": {
+    "acme/shared-composer": "^1.0"
+  }
+}

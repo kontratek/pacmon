@@ -1,0 +1,6 @@
+{
+  "name": "acme/vendored",
+  "require": {
+    "acme/vendored-only": "^1.0"
+  }
+}

@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+- **Pacmon supports PHP/Composer projects in VS Code.** Package and platform
+  requirements in the root `require` and `require-dev` objects of
+  `composer.json` get markers, hover, note editing and coverage backed by
+  `.pacmon/composer/DEPENDENCY-NOTES.md`. Parsing is static: Pacmon never runs
+  PHP or Composer, and ignores other package-link fields, `composer.lock` and
+  transitive packages.
+
 - **The VS Code and Open VSX pages describe dependency review and
   allowlisting.** Like the Visual Studio Marketplace page, they say that a notes
   file can be the allowlist of the packages a project has reviewed and

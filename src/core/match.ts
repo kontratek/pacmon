@@ -16,7 +16,7 @@ export function normalizeName(raw: string): string {
 
 export function normalizeNameForEcosystem(raw: string, ecosystem?: ManifestKind): string {
   if (ecosystem === 'python') return stripName(raw).toLowerCase().replace(/[._-]+/g, '-');
-  if (ecosystem === 'nuget' || ecosystem === 'vcpkg' || ecosystem === 'conan') return stripName(raw).toLowerCase();
+  if (ecosystem === 'nuget' || ecosystem === 'vcpkg' || ecosystem === 'conan' || ecosystem === 'composer') return stripName(raw).toLowerCase();
   return ecosystem && ecosystem !== 'npm' ? stripName(raw) : normalizeName(raw);
 }
 

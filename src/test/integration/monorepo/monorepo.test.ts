@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-// Runs in a copy of fixtures/monorepo: npm, Mix, Gleam, Zig and Python manifests with
+// Runs in a copy of fixtures/monorepo: npm, Mix, Gleam, Zig, Python and Composer manifests with
 // nested notes files, plus downloaded/cache manifests discovery must ignore.
 
 function at(...parts: string[]): vscode.Uri {
@@ -301,6 +301,16 @@ suite('pacmon monorepo', () => {
     assert.ok(!text.includes('Root Go note'), 'the root Go note must not leak into the nested module');
   });
 
+  test('a nested Composer manifest uses its nearest Composer notes', async function () {
+    this.timeout(20000);
+    const text = await poll(async () => {
+      const value = await hoverText(at('apps', 'php-app', 'composer.json'), 'acme/shared-composer');
+      return value.includes('Nested Composer note') ? value : undefined;
+    });
+    assert.ok(text.includes('.pacmon/composer/DEPENDENCY-NOTES.md'), text);
+    assert.ok(!text.includes('Root Composer note'), 'the root Composer note must not leak into the nested project');
+  });
+
   test('nested vcpkg and Conan manifests use separate nearest notes', async function () {
     this.timeout(20000);
     for (const [manifestName, dependency, expected, other] of [
@@ -401,6 +411,20 @@ suite('pacmon monorepo', () => {
     }
   });
 
+  test('pacmon.monorepo = rootOnly makes a nested Composer manifest use root Composer notes', async function () {
+    this.timeout(20000);
+    await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
+    try {
+      const text = await poll(async () => {
+        const value = await hoverText(at('apps', 'php-app', 'composer.json'), 'acme/shared-composer');
+        return value.includes('Root Composer note') ? value : undefined;
+      });
+      assert.ok(!text.includes('Nested Composer note'), 'rootOnly must ignore the child Composer notes file');
+    } finally {
+      await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
   test('pacmon.monorepo = rootOnly makes nested C/C++ manifests use their matching root notes', async function () {
     this.timeout(20000);
     await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
@@ -427,6 +451,28 @@ suite('pacmon monorepo', () => {
     const editor = await vscode.window.showTextDocument(doc);
     const ecosystemLine = doc.getText().split(/\r?\n/).findIndex((line) => line === 'ecosystem: go');
     assert.ok(ecosystemLine > 0, 'fixture changed: no Go ecosystem line');
+    await editor.edit((edit) => edit.replace(doc.lineAt(ecosystemLine).range, 'ecosystem: cargo'));
+    try {
+      const mine = await poll(() => {
+        const diagnostics = vscode.languages.getDiagnostics(notes).filter((item) => item.source === 'pacmon');
+        return diagnostics.some((item) => item.code === 'wrong-ecosystem') ? diagnostics : undefined;
+      });
+      assert.ok(
+        !mine.some((item) => item.code === 'removed-but-present'),
+        'a dependency found only under vendor/ must not count as a project dependency',
+      );
+    } finally {
+      await vscode.commands.executeCommand('workbench.action.files.revert');
+    }
+  });
+
+  test('Composer vendor manifests are excluded from note dependency discovery', async function () {
+    this.timeout(15000);
+    const notes = at('.pacmon', 'composer', 'DEPENDENCY-NOTES.md');
+    const doc = await vscode.workspace.openTextDocument(notes);
+    const editor = await vscode.window.showTextDocument(doc);
+    const ecosystemLine = doc.getText().split(/\r?\n/).findIndex((line) => line === 'ecosystem: composer');
+    assert.ok(ecosystemLine > 0, 'fixture changed: no Composer ecosystem line');
     await editor.edit((edit) => edit.replace(doc.lineAt(ecosystemLine).range, 'ecosystem: cargo'));
     try {
       const mine = await poll(() => {

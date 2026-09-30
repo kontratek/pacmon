@@ -1,0 +1,10 @@
+{
+  "name": "pacmon/composer-fixture",
+  "require": {
+    "php": "^8.3",
+    "monolog/monolog": "^3.9"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^11.5"
+  }
+}
