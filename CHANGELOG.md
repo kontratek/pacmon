@@ -7,6 +7,23 @@
 
 ## Unreleased
 
+- **The VS Code and Open VSX pages describe dependency review and
+  allowlisting.** Like the Visual Studio Marketplace page, they say that a notes
+  file can be the allowlist of the packages a project has reviewed and
+  accepted, with their `risk`, `runtime`, `exposure` and advisory `log`, and
+  that a dependency without a note is shown, not blocked. The README also says
+  which editors add the pointer to agent instruction files.
+
+## 0.9.0 — 2026-09-29
+
+- **Pacmon supports Gleam projects in JetBrains IDEs.** `gleam.toml` gets what
+  VS Code has had since 0.8.0: markers, hover, note editing and coverage for the
+  direct dependencies in `[dependencies]` and `[dev_dependencies]`, backed by the
+  same `.pacmon/gleam/DEPENDENCY-NOTES.md`. The manifest is read statically, as
+  in VS Code, so neither Gleam nor a Gleam language plugin is needed.
+
+## 0.8.0 — 2026-09-29
+
 - **Pacmon supports Gleam projects in VS Code.** Direct dependencies in the
   `[dependencies]` and `[dev_dependencies]` tables of `gleam.toml` get markers,
   hover, note editing and coverage backed by `.pacmon/gleam/DEPENDENCY-NOTES.md`.

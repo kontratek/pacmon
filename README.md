@@ -34,7 +34,7 @@ Pacmon reads a manifest as text and never runs npm, Cargo, Maven, Gradle, Mix, G
 - **Maven:** the `<dependencies>` of the project and its profiles, not `<dependencyManagement>` or plugin dependencies. Parent POMs are not read.
 - **Gradle:** module coordinates and `libs.*` aliases in a `dependencies` block, not plugins, constraints, `project(…)`, `files(…)` or catalog bundles. The script is never run, so a dependency added by code is not seen.
 - **Elixir / Mix:** literal dependency tuples in `def/defp deps` or an inline `deps: [...]` list, including Hex, Git, path and umbrella dependencies. Static `only` and `targets` options are shown as scopes; dynamically assembled lists are not run or guessed.
-- **Gleam / Hex (VS Code):** direct keys in `[dependencies]` and `[dev_dependencies]` in `gleam.toml`, including version, Hex, Git and path declarations. `manifest.toml`, transitive packages and other tables are not read.
+- **Gleam / Hex:** direct keys in `[dependencies]` and `[dev_dependencies]` in `gleam.toml`, including version, Hex, Git and path declarations. `manifest.toml`, transitive packages and other tables are not read.
 - **Zig:** direct fields of the top-level `.dependencies` struct in `build.zig.zon`, including URL/hash, path and lazy dependencies. `build.zig`, system libraries and transitive dependencies are not evaluated.
 - **Python:** named dependencies in standard project metadata, optional dependencies, dependency groups and build requirements; Poetry dependency tables and groups; uv legacy development dependencies; and named pip requirements. Includes, constraints, tool options, unnamed paths and lock files are not dependencies. Package names are matched case-insensitively with `.`, `_` and `-` treated alike.
 - **.NET / NuGet:** literal `PackageReference Include` items in C#, F# and VB project files; and `PackageVersion Include/Update` plus `GlobalPackageReference Include` items in `Directory.Packages.props`. Package IDs are matched case-insensitively. Imports, MSBuild expressions, project/framework references, downloads and transitive packages are not evaluated.
@@ -81,6 +81,10 @@ generated, and nothing is cached anywhere else.
 - **Documentation Coverage** lists which dependencies have a note and which do not.
 - Problems in the notes file show as warnings, most with a one-click fix.
 
+## Dependency review and allowlisting
+
+A notes file can serve as the allowlist of the packages a project has reviewed and accepted. Each accepted package gets a note that says why it was allowed, and the agent layer records its `risk` (security exposure, native code, licence obligations, maintenance), where it runs (`runtime`), whether it handles untrusted input (`exposure`), and a dated `log` of advisories, upgrades and rejected proposals. A dependency added to a manifest without a note shows a hollow mark and appears in **Documentation Coverage**, so an unreviewed dependency stands out. Pacmon makes it visible; it does not block the dependency.
+
 ## Getting started
 
 1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon). VSCodium, Cursor, Windsurf, code-server and other editors that use [Open VSX](https://open-vsx.org/extension/kontra/pacmon) install it from there. Rider, IntelliJ IDEA, RustRover, Android Studio, WebStorm and the other JetBrains IDEs install it from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34295-pacmon). Visual Studio 2022 and newer install it from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon-visualstudio).
@@ -92,7 +96,7 @@ generated, and nothing is cached anywhere else.
 
 Every section has a second layer, `### Agent notes`, for AI coding agents. They write `- key: value` lines there: `purpose`, `constraint`, `verify`, `log`, `verified` and a few more. Agents never edit the text people wrote.
 
-Run **Pacmon: Set Up AI Instructions** once. It writes the rules and the field list to `.pacmon/AGENT-RULES.md`, and adds a three-line pointer to the instruction files your agents already read: `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/`, `.github/copilot-instructions.md`. The rules say where each ecosystem keeps its notes and how it names its sections. From then on, an agent reads a dependency's section before it adds, upgrades or removes the dependency, and records what it did. Pacmon checks the agent lines: an unknown field or an empty value shows as a warning, with a fix.
+Run **Pacmon: Set Up AI Instructions** once. It writes the rules and the field list to `.pacmon/AGENT-RULES.md` and, in VS Code and JetBrains, adds a three-line pointer to the instruction files your agents already read: `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/`, `.github/copilot-instructions.md`. The rules say where each ecosystem keeps its notes and how it names its sections. From then on, an agent reads a dependency's section before it adds, upgrades or removes the dependency, and records what it did. Pacmon checks the agent lines: an unknown field or an empty value shows as a warning, with a fix.
 
 ![An agent in the terminal fills the notes for react; the package.json line gains its preview and the panel shows the agent lines](docs/media/demo-ai.gif)
 

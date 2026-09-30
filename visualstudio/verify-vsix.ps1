@@ -31,14 +31,24 @@ try {
     throw "VSIX version is $($metadata.Identity.Version), but package.json says $version."
   }
   # The Marketplace refuses a VSIX whose publisher is not the display name of
-  # the Marketplace publisher (Kontra), or whose description is over 280
-  # characters.
+  # the Marketplace publisher (Kontra), whose description is over 280
+  # characters, or with a tag over 50. Tags are separated by semicolons, 100
+  # characters in all.
   if ($metadata.Identity.Publisher -cne 'Kontra') {
     throw "VSIX publisher is '$($metadata.Identity.Publisher)', not the Marketplace publisher's display name 'Kontra'."
   }
   $description = $metadata['Description'].InnerText
   if ($description.Length -gt 280) {
     throw "VSIX description is $($description.Length) characters; the Marketplace allows 280."
+  }
+  $tags = "$($metadata['Tags'].InnerText)"
+  if ($tags.Length -gt 100) {
+    throw "VSIX tags are $($tags.Length) characters; the manifest allows 100."
+  }
+  foreach ($tag in $tags.Split(';')) {
+    if ($tag.Trim().Length -gt 50) {
+      throw "VSIX tag '$($tag.Trim())' is over 50 characters; tags are separated by semicolons, 50 characters each."
+    }
   }
   $entry = $archive.GetEntry('Pacmon.VisualStudio.pkgdef')
   $reader = [System.IO.StreamReader]::new($entry.Open())
