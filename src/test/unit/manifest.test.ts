@@ -19,6 +19,9 @@ describe('manifest adapters', () => {
     expect(manifestAdapterForFileName('pyproject.toml')?.kind).toBe('python');
     expect(manifestAdapterForFileName('requirements-dev.txt')?.kind).toBe('python');
     expect(manifestAdapterForFileName('go.mod')?.kind).toBe('go');
+    expect(manifestAdapterForFileName('vcpkg.json')?.kind).toBe('vcpkg');
+    expect(manifestAdapterForFileName('conanfile.py')?.kind).toBe('conan');
+    expect(manifestAdapterForFileName('conanfile.txt')?.kind).toBe('conan');
     expect(manifestAdapterForFileName('settings.gradle')).toBeUndefined();
   });
 });

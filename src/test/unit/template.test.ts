@@ -68,6 +68,12 @@ describe('template: frontmatter and header', () => {
     expect(go).toContain('ecosystem: go');
     expect(go).toContain('go dependency manifest');
     expect(normalizeText(go)).toBe(go);
+    const vcpkg = newNotesFileContent('\n', 'fmt', 'Formatting.', 'vcpkg');
+    expect(vcpkg).toContain('ecosystem: vcpkg');
+    expect(vcpkg).toContain('vcpkg dependency manifest');
+    const conan = newNotesFileContent('\n', 'zlib', 'Compression.', 'conan');
+    expect(conan).toContain('ecosystem: conan');
+    expect(conan).toContain('conan dependency manifest');
     expect(zig).toContain('zig dependency manifest');
     expect(normalizeText(zig)).toBe(zig);
   });

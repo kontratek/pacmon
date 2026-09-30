@@ -1,0 +1,5 @@
+{
+  "name": "pacmon-root-vcpkg",
+  "version-string": "0.0.0",
+  "dependencies": ["shared-vcpkg"]
+}
