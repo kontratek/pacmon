@@ -14,6 +14,8 @@ import {
 } from './python-manifest';
 import { extractNugetDependencies, isNugetManifestPath } from './nuget-manifest';
 import { extractGoDependencies } from './go-manifest';
+import { extractVcpkgDependencies } from './vcpkg-manifest';
+import { extractConanDependencies } from './conan-manifest';
 export { dependencyAtOffset } from './dependency';
 
 export interface ManifestAdapter {
@@ -149,6 +151,24 @@ export const MANIFEST_ADAPTERS: readonly ManifestAdapter[] = [
     matchesPath: exactPathMatcher(['go.mod']),
     extractDependencies: extractGoDependencies,
     normalizeNoteKey: tolerantKey,
+  },
+  {
+    kind: 'vcpkg',
+    fileNames: ['vcpkg.json'],
+    discoveryGlobs: exactDiscoveryGlobs(['vcpkg.json']),
+    notesRelativePath: '.pacmon/vcpkg/DEPENDENCY-NOTES.md',
+    matchesPath: exactPathMatcher(['vcpkg.json']),
+    extractDependencies: extractVcpkgDependencies,
+    normalizeNoteKey: (raw) => tolerantKey(raw).toLowerCase(),
+  },
+  {
+    kind: 'conan',
+    fileNames: ['conanfile.py', 'conanfile.txt'],
+    discoveryGlobs: exactDiscoveryGlobs(['conanfile.py', 'conanfile.txt']),
+    notesRelativePath: '.pacmon/conan/DEPENDENCY-NOTES.md',
+    matchesPath: exactPathMatcher(['conanfile.py', 'conanfile.txt']),
+    extractDependencies: extractConanDependencies,
+    normalizeNoteKey: (raw) => tolerantKey(raw).toLowerCase(),
   },
 ];
 

@@ -60,6 +60,10 @@ describe('lintNotes — frontmatter and title', () => {
       .toBe('nuget');
     expect(parseNotes('---\nformat: dependency-notes/2\necosystem: go\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
       .toBe('go');
+    expect(parseNotes('---\nformat: dependency-notes/2\necosystem: vcpkg\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
+      .toBe('vcpkg');
+    expect(parseNotes('---\nformat: dependency-notes/2\necosystem: conan\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
+      .toBe('conan');
   });
 
   it('wants exactly one title, worded "# Dependency Notes"', () => {

@@ -1,0 +1,8 @@
+{
+  "name": "pacmon-vcpkg-fixture",
+  "version-string": "0.0.0",
+  "dependencies": [
+    "fmt",
+    { "name": "openssl", "host": true }
+  ]
+}

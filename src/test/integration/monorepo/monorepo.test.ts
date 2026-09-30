@@ -301,6 +301,21 @@ suite('pacmon monorepo', () => {
     assert.ok(!text.includes('Root Go note'), 'the root Go note must not leak into the nested module');
   });
 
+  test('nested vcpkg and Conan manifests use separate nearest notes', async function () {
+    this.timeout(20000);
+    for (const [manifestName, dependency, expected, other] of [
+      ['vcpkg.json', 'shared-vcpkg', 'Nested vcpkg note', 'Nested Conan note'],
+      ['conanfile.txt', 'shared-conan', 'Nested Conan note', 'Nested vcpkg note'],
+    ] as const) {
+      const text = await poll(async () => {
+        const value = await pythonHoverText(at('apps', 'cpp-app', manifestName), dependency);
+        return value.includes(expected) ? value : undefined;
+      });
+      assert.ok(!text.includes(other), `${manifestName} must not read the other C/C++ ecosystem notes`);
+      assert.ok(!text.includes(`Root ${manifestName === 'vcpkg.json' ? 'vcpkg' : 'Conan'} note`));
+    }
+  });
+
   test('pacmon.monorepo = rootOnly ignores the nested notes file', async function () {
     this.timeout(20000);
     await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
@@ -381,6 +396,25 @@ suite('pacmon monorepo', () => {
         return value.includes('Root Go note') ? value : undefined;
       });
       assert.ok(!text.includes('Nested Go note'), 'rootOnly must ignore the child Go notes file');
+    } finally {
+      await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test('pacmon.monorepo = rootOnly makes nested C/C++ manifests use their matching root notes', async function () {
+    this.timeout(20000);
+    await cfg().update('monorepo', 'rootOnly', vscode.ConfigurationTarget.Global);
+    try {
+      for (const [manifestName, dependency, expected] of [
+        ['vcpkg.json', 'shared-vcpkg', 'Root vcpkg note'],
+        ['conanfile.txt', 'shared-conan', 'Root Conan note'],
+      ] as const) {
+        const text = await poll(async () => {
+          const value = await pythonHoverText(at('apps', 'cpp-app', manifestName), dependency);
+          return value.includes(expected) ? value : undefined;
+        });
+        assert.ok(!text.includes('Nested'), `${manifestName} must ignore its nested notes in rootOnly mode`);
+      }
     } finally {
       await cfg().update('monorepo', undefined, vscode.ConfigurationTarget.Global);
     }

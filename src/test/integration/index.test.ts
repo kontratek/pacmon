@@ -399,6 +399,60 @@ suite('pacmon integration', () => {
     }
   });
 
+  test('vcpkg and Conan manifests use separate C/C++ notes namespaces', async () => {
+    for (const [manifestName, dependency, expected, notesPath] of [
+      ['vcpkg.json', 'fmt', 'C++ formatting library from vcpkg', '.pacmon/vcpkg/DEPENDENCY-NOTES.md'],
+      ['conanfile.py', 'zlib', 'Compression library from Conan', '.pacmon/conan/DEPENDENCY-NOTES.md'],
+    ] as const) {
+      const manifest = fixtureUri(manifestName);
+      const doc = await vscode.workspace.openTextDocument(manifest);
+      await vscode.window.showTextDocument(doc);
+      const offset = doc.getText().indexOf(dependency);
+      assert.ok(offset >= 0, `${dependency} missing from ${manifestName}`);
+      const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+        'vscode.executeHoverProvider',
+        manifest,
+        doc.positionAt(offset + 1),
+      );
+      const text = (hovers ?? []).flatMap((hover) => hover.contents)
+        .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+      assert.ok(text.includes(expected), `${manifestName} note missing: ${text}`);
+      assert.ok(text.includes(notesPath), `${manifestName} notes path missing: ${text}`);
+    }
+  });
+
+  test('the first vcpkg note creates a v2 vcpkg notes file', async function () {
+    this.timeout(20000);
+    const notes = fixtureUri('.pacmon', 'vcpkg', 'DEPENDENCY-NOTES.md');
+    const original = await vscode.workspace.fs.readFile(notes);
+    try {
+      await vscode.workspace.fs.delete(notes);
+      await sleep(500);
+      const manifest = fixtureUri('vcpkg.json');
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(manifest));
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'openssl', 'TLS implementation for native code.');
+      const text = await poll(async () => {
+        try {
+          const value = await readText(notes);
+          return value.includes('## openssl') ? value : undefined;
+        } catch {
+          return undefined;
+        }
+      });
+      assert.ok(text.includes('format: dependency-notes/2\necosystem: vcpkg\nlang: en'));
+      assert.ok(text.includes('TLS implementation for native code.'));
+    } finally {
+      await vscode.workspace.fs.writeFile(notes, original);
+    }
+  });
+
+  test('Conan notes open conanfile.py before conanfile.txt', async () => {
+    const notes = fixtureUri('.pacmon', 'conan', 'DEPENDENCY-NOTES.md');
+    await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(notes));
+    await vscode.commands.executeCommand('pacmon.openManifest');
+    await poll(() => vscode.window.activeTextEditor?.document.uri.path.endsWith('/conanfile.py') ? true : undefined);
+  });
+
   test('writing a Cargo note does not change other ecosystem notes', async function () {
     this.timeout(15000);
     const cargoNotes = fixtureUri('.pacmon', 'cargo', 'DEPENDENCY-NOTES.md');
