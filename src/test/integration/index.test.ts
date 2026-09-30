@@ -200,6 +200,22 @@ suite('pacmon integration', () => {
     assert.ok(text.includes('.pacmon/gleam/DEPENDENCY-NOTES.md'));
   });
 
+  test('composer.json requirements use the Composer notes namespace', async () => {
+    const manifest = fixtureUri('composer.json');
+    const doc = await vscode.workspace.openTextDocument(manifest);
+    await vscode.window.showTextDocument(doc);
+    const offset = doc.getText().indexOf('monolog/monolog');
+    const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+      'vscode.executeHoverProvider',
+      manifest,
+      doc.positionAt(offset + 2),
+    );
+    const text = (hovers ?? []).flatMap((hover) => hover.contents)
+      .map((content) => typeof content === 'string' ? content : content.value).join('\n');
+    assert.ok(text.includes('Structured logging for the PHP fixture'), `Composer note missing, got: ${text}`);
+    assert.ok(text.includes('.pacmon/composer/DEPENDENCY-NOTES.md'));
+  });
+
   test('build.zig.zon fields use the Zig notes namespace', async () => {
     const manifest = fixtureUri('build.zig.zon');
     const doc = await vscode.workspace.openTextDocument(manifest);
@@ -399,6 +415,31 @@ suite('pacmon integration', () => {
     }
   });
 
+  test('the first Composer note creates a v2 Composer notes file', async function () {
+    this.timeout(20000);
+    const notes = fixtureUri('.pacmon', 'composer', 'DEPENDENCY-NOTES.md');
+    const original = await vscode.workspace.fs.readFile(notes);
+    try {
+      await vscode.workspace.fs.delete(notes);
+      await sleep(500);
+      const manifest = fixtureUri('composer.json');
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(manifest));
+      await vscode.commands.executeCommand('pacmon.addOrEditNote', 'phpunit/phpunit', 'PHP test framework.');
+      const text = await poll(async () => {
+        try {
+          const value = await readText(notes);
+          return value.includes('## phpunit/phpunit') ? value : undefined;
+        } catch {
+          return undefined;
+        }
+      });
+      assert.ok(text.includes('format: dependency-notes/2\necosystem: composer\nlang: en'));
+      assert.ok(text.includes('PHP test framework.'));
+    } finally {
+      await vscode.workspace.fs.writeFile(notes, original);
+    }
+  });
+
   test('vcpkg and Conan manifests use separate C/C++ notes namespaces', async () => {
     for (const [manifestName, dependency, expected, notesPath] of [
       ['vcpkg.json', 'fmt', 'C++ formatting library from vcpkg', '.pacmon/vcpkg/DEPENDENCY-NOTES.md'],
@@ -463,7 +504,8 @@ suite('pacmon integration', () => {
     const gleamNotes = fixtureUri('.pacmon', 'gleam', 'DEPENDENCY-NOTES.md');
     const zigNotes = fixtureUri('.pacmon', 'zig', 'DEPENDENCY-NOTES.md');
     const goNotes = fixtureUri('.pacmon', 'go', 'DEPENDENCY-NOTES.md');
-    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes, mixNotes, gleamNotes, zigNotes, goNotes];
+    const composerNotes = fixtureUri('.pacmon', 'composer', 'DEPENDENCY-NOTES.md');
+    const notesFiles = [cargoNotes, npmNotes, mavenNotes, gradleNotes, mixNotes, gleamNotes, zigNotes, goNotes, composerNotes];
     const originals = await Promise.all(notesFiles.map((uri) => vscode.workspace.fs.readFile(uri)));
     try {
       const cargo = fixtureUri('Cargo.toml');
@@ -481,6 +523,7 @@ suite('pacmon integration', () => {
       assert.strictEqual(await readText(gleamNotes), new TextDecoder().decode(originals[5]!));
       assert.strictEqual(await readText(zigNotes), new TextDecoder().decode(originals[6]!));
       assert.strictEqual(await readText(goNotes), new TextDecoder().decode(originals[7]!));
+      assert.strictEqual(await readText(composerNotes), new TextDecoder().decode(originals[8]!));
     } finally {
       await Promise.all(notesFiles.map((uri, index) =>
         vscode.workspace.fs.writeFile(uri, originals[index]!),

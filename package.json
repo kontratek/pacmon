@@ -1,7 +1,7 @@
 {
   "name": "pacmon",
   "displayName": "Pacmon — Dependency Notes",
-  "description": "Why each dependency exists, as a note next to JavaScript, Rust, JVM, Elixir, Gleam, Zig, Python, Go, .NET/NuGet or C/C++ package manifests. Plain Markdown in your repo; AI agents read and write it too.",
+  "description": "Why each dependency exists, as a note next to JavaScript, Rust, JVM, Elixir, Gleam, Zig, Python, PHP/Composer, Go, .NET/NuGet or C/C++ package manifests. Plain Markdown in your repo; AI agents read and write it too.",
   "version": "0.7.0",
   "publisher": "kontra",
   "private": true,
@@ -46,6 +46,9 @@
     "pip",
     "Poetry",
     "uv",
+    "PHP",
+    "Composer",
+    "composer.json",
     ".NET",
     "NuGet",
     "csproj",
@@ -81,6 +84,7 @@
     "workspaceContains:**/.pacmon/nuget/DEPENDENCY-NOTES.md",
     "workspaceContains:**/.pacmon/vcpkg/DEPENDENCY-NOTES.md",
     "workspaceContains:**/.pacmon/conan/DEPENDENCY-NOTES.md",
+    "workspaceContains:**/.pacmon/composer/DEPENDENCY-NOTES.md",
     "workspaceContains:**/Cargo.toml",
     "workspaceContains:**/pom.xml",
     "workspaceContains:**/build.gradle",
@@ -99,6 +103,7 @@
     "workspaceContains:**/vcpkg.json",
     "workspaceContains:**/conanfile.py",
     "workspaceContains:**/conanfile.txt",
+    "workspaceContains:**/composer.json",
     "onView:pacmon.settings"
   ],
   "main": "./dist/extension.js",
@@ -175,7 +180,7 @@
       "editor/context": [
         {
           "command": "pacmon.addOrEditNote",
-          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml || resourceFilename == build.gradle || resourceFilename == build.gradle.kts || resourceFilename == mix.exs || resourceFilename == gleam.toml || resourceFilename == build.zig.zon || resourceFilename == pyproject.toml || resourceFilename == go.mod || resourceFilename == Directory.Packages.props || resourceFilename == vcpkg.json || resourceFilename == conanfile.py || resourceFilename == conanfile.txt || resourceFilename =~ /^requirements.*\\.txt$/ || resourcePath =~ /[\\\\/]requirements[\\\\/].*\\.txt$/ || resourceExtname =~ /^\\.(cs|fs|vb)proj$/) && editorTextFocus",
+          "when": "(resourceFilename == package.json || resourceFilename == Cargo.toml || resourceFilename == pom.xml || resourceFilename == build.gradle || resourceFilename == build.gradle.kts || resourceFilename == mix.exs || resourceFilename == gleam.toml || resourceFilename == build.zig.zon || resourceFilename == pyproject.toml || resourceFilename == go.mod || resourceFilename == Directory.Packages.props || resourceFilename == vcpkg.json || resourceFilename == conanfile.py || resourceFilename == conanfile.txt || resourceFilename == composer.json || resourceFilename =~ /^requirements.*\\.txt$/ || resourcePath =~ /[\\\\/]requirements[\\\\/].*\\.txt$/ || resourceExtname =~ /^\\.(cs|fs|vb)proj$/) && editorTextFocus",
           "group": "1_modification@100"
         }
       ],

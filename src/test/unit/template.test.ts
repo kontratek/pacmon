@@ -74,6 +74,10 @@ describe('template: frontmatter and header', () => {
     const conan = newNotesFileContent('\n', 'zlib', 'Compression.', 'conan');
     expect(conan).toContain('ecosystem: conan');
     expect(conan).toContain('conan dependency manifest');
+    const composer = newNotesFileContent('\n', 'monolog/monolog', 'Logging.', 'composer');
+    expect(composer).toContain('ecosystem: composer');
+    expect(composer).toContain('composer dependency manifest');
+    expect(normalizeText(composer)).toBe(composer);
     expect(zig).toContain('zig dependency manifest');
     expect(normalizeText(zig)).toBe(zig);
   });
@@ -98,6 +102,7 @@ describe('template: pointer block for the user’s agent files', () => {
     expect(text).toContain('.pacmon/mix/DEPENDENCY-NOTES.md');
     expect(text).toContain('.pacmon/zig/DEPENDENCY-NOTES.md');
     expect(text).toContain('.pacmon/nuget/DEPENDENCY-NOTES.md');
+    expect(text).toContain('.pacmon/composer/DEPENDENCY-NOTES.md');
   });
 
   it('appends the block once and replaces it on re-run', () => {

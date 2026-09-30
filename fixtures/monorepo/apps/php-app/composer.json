@@ -1,0 +1,6 @@
+{
+  "name": "pacmon/composer-nested-fixture",
+  "require": {
+    "acme/shared-composer": "^2.0"
+  }
+}

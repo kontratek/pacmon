@@ -57,7 +57,7 @@ export interface NotesFileModel {
   problems: NotesProblem[];
 }
 
-export type ManifestKind = 'npm' | 'cargo' | 'maven' | 'gradle' | 'mix' | 'gleam' | 'zig' | 'python' | 'go' | 'nuget' | 'vcpkg' | 'conan';
+export type ManifestKind = 'npm' | 'cargo' | 'maven' | 'gradle' | 'mix' | 'gleam' | 'zig' | 'python' | 'go' | 'nuget' | 'vcpkg' | 'conan' | 'composer';
 
 export interface SourceRange {
   offset: number;

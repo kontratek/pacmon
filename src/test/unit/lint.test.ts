@@ -64,6 +64,8 @@ describe('lintNotes — frontmatter and title', () => {
       .toBe('vcpkg');
     expect(parseNotes('---\nformat: dependency-notes/2\necosystem: conan\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
       .toBe('conan');
+    expect(parseNotes('---\nformat: dependency-notes/2\necosystem: composer\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
+      .toBe('composer');
   });
 
   it('wants exactly one title, worded "# Dependency Notes"', () => {

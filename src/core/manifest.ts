@@ -16,6 +16,7 @@ import { extractNugetDependencies, isNugetManifestPath } from './nuget-manifest'
 import { extractGoDependencies } from './go-manifest';
 import { extractVcpkgDependencies } from './vcpkg-manifest';
 import { extractConanDependencies } from './conan-manifest';
+import { extractComposerDependencies } from './composer-manifest';
 export { dependencyAtOffset } from './dependency';
 
 export interface ManifestAdapter {
@@ -168,6 +169,15 @@ export const MANIFEST_ADAPTERS: readonly ManifestAdapter[] = [
     notesRelativePath: '.pacmon/conan/DEPENDENCY-NOTES.md',
     matchesPath: exactPathMatcher(['conanfile.py', 'conanfile.txt']),
     extractDependencies: extractConanDependencies,
+    normalizeNoteKey: (raw) => tolerantKey(raw).toLowerCase(),
+  },
+  {
+    kind: 'composer',
+    fileNames: ['composer.json'],
+    discoveryGlobs: exactDiscoveryGlobs(['composer.json']),
+    notesRelativePath: '.pacmon/composer/DEPENDENCY-NOTES.md',
+    matchesPath: exactPathMatcher(['composer.json']),
+    extractDependencies: extractComposerDependencies,
     normalizeNoteKey: (raw) => tolerantKey(raw).toLowerCase(),
   },
 ];

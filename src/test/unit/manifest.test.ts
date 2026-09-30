@@ -22,6 +22,7 @@ describe('manifest adapters', () => {
     expect(manifestAdapterForFileName('vcpkg.json')?.kind).toBe('vcpkg');
     expect(manifestAdapterForFileName('conanfile.py')?.kind).toBe('conan');
     expect(manifestAdapterForFileName('conanfile.txt')?.kind).toBe('conan');
+    expect(manifestAdapterForFileName('composer.json')?.kind).toBe('composer');
     expect(manifestAdapterForFileName('settings.gradle')).toBeUndefined();
   });
 });
