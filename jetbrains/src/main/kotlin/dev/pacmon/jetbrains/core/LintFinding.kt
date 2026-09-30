@@ -37,7 +37,7 @@ sealed class LintFinding(val line: Int) {
 
     class MissingEcosystem(line: Int) : LintFinding(line) {
         override fun message(): String =
-            "Format dependency-notes/2 requires ecosystem: cargo, ecosystem: maven, ecosystem: gradle, or ecosystem: mix."
+            "Format dependency-notes/2 requires a supported ecosystem value, such as ecosystem: ruby."
     }
 
     class WrongEcosystem(

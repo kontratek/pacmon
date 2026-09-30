@@ -66,7 +66,7 @@ export const S = {
   viewGroupActions: 'Actions',
   viewOpenNotes: (fileName: string) => `Open ${fileName}`,
   viewOpenPackage: 'Open dependency manifest',
-  viewOpenPackageHelp: 'The JavaScript, Rust, JVM, Elixir, Zig, Python, PHP/Composer, Go, .NET/NuGet, vcpkg, or Conan manifest these notes describe.',
+  viewOpenPackageHelp: 'The JavaScript, Rust, JVM, Elixir, Gleam, Zig, Python, Ruby, PHP/Composer, Go, .NET/NuGet, vcpkg, or Conan manifest these notes describe.',
   viewSearch: 'Search dependencies…',
   viewSearchHelp: 'Every dependency in one list, documented or not — pick one to open its note.',
   viewGroupCoverage: 'Coverage',

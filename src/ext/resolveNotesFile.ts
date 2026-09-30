@@ -2,10 +2,11 @@ import * as vscode from 'vscode';
 import { MANIFEST_ADAPTERS, manifestAdapterForKind, manifestAdapterForPath } from '../core/manifest';
 import type { DependencyEntry, ManifestKind } from '../core/model';
 import { uniqueNugetDependencies } from '../core/nuget-manifest';
+import { uniqueRubyDependencies } from '../core/ruby-manifest';
 import { AGENT_RULES_REL_PATH } from '../core/template';
 import { monorepoMode, uriBasename } from './config';
 
-const DISCOVERY_EXCLUDE = '**/{node_modules,target,.gradle,_build,deps,zig-pkg,.zig-cache,zig-cache,zig-out,.venv,venv,.tox,.nox,site-packages,dist,build,bin,obj,vendor,testdata,.conan,.conan2,vcpkg_installed,.git}/**';
+const DISCOVERY_EXCLUDE = '**/{node_modules,target,.gradle,_build,deps,zig-pkg,.zig-cache,zig-cache,zig-out,.venv,venv,.tox,.nox,site-packages,dist,build,bin,obj,vendor,testdata,.bundle,.conan,.conan2,vcpkg_installed,.git}/**';
 
 const existsCache = new Map<string, boolean>();
 const manifestsForNotesCache = new Map<string, Promise<vscode.Uri[]>>();
@@ -157,6 +158,8 @@ function manifestPriority(uri: vscode.Uri): string {
     ? basename === 'pyproject.toml' ? 0 : basename === 'requirements.txt' ? 1 : 2
     : adapter?.kind === 'nuget'
       ? basename === 'Directory.Packages.props' ? 0 : 1
+      : adapter?.kind === 'ruby'
+        ? basename === 'Gemfile' ? 0 : basename === 'gems.rb' ? 1 : 2
       : Math.max(0, adapter?.fileNames.indexOf(basename) ?? 99);
   return `${rank.toString().padStart(2, '0')}:${uri.path}`;
 }
@@ -178,7 +181,8 @@ export async function manifestsForNotes(notesUri: vscode.Uri): Promise<vscode.Ur
     const matching: vscode.Uri[] = [];
     for (const uri of found) {
       const resolved = await resolveNotesFileFor(uri);
-      if (resolved?.toString() === key) matching.push(uri);
+      const target = resolved ?? await creationTargetFor(uri);
+      if (target.toString() === key) matching.push(uri);
     }
     if (matching.length === 0) {
       for (const sibling of manifestsBesideNotes(notesUri)) {
@@ -197,6 +201,8 @@ export async function dependenciesForNotes(
 ): Promise<DependencyEntry[]> {
   const groups = await Promise.all((await manifestsForNotes(notesUri)).map((uri) => store.getDeps(uri)));
   const dependencies = groups.flat();
-  if (notesKind(notesUri) !== 'nuget') return dependencies;
-  return uniqueNugetDependencies(dependencies);
+  const kind = notesKind(notesUri);
+  if (kind === 'nuget') return uniqueNugetDependencies(dependencies);
+  if (kind === 'ruby') return uniqueRubyDependencies(dependencies);
+  return dependencies;
 }

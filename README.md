@@ -1,6 +1,6 @@
 # Pacmon
 
-**JavaScript, Rust, JVM, Elixir, Zig, Python, PHP/Composer, Go, .NET/NuGet and C/C++ package manifests say what you depend on. Pacmon adds why.**
+**JavaScript, Rust, JVM, Elixir, Zig, Python, Ruby, PHP/Composer, Go, .NET/NuGet and C/C++ package manifests say what you depend on. Pacmon adds why.**
 
 Every dependency gets a short note: why it is here, what must not change, what to check before an upgrade. The note shows in the manifest on hover, and you write it from there.
 
@@ -20,15 +20,16 @@ Notes live in Markdown files under `.pacmon/`, next to the manifest they describ
 | Gleam / Hex | `gleam.toml` | `.pacmon/gleam/DEPENDENCY-NOTES.md` | the dependency key: `## gleam_stdlib`, `## gleeunit` |
 | Zig | `build.zig.zon` | `.pacmon/zig/DEPENDENCY-NOTES.md` | the direct dependency field: `## known_folders` |
 | Python | `pyproject.toml`, `requirements*.txt`, `requirements/*.txt` | `.pacmon/python/DEPENDENCY-NOTES.md` | the normalized distribution name: `## requests`, `## importlib-metadata` |
+| Ruby | `Gemfile`, `gems.rb`, `*.gemspec` | `.pacmon/ruby/DEPENDENCY-NOTES.md` | the literal gem name as written: `## rails`, `## rspec` |
 | .NET / NuGet | `*.csproj`, `*.fsproj`, `*.vbproj`, `Directory.Packages.props` | `.pacmon/nuget/DEPENDENCY-NOTES.md` | the case-insensitive package ID as written: `## Newtonsoft.Json` |
 | Go | `go.mod` | `.pacmon/go/DEPENDENCY-NOTES.md` | the module path: `## github.com/spf13/cobra`, `## github.com/jackc/pgx/v5` |
 | C/C++ / vcpkg (VS Code) | `vcpkg.json` | `.pacmon/vcpkg/DEPENDENCY-NOTES.md` | the case-insensitive port name: `## fmt`, `## openssl` |
 | C/C++ / Conan (VS Code) | `conanfile.py`, `conanfile.txt` | `.pacmon/conan/DEPENDENCY-NOTES.md` | the case-insensitive package name before `/`: `## zlib`, `## openssl` |
 | PHP / Composer (VS Code) | `composer.json` | `.pacmon/composer/DEPENDENCY-NOTES.md` | the case-insensitive package or platform name: `## monolog/monolog`, `## php`, `## ext-mbstring` |
 
-VS Code supports every manifest in the table. JetBrains supports the rows through Go except Gleam; the C/C++ and PHP/Composer rows are currently VS Code-only. The Visual Studio 2022+ VSIX currently supports the .NET/NuGet row only and reads the same `.pacmon/nuget/DEPENDENCY-NOTES.md` files, so NuGet notes move between all three IDEs without conversion.
+VS Code supports every manifest in the table. JetBrains supports npm, Rust, Maven, Gradle, Mix, Gleam, Zig, Python, Ruby, NuGet and Go; the C/C++ and PHP/Composer rows are currently VS Code-only. The Visual Studio 2022+ VSIX currently supports the .NET/NuGet row only and reads the same `.pacmon/nuget/DEPENDENCY-NOTES.md` files, so NuGet notes move between all three IDEs without conversion.
 
-Pacmon reads a manifest as text and never runs npm, Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, pip, Poetry, uv, PHP, Composer, Go, .NET, MSBuild, NuGet, vcpkg, Conan or Python recipe code. It sees the direct dependencies written in the file:
+Pacmon reads a manifest as text and never runs npm, Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, pip, Poetry, uv, Ruby, Bundler, RubyGems, PHP, Composer, Go, .NET, MSBuild, NuGet, vcpkg, Conan or Python recipe code. It sees the direct dependencies written in the file:
 
 - **npm:** `dependencies`, `devDependencies`, `peerDependencies` and `optionalDependencies`.
 - **Rust:** `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]` and their `[target.…]` forms. A member's `serde.workspace = true` counts; `[workspace.dependencies]` itself does not.
@@ -38,6 +39,7 @@ Pacmon reads a manifest as text and never runs npm, Cargo, Maven, Gradle, Mix, G
 - **Gleam / Hex:** direct keys in `[dependencies]` and `[dev_dependencies]` in `gleam.toml`, including version, Hex, Git and path declarations. `manifest.toml`, transitive packages and other tables are not read.
 - **Zig:** direct fields of the top-level `.dependencies` struct in `build.zig.zon`, including URL/hash, path and lazy dependencies. `build.zig`, system libraries and transitive dependencies are not evaluated.
 - **Python:** named dependencies in standard project metadata, optional dependencies, dependency groups and build requirements; Poetry dependency tables and groups; uv legacy development dependencies; and named pip requirements. Includes, constraints, tool options, unnamed paths and lock files are not dependencies. Package names are matched case-insensitively with `.`, `_` and `-` treated alike.
+- **Ruby:** literal `gem` calls in `Gemfile` or `gems.rb`, with literal group and platform scopes; plus literal `add_dependency`, `add_runtime_dependency` and `add_development_dependency` calls on the active specification receiver in `*.gemspec`. Ruby is never evaluated. Dynamic names, method/class/module bodies, `eval_gemfile`, `Gemfile.lock` and transitive gems are ignored. Gem names are matched exactly.
 - **.NET / NuGet:** literal `PackageReference Include` items in C#, F# and VB project files; and `PackageVersion Include/Update` plus `GlobalPackageReference Include` items in `Directory.Packages.props`. Package IDs are matched case-insensitively. Imports, MSBuild expressions, project/framework references, downloads and transitive packages are not evaluated.
 - **Go:** module paths in `require` directives of `go.mod`, including `// indirect` ones, shown with their own scope. A `tool` directive points at the required module that provides it. `replace`, `exclude`, `retract`, `go.work` and `vendor/` are not read as dependencies.
 - **vcpkg (VS Code):** string and object entries in the root `dependencies` array and in `features.<name>.dependencies`. Host dependencies keep a separate scope. Overrides, baselines, requested dependency features, configuration files, installed trees and transitive packages are not dependencies.
@@ -90,7 +92,7 @@ A notes file can serve as the allowlist of the packages a project has reviewed a
 ## Getting started
 
 1. Install Pacmon from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon). VSCodium, Cursor, Windsurf, code-server and other editors that use [Open VSX](https://open-vsx.org/extension/kontra/pacmon) install it from there. Rider, IntelliJ IDEA, RustRover, Android Studio, WebStorm and the other JetBrains IDEs install it from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34295-pacmon). Visual Studio 2022 and newer install it from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=kontra.pacmon-visualstudio).
-2. Open a supported manifest, such as `package.json`, `Cargo.toml`, `pom.xml`, `build.gradle`, `mix.exs`, `gleam.toml`, `build.zig.zon`, `pyproject.toml`, a supported requirements file, `composer.json`, `go.mod`, `Directory.Packages.props`, a .NET project file, `vcpkg.json`, `conanfile.py` or `conanfile.txt`. A hollow mark appears before every dependency that has no note yet.
+2. Open a supported manifest, such as `package.json`, `Cargo.toml`, `pom.xml`, `build.gradle`, `mix.exs`, `gleam.toml`, `build.zig.zon`, `pyproject.toml`, a supported requirements file, `Gemfile`, a gemspec, `composer.json`, `go.mod`, `Directory.Packages.props`, a .NET project file, `vcpkg.json`, `conanfile.py` or `conanfile.txt`. A hollow mark appears before every dependency that has no note yet.
 3. Right-click a dependency and choose **Pacmon: Add/Edit Dependency Note**, or click the mark. Write one line.
 4. The note now shows on hover and at the end of the line. Pacmon created the notes file for that ecosystem next to the manifest, and `.pacmon/AGENT-RULES.md` at the root of the workspace; commit them together with the manifest.
 
@@ -120,11 +122,11 @@ Visual Studio exposes the corresponding choices in **Tools → Options → Pacmo
 
 ## Requirements
 
-VS Code 1.100 or newer, a JetBrains IDE 2025.2 or newer, or Visual Studio 2022 or newer on Windows. Nothing else: Pacmon reads the manifests itself, so it needs no language runtime or package manager installation, and it reads and writes files in your workspace without making network requests. In VS Code it also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
+VS Code 1.100 or newer, a JetBrains IDE 2025.2 or newer, or Visual Studio 2022 or newer on Windows. Nothing else: Pacmon reads the manifests itself, so it needs no language runtime or package manager installation, and it reads and writes files in your workspace without making network requests. RubyMine or the Ruby plugin supplies Ruby editor integration in JetBrains IDEs; Pacmon still does not require a Ruby SDK. In VS Code it also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
 
 ## Format reference
 
-npm notes use the `dependency-notes/1` format. Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, Composer, Go, NuGet, vcpkg and Conan notes use `dependency-notes/2`, whose frontmatter also names the ecosystem. VS Code supports every listed ecosystem; JetBrains does not yet support Gleam, Composer, vcpkg or Conan, and the Visual Studio VSIX currently supports NuGet. The reference is [`docs/format.md`](docs/format.md).
+npm notes use the `dependency-notes/1` format. Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, Ruby, Composer, Go, NuGet, vcpkg and Conan notes use `dependency-notes/2`, whose frontmatter also names the ecosystem. VS Code supports every listed ecosystem; JetBrains does not yet support Composer, vcpkg or Conan, and the Visual Studio VSIX currently supports NuGet. The reference is [`docs/format.md`](docs/format.md).
 
 ## Contributing and license
 

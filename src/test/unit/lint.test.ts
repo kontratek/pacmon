@@ -56,6 +56,8 @@ describe('lintNotes — frontmatter and title', () => {
       .toBe('zig');
     expect(parseNotes('---\nformat: dependency-notes/2\necosystem: python\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
       .toBe('python');
+    expect(parseNotes('---\nformat: dependency-notes/2\necosystem: ruby\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
+      .toBe('ruby');
     expect(parseNotes('---\nformat: dependency-notes/2\necosystem: nuget\n---\n# Dependency Notes\n').frontmatter?.ecosystem)
       .toBe('nuget');
     expect(parseNotes('---\nformat: dependency-notes/2\necosystem: go\n---\n# Dependency Notes\n').frontmatter?.ecosystem)

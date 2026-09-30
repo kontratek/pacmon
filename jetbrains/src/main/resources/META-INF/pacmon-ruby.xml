@@ -1,0 +1,11 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <codeInsight.inlayProvider
+            language="ruby"
+            id="PacmonDependencyIconsRuby"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonInlayHintsProvider"/>
+        <lang.documentationProvider
+            language="ruby"
+            implementationClass="dev.pacmon.jetbrains.editor.PacmonDocumentationProvider"/>
+    </extensions>
+</idea-plugin>

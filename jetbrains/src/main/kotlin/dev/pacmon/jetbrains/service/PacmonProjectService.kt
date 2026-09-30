@@ -75,6 +75,7 @@ class PacmonProjectService(private val project: Project) :
     private val discoveryExcludedDirectories = mapOf(
         ManifestKind.ZIG to setOf("zig-pkg", ".zig-cache", "zig-cache", "zig-out"),
         ManifestKind.PYTHON to setOf(".venv", "venv", ".tox", ".nox", "site-packages", "dist", "build", ".git"),
+        ManifestKind.RUBY to setOf(".bundle", "vendor", ".git"),
         ManifestKind.GO to setOf("vendor", "testdata", ".git"),
         ManifestKind.NUGET to setOf("bin", "obj"),
     )
@@ -397,11 +398,11 @@ class PacmonProjectService(private val project: Project) :
         return deduplicateDependencies(kind, manifests.flatMap(::dependencies))
     }
 
-    /** Coverage for NuGet is shared by the central manifest and every project it owns,
-     * even before the first notes file exists. Other ecosystems remain manifest-local. */
+    /** Coverage for NuGet and Ruby combines every manifest owned by the notes file,
+     * even before that notes file exists. Other ecosystems remain manifest-local. */
     fun dependenciesForCoverage(manifest: VirtualFile): List<DependencyRef> {
         val kind = ManifestRegistry.forPath(manifest.path)?.kind ?: return emptyList()
-        if (kind != ManifestKind.NUGET) return dependencies(manifest)
+        if (kind != ManifestKind.NUGET && kind != ManifestKind.RUBY) return dependencies(manifest)
         resolveNotesFile(manifest)?.let { return dependenciesForNotes(it) }
         val ownerPath = creationTargetDirectory(manifest).path
         val shared = manifests(kind)
@@ -418,6 +419,7 @@ class PacmonProjectService(private val project: Project) :
                     name == "pyproject.toml" || name.endsWith(".txt")
                 }
                 ManifestKind.NUGET -> FilenameIndex.getAllFilenames(project).filter(adapter::matchesPath)
+                ManifestKind.RUBY -> FilenameIndex.getAllFilenames(project).filter(adapter::matchesPath)
                 else -> adapter.fileNames
             }
             names.flatMap { fileName ->
@@ -440,16 +442,22 @@ class PacmonProjectService(private val project: Project) :
                     else -> 2
                 }
             ManifestKind.NUGET -> if (file.name == "Directory.Packages.props") 0 else 1
+            ManifestKind.RUBY -> when (file.name) {
+                "Gemfile" -> 0
+                "gems.rb" -> 1
+                else -> 2
+            }
             else -> adapter?.fileNames?.indexOf(file.name)?.takeIf { it >= 0 } ?: 99
         }
         return "%02d:%s".format(rank, file.path.replace('\\', '/'))
     }
 
     private fun deduplicateDependencies(kind: ManifestKind, dependencies: List<DependencyRef>): List<DependencyRef> {
-        if (kind != ManifestKind.NUGET) return dependencies
+        if (kind != ManifestKind.NUGET && kind != ManifestKind.RUBY) return dependencies
         val seen = mutableSetOf<String>()
         return dependencies.filter { dependency ->
-            seen.add(ManifestRegistry.forKind(kind).normalizeNoteKey(dependency.name))
+            val key = ManifestRegistry.forKind(kind).normalizeNoteKey(dependency.name)
+            seen.add(if (kind == ManifestKind.NUGET) key.lowercase() else key)
         }
     }
 

@@ -18,12 +18,16 @@ describe('manifest adapters', () => {
     expect(manifestAdapterForFileName('build.zig.zon')?.kind).toBe('zig');
     expect(manifestAdapterForFileName('pyproject.toml')?.kind).toBe('python');
     expect(manifestAdapterForFileName('requirements-dev.txt')?.kind).toBe('python');
+    expect(manifestAdapterForFileName('Gemfile')?.kind).toBe('ruby');
+    expect(manifestAdapterForFileName('gems.rb')?.kind).toBe('ruby');
+    expect(manifestAdapterForFileName('example.gemspec')?.kind).toBe('ruby');
     expect(manifestAdapterForFileName('go.mod')?.kind).toBe('go');
     expect(manifestAdapterForFileName('vcpkg.json')?.kind).toBe('vcpkg');
     expect(manifestAdapterForFileName('conanfile.py')?.kind).toBe('conan');
     expect(manifestAdapterForFileName('conanfile.txt')?.kind).toBe('conan');
     expect(manifestAdapterForFileName('composer.json')?.kind).toBe('composer');
     expect(manifestAdapterForFileName('settings.gradle')).toBeUndefined();
+    expect(manifestAdapterForFileName('Gemfile.lock')).toBeUndefined();
   });
 });
 
