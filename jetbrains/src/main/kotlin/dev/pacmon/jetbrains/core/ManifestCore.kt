@@ -9,6 +9,7 @@ enum class ManifestKind(val id: String) {
     GLEAM("gleam"),
     ZIG("zig"),
     PYTHON("python"),
+    RUBY("ruby"),
     NUGET("nuget"),
     GO("go");
 
@@ -51,6 +52,7 @@ object ManifestRegistry {
         GleamManifestAdapter,
         ZigManifestAdapter,
         PythonManifestAdapter,
+        RubyManifestAdapter,
         NugetManifestAdapter,
         GoManifestAdapter,
     )
