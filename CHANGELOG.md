@@ -7,6 +7,8 @@
 
 ## Unreleased
 
+## 0.10.0 — 2026-10-02
+
 - **Pacmon supports Ruby projects in VS Code and JetBrains/RubyMine.** Literal
   gems in `Gemfile`, `gems.rb` and `*.gemspec` get markers, hover, note editing
   and shared coverage backed by `.pacmon/ruby/DEPENDENCY-NOTES.md`. Groups,
