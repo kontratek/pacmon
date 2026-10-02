@@ -43,6 +43,11 @@
 - **The JetBrains Marketplace page links to https://pacmon.dev**, as the
   VS Code, Open VSX and Visual Studio Marketplace pages already do.
 
+- **JetBrains IDEs write the same agent pointer as VS Code.** The three lines
+  **Set Up AI Instructions** adds to `AGENTS.md`, `CLAUDE.md` and the other
+  instruction files now name the Ruby, .NET/NuGet, vcpkg, Conan and
+  PHP/Composer notes files too.
+
 ## 0.9.0 — 2026-09-29
 
 - **Pacmon supports Gleam projects in JetBrains IDEs.** `gleam.toml` gets what
