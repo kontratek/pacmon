@@ -40,6 +40,9 @@
   that a dependency without a note is shown, not blocked. The README also says
   which editors add the pointer to agent instruction files.
 
+- **The JetBrains Marketplace page links to https://pacmon.dev**, as the
+  VS Code, Open VSX and Visual Studio Marketplace pages already do.
+
 ## 0.9.0 — 2026-09-29
 
 - **Pacmon supports Gleam projects in JetBrains IDEs.** `gleam.toml` gets what
