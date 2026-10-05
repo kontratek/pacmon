@@ -7,6 +7,11 @@
 
 ## Unreleased
 
+- **Conan version ranges with spaces are read.** Requirements such as
+  `openssl/[>=3.0 <4]` in `conanfile.txt` and `conanfile.py` were skipped
+  without a warning; they now get markers, hover and coverage like
+  `zlib/[~1.3]`.
+
 - **Pacmon supports Ruby projects in VS Code and JetBrains/RubyMine.** Literal
   gems in `Gemfile`, `gems.rb` and `*.gemspec` get markers, hover, note editing
   and shared coverage backed by `.pacmon/ruby/DEPENDENCY-NOTES.md`. Groups,
