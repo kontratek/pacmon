@@ -1,4 +1,4 @@
-<idea-plugin>
+<idea-plugin url="https://pacmon.dev">
     <id>dev.pacmon.jetbrains</id>
     <name>Pacmon</name>
     <vendor email="info@pacmon.dev" url="https://pacmon.dev">Kontra</vendor>
@@ -6,7 +6,9 @@
     <!-- The Marketplace listing is built from the plugin zip: the name and the
          description here, META-INF/pluginIcon.svg next to this file, and the change
          notes, which build.gradle.kts renders from this version's CHANGELOG section.
-         None of them can be edited on the site; a change ships as a new version. -->
+         None of them can be edited on the site; a change ships as a new version.
+         The url on <idea-plugin> is the homepage link on the plugin's Marketplace
+         page, which the vendor's url does not fill. -->
     <description><![CDATA[
         <p><b>Your dependency manifest says what you depend on. Pacmon adds why.</b></p>
         <p>Every dependency gets a short note: why it is here, what must not change,

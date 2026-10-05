@@ -59,6 +59,24 @@ CMakeDeps
       )).toBe(dependency.displayName);
     }
   });
+
+  it('reads version ranges that contain spaces', () => {
+    const ranges = `[requires]
+openssl/[>=3.0 <4]
+boost/[>1.80 <2, include_prerelease]@vendor/stable
+unclosed/[>=1.0 <2
+trailing/1.0 text
+
+[tool_requires]
+cmake/[>=3.25 <4]
+`;
+    expect(extractConanTextDependencies(ranges).map((dependency) =>
+      `${dependency.scope}:${dependency.noteKey}`)).toEqual([
+      'requires:openssl',
+      'requires:boost',
+      'tool_requires:cmake',
+    ]);
+  });
 });
 
 describe('conanfile.py dependencies', () => {
@@ -108,6 +126,21 @@ def unrelated():
       expect(['"', "'"]).toContain(recipe[dependency.iconRange.offset]);
     }
     expect(extractConanDependencies('[requires]\nzlib/1.3.1\n', '/repo/conanfile.txt')[0]?.noteKey).toBe('zlib');
+  });
+
+  it('reads version ranges that contain spaces', () => {
+    const ranges = `class Recipe(ConanFile):
+    requires = "openssl/[>=3.0 <4]", "fmt/[>=10 <12]"
+
+    def requirements(self):
+        self.tool_requires("cmake/[>=3.25 <4, include_prerelease]")
+`;
+    expect(extractConanPythonDependencies(ranges).map((dependency) =>
+      `${dependency.scope}:${dependency.noteKey}`)).toEqual([
+      'requires:openssl',
+      'requires:fmt',
+      'tool_requires:cmake',
+    ]);
   });
 
   it('keeps declarations before malformed Python', () => {
