@@ -2,7 +2,7 @@ import { dependencyEntry } from './dependency';
 import type { DependencyEntry } from './model';
 
 const SCOPES = new Set(['requires', 'tool_requires', 'test_requires', 'build_requires']);
-// No whitespace after the slash except inside a version range: openssl/[>=3.0 <4].
+// Spaces are allowed only inside a version range: `openssl/[>=3.0 <4]`.
 const REFERENCE = /^\s*([A-Za-z0-9][A-Za-z0-9_+.-]*)\/(?:\[[^\]]*]|[^\s[])+\s*$/;
 
 interface Token {
