@@ -80,6 +80,7 @@ class PacmonProjectService(private val project: Project) :
         ManifestKind.GO to setOf("vendor", "testdata", ".git"),
         ManifestKind.NUGET to setOf("bin", "obj"),
         ManifestKind.VCPKG to setOf("vcpkg_installed", ".git"),
+        ManifestKind.CONAN to setOf(".conan", ".conan2", ".git"),
     )
 
     init {

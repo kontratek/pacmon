@@ -20,6 +20,7 @@ class NotesCoreTest {
         val composer = NotesCore.newNotesFile("monolog/monolog", "Structured logging", ecosystem = ManifestKind.COMPOSER)
         val nuget = NotesCore.newNotesFile("Newtonsoft.Json", "JSON serialization", ecosystem = ManifestKind.NUGET)
         val vcpkg = NotesCore.newNotesFile("fmt", "Formatting", ecosystem = ManifestKind.VCPKG)
+        val conan = NotesCore.newNotesFile("zlib", "Compression", ecosystem = ManifestKind.CONAN)
         val go = NotesCore.newNotesFile("github.com/Masterminds/semver/v3", "Version ranges", ecosystem = ManifestKind.GO)
 
         assertTrue(npm.contains("format: dependency-notes/1"))
@@ -35,6 +36,8 @@ class NotesCoreTest {
         assertTrue(go.contains("format: dependency-notes/2\necosystem: go\nlang: en"))
         assertTrue(vcpkg.contains("format: dependency-notes/2\necosystem: vcpkg\nlang: en"))
         assertTrue(vcpkg.contains("package from the vcpkg dependency manifest"))
+        assertTrue(conan.contains("format: dependency-notes/2\necosystem: conan\nlang: en"))
+        assertTrue(conan.contains("package from the conan dependency manifest"))
         assertTrue(go.contains("package from the go dependency manifest"))
         assertTrue(ruby.contains("package from the ruby dependency manifest"))
         assertTrue(composer.contains("package from the composer dependency manifest"))

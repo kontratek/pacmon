@@ -9,7 +9,7 @@ class ManifestCoreTest {
     @Test
     fun `registry matches only supported manifests in priority order`() {
         assertEquals(
-            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "gleam.toml", "build.zig.zon", "pyproject.toml", "requirements.txt", "Gemfile", "gems.rb", "composer.json", "Directory.Packages.props", "go.mod", "vcpkg.json"),
+            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "gleam.toml", "build.zig.zon", "pyproject.toml", "requirements.txt", "Gemfile", "gems.rb", "composer.json", "Directory.Packages.props", "go.mod", "vcpkg.json", "conanfile.py", "conanfile.txt"),
             ManifestRegistry.adapters.flatMap { it.fileNames },
         )
         assertEquals(ManifestKind.NPM, ManifestRegistry.forFileName("package.json")?.kind)
@@ -33,6 +33,9 @@ class ManifestCoreTest {
         assertEquals(ManifestKind.GO, ManifestRegistry.forFileName("go.mod")?.kind)
         assertEquals(ManifestKind.VCPKG, ManifestRegistry.forFileName("vcpkg.json")?.kind)
         assertNull(ManifestRegistry.forFileName("vcpkg-configuration.json"))
+        assertEquals(ManifestKind.CONAN, ManifestRegistry.forFileName("conanfile.py")?.kind)
+        assertEquals(ManifestKind.CONAN, ManifestRegistry.forFileName("conanfile.txt")?.kind)
+        assertNull(ManifestRegistry.forFileName("conan.lock"))
         assertNull(ManifestRegistry.forFileName("go.sum"))
         assertNull(ManifestRegistry.forFileName("Gemfile.lock"))
         assertNull(ManifestRegistry.forFileName("composer.lock"))

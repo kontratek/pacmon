@@ -13,7 +13,8 @@ enum class ManifestKind(val id: String) {
     COMPOSER("composer"),
     NUGET("nuget"),
     GO("go"),
-    VCPKG("vcpkg");
+    VCPKG("vcpkg"),
+    CONAN("conan");
 
     companion object {
         fun fromId(value: String?): ManifestKind? = entries.firstOrNull { it.id == value }
@@ -59,6 +60,7 @@ object ManifestRegistry {
         NugetManifestAdapter,
         GoManifestAdapter,
         VcpkgManifestAdapter,
+        ConanManifestAdapter,
     )
 
     fun forFileName(fileName: String): ManifestAdapter? = forPath(fileName)
@@ -81,7 +83,7 @@ object ManifestRegistry {
     fun normalizeName(raw: String, ecosystem: ManifestKind?): String {
         val value = stripName(raw)
         if (ecosystem == ManifestKind.PYTHON) return PythonManifestAdapter.normalizePackageName(value)
-        if (ecosystem in setOf(ManifestKind.NUGET, ManifestKind.COMPOSER, ManifestKind.VCPKG)) return value.lowercase()
+        if (ecosystem in setOf(ManifestKind.NUGET, ManifestKind.COMPOSER, ManifestKind.VCPKG, ManifestKind.CONAN)) return value.lowercase()
         return if (ecosystem != null && ecosystem != ManifestKind.NPM) value else value.lowercase()
     }
 }

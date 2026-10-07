@@ -7,6 +7,15 @@
 
 ## Unreleased
 
+- **Pacmon supports C/C++ Conan projects in JetBrains IDEs, including CLion.**
+  `conanfile.txt` and `conanfile.py` get what VS Code already has: markers,
+  quick documentation, note editing and coverage, backed by the same
+  `.pacmon/conan/DEPENDENCY-NOTES.md`. Pacmon reads the `requires`,
+  `tool_requires`, `test_requires` and `build_requires` sections of
+  `conanfile.txt`, and literal class fields and `self.requires(...)`-style
+  calls in `conanfile.py`. Both are read statically; Conan and Python are
+  never run.
+
 - **Pacmon supports C/C++ vcpkg projects in JetBrains IDEs, including CLion.**
   `vcpkg.json` gets what VS Code already has: markers, quick documentation,
   note editing and coverage for the string and object entries in the root
