@@ -134,6 +134,26 @@
         "category": "Pacmon"
       },
       {
+        "command": "pacmon.web.signIn",
+        "title": "Sign In to Pacmon Web",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.web.signOut",
+        "title": "Sign Out of Pacmon Web",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.web.showConnection",
+        "title": "Show Pacmon Web Connection",
+        "category": "Pacmon"
+      },
+      {
+        "command": "pacmon.web.refresh",
+        "title": "Refresh Organization Data from Pacmon Web",
+        "category": "Pacmon"
+      },
+      {
         "command": "pacmon.openNotesFile",
         "title": "Open DEPENDENCY-NOTES.md",
         "category": "Pacmon"
@@ -246,6 +266,12 @@
     "configuration": {
       "title": "Pacmon",
       "properties": {
+        "pacmon.web.url": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "scope": "application",
+          "markdownDescription": "Address of a Pacmon web app, for the optional organization connection (`Pacmon: Sign In to Pacmon Web`, or the Pacmon view). Pacmon makes network requests only while you are signed in: for the commands, and to fetch the org notes and allowlist results of each workspace folder (at start, when the window gets focus, and every 5 minutes). Must use `https`, except for `localhost`. The default is a local app until there is a public one."
+        },
         "pacmon.decorations": {
           "type": "string",
           "enum": [

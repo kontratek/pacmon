@@ -114,6 +114,7 @@ Pacmon does not call any AI service. Agents use their own tools; Pacmon gives th
 | `pacmon.inlineSource` | `human-first` | Which layer feeds the preview and leads the hover: `human-first`, `ai-first`, `human-only`, `ai-only`. |
 | `pacmon.noteEntry` | `panel` | How you write a note from a manifest: `panel`, `peek`, `input`, `inputBeside`, or `comments` (experimental). |
 | `pacmon.noteButtons` | `["iconLeft", "link"]` | Clickable ways into a note: `iconLeft`, `link`, `codelens`, `inlayHint`, `lightbulb`. |
+| `pacmon.web.url` | `http://localhost:3000` | VS Code only. Address of a Pacmon web app, for the optional organization connection: **Sign in to Pacmon Web** in the Pacmon view, or the commands **Pacmon: Sign In to Pacmon Web**, **Sign Out of Pacmon Web** and **Show Pacmon Web Connection**. Requests are made only when you use one of them. `https` is required, except for `localhost`. |
 | `pacmon.monorepo` | `nearest` | Which notes file a manifest uses: the nearest one for its ecosystem, walking up, or only the one at the workspace root (`rootOnly`). |
 
 The **Pacmon** view in the activity bar switches these without opening the settings editor.
@@ -122,7 +123,7 @@ Visual Studio exposes the corresponding choices in **Tools → Options → Pacmo
 
 ## Requirements
 
-VS Code 1.100 or newer, a JetBrains IDE 2025.2 or newer, or Visual Studio 2022 or newer on Windows. Nothing else: Pacmon reads the manifests itself, so it needs no language runtime or package manager installation, and it reads and writes files in your workspace without making network requests. RubyMine or the Ruby plugin supplies Ruby editor integration in JetBrains IDEs; Pacmon still does not require a Ruby SDK. In VS Code it also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
+VS Code 1.100 or newer, a JetBrains IDE 2025.2 or newer, or Visual Studio 2022 or newer on Windows. Nothing else: Pacmon reads the manifests itself, so it needs no language runtime or package manager installation, and it reads and writes files in your workspace without making network requests. The one exception is the optional Pacmon web connection in VS Code: it makes requests only while you are signed in, to sign in and out and to fetch your organization's org notes and allowlist results, and to save an org note you change. RubyMine or the Ruby plugin supplies Ruby editor integration in JetBrains IDEs; Pacmon still does not require a Ruby SDK. In VS Code it also works in VS Code for the Web (vscode.dev, github.dev), Remote-SSH, WSL and dev containers.
 
 ## Format reference
 

@@ -7,6 +7,34 @@
 
 ## Unreleased
 
+- **VS Code can connect to a Pacmon web app (preview).** The Pacmon view has
+  a new **Pacmon web** section: **Sign in to Pacmon Web** opens the browser,
+  you check the code and approve it, and VS Code keeps the sign-in in its
+  secret storage. **Show connection** tells which organization each workspace
+  folder belongs to, from its GitHub remote. **Sign out** ends the sign-in on
+  the server too. The same three actions are commands. Pacmon makes network
+  requests only while you are signed in. The address is `pacmon.web.url` (default `http://localhost:3000`
+  until there is a public app); it must use `https`, except for `localhost`,
+  and a workspace cannot set it.
+
+- **Org mode in VS Code (preview).** Signed in to Pacmon web, a workspace
+  folder whose repository is in one of your organizations uses the org notes
+  of that organization as its notes: the hover, the note editor, the
+  end-of-line preview and coverage show them, and `DEPENDENCY-NOTES.md` is not
+  read or changed. Owners and admins edit org notes in the note editor and the
+  change goes to Pacmon web; other members read them. If someone else changed
+  the note first, the save is refused and the editor shows the new version.
+  Pacmon keeps a copy of the org notes on your machine and asks Pacmon web only
+  for what changed. Signing out removes the copy, and every folder works from
+  its notes files again.
+
+- **Allowlist results in VS Code (preview).** In org mode, a manifest line gets
+  a warning when its package is denied or not listed in an ecosystem set to
+  Audit, and an error in Enforce. The hover and the note editor show the result
+  with a link to the package in Pacmon web. Data is fetched at start, when the
+  window gets focus and every 5 minutes, or with **Refresh Organization Data
+  from Pacmon Web**.
+
 - **Pacmon supports Ruby projects in VS Code and JetBrains/RubyMine.** Literal
   gems in `Gemfile`, `gems.rb` and `*.gemspec` get markers, hover, note editing
   and shared coverage backed by `.pacmon/ruby/DEPENDENCY-NOTES.md`. Groups,
