@@ -10,6 +10,7 @@ enum class ManifestKind(val id: String) {
     ZIG("zig"),
     PYTHON("python"),
     RUBY("ruby"),
+    COMPOSER("composer"),
     NUGET("nuget"),
     GO("go");
 
@@ -53,6 +54,7 @@ object ManifestRegistry {
         ZigManifestAdapter,
         PythonManifestAdapter,
         RubyManifestAdapter,
+        ComposerManifestAdapter,
         NugetManifestAdapter,
         GoManifestAdapter,
     )
@@ -77,7 +79,7 @@ object ManifestRegistry {
     fun normalizeName(raw: String, ecosystem: ManifestKind?): String {
         val value = stripName(raw)
         if (ecosystem == ManifestKind.PYTHON) return PythonManifestAdapter.normalizePackageName(value)
-        if (ecosystem == ManifestKind.NUGET) return value.lowercase()
+        if (ecosystem == ManifestKind.NUGET || ecosystem == ManifestKind.COMPOSER) return value.lowercase()
         return if (ecosystem != null && ecosystem != ManifestKind.NPM) value else value.lowercase()
     }
 }
@@ -116,16 +118,55 @@ object NpmManifestAdapter : ManifestAdapter {
     }
 }
 
+object ComposerManifestAdapter : ManifestAdapter {
+    override val kind = ManifestKind.COMPOSER
+    override val fileNames = listOf("composer.json")
+    override val notesRelativePath = ".pacmon/composer/DEPENDENCY-NOTES.md"
+    override fun normalizeNoteKey(raw: String): String = ManifestRegistry.stripName(raw).lowercase()
+
+    private val dependencySections = listOf("require", "require-dev")
+    private val packageName = Regex("^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$")
+    private val platformPackage = Regex(
+        "^(?:php(?:-[A-Za-z0-9_.-]+)?|hhvm|ext-[A-Za-z0-9_.-]+|lib-[A-Za-z0-9_.-]+|composer(?:-(?:plugin|runtime)-api)?)$",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /** Reads direct Composer requirements without invoking PHP or Composer. */
+    override fun extractDependencies(text: String): List<DependencyEntry> {
+        val root = JsonReader(text).readValue() as? JsonObject ?: return emptyList()
+        return dependencySections.flatMap { section ->
+            val dependencies = root.properties.firstOrNull { it.key == section }?.value as? JsonObject
+                ?: return@flatMap emptyList()
+            dependencies.properties.mapNotNull { dependency ->
+                if (dependency.value !is JsonText || !isDependencyName(dependency.key)) return@mapNotNull null
+                val keyRange = dependency.keyRange
+                val range = SourceRange(keyRange.offset + 1, keyRange.length - 2)
+                dependencyEntry(
+                    dependency.key.lowercase(),
+                    section,
+                    range,
+                    displayName = dependency.key,
+                    iconRange = SourceRange(keyRange.offset, 1),
+                )
+            }
+        }
+    }
+
+    private fun isDependencyName(value: String): Boolean =
+        packageName.matches(value) || platformPackage.matches(value)
+}
+
 private sealed interface JsonValue
 private data class JsonObject(val properties: List<JsonProperty>) : JsonValue
 private data object JsonScalar : JsonValue
+private data object JsonText : JsonValue
 private data class JsonProperty(
     val key: String,
     val keyRange: SourceRange,
     val value: JsonValue,
 )
 
-/** Small JSONC reader: enough structure for package.json, with no runtime dependency. */
+/** Small JSONC reader: enough structure for package.json and composer.json, with no runtime dependency. */
 private class JsonReader(private val text: String) {
     private var cursor = 0
 
@@ -135,7 +176,7 @@ private class JsonReader(private val text: String) {
         return when (text[cursor]) {
             '{' -> readObject()
             '[' -> readArray()
-            '"' -> readString()?.let { JsonScalar }
+            '"' -> readString()?.let { JsonText }
             else -> readPrimitive()
         }
     }

@@ -106,6 +106,11 @@ intellijPlatform {
                     channels = listOf(ProductRelease.Channel.RELEASE)
                     sinceBuild = "252"
                 }
+                select {
+                    types = listOf(IntelliJPlatformType.PhpStorm)
+                    channels = listOf(ProductRelease.Channel.RELEASE)
+                    sinceBuild = "252"
+                }
             }
         }
     }

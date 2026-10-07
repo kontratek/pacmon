@@ -15,10 +15,10 @@
   ignores dynamic declarations, `eval_gemfile`, `Gemfile.lock` and transitive
   gems.
 
-- **Pacmon supports PHP/Composer projects in VS Code.** Package and platform
-  requirements in the root `require` and `require-dev` objects of
-  `composer.json` get markers, hover, note editing and coverage backed by
-  `.pacmon/composer/DEPENDENCY-NOTES.md`. Parsing is static: Pacmon never runs
+- **Pacmon supports PHP/Composer projects in VS Code and JetBrains/PhpStorm.**
+  Package and platform requirements in the root `require` and `require-dev`
+  objects of `composer.json` get markers, hover, note editing and coverage
+  backed by `.pacmon/composer/DEPENDENCY-NOTES.md`. Parsing is static: Pacmon never runs
   PHP or Composer, and ignores other package-link fields, `composer.lock` and
   transitive packages.
 

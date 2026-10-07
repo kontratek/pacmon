@@ -76,6 +76,7 @@ class PacmonProjectService(private val project: Project) :
         ManifestKind.ZIG to setOf("zig-pkg", ".zig-cache", "zig-cache", "zig-out"),
         ManifestKind.PYTHON to setOf(".venv", "venv", ".tox", ".nox", "site-packages", "dist", "build", ".git"),
         ManifestKind.RUBY to setOf(".bundle", "vendor", ".git"),
+        ManifestKind.COMPOSER to setOf("vendor", ".git"),
         ManifestKind.GO to setOf("vendor", "testdata", ".git"),
         ManifestKind.NUGET to setOf("bin", "obj"),
     )

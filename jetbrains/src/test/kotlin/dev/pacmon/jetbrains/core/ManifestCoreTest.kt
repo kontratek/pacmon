@@ -9,7 +9,7 @@ class ManifestCoreTest {
     @Test
     fun `registry matches only supported manifests in priority order`() {
         assertEquals(
-            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "gleam.toml", "build.zig.zon", "pyproject.toml", "requirements.txt", "Gemfile", "gems.rb", "Directory.Packages.props", "go.mod"),
+            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "gleam.toml", "build.zig.zon", "pyproject.toml", "requirements.txt", "Gemfile", "gems.rb", "composer.json", "Directory.Packages.props", "go.mod"),
             ManifestRegistry.adapters.flatMap { it.fileNames },
         )
         assertEquals(ManifestKind.NPM, ManifestRegistry.forFileName("package.json")?.kind)
@@ -25,6 +25,7 @@ class ManifestCoreTest {
         assertEquals(ManifestKind.RUBY, ManifestRegistry.forFileName("Gemfile")?.kind)
         assertEquals(ManifestKind.RUBY, ManifestRegistry.forFileName("gems.rb")?.kind)
         assertEquals(ManifestKind.RUBY, ManifestRegistry.forFileName("example.gemspec")?.kind)
+        assertEquals(ManifestKind.COMPOSER, ManifestRegistry.forFileName("composer.json")?.kind)
         assertEquals(ManifestKind.NUGET, ManifestRegistry.forFileName("App.csproj")?.kind)
         assertEquals(ManifestKind.NUGET, ManifestRegistry.forFileName("App.fsproj")?.kind)
         assertEquals(ManifestKind.NUGET, ManifestRegistry.forFileName("App.vbproj")?.kind)
@@ -32,6 +33,7 @@ class ManifestCoreTest {
         assertEquals(ManifestKind.GO, ManifestRegistry.forFileName("go.mod")?.kind)
         assertNull(ManifestRegistry.forFileName("go.sum"))
         assertNull(ManifestRegistry.forFileName("Gemfile.lock"))
+        assertNull(ManifestRegistry.forFileName("composer.lock"))
         assertNull(ManifestRegistry.forFileName("settings.gradle.kts"))
     }
 

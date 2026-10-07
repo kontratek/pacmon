@@ -17,6 +17,7 @@ class NotesCoreTest {
         val zig = NotesCore.newNotesFile("Known_Folders", "Filesystem paths", ecosystem = ManifestKind.ZIG)
         val python = NotesCore.newNotesFile("requests", "HTTP client", ecosystem = ManifestKind.PYTHON)
         val ruby = NotesCore.newNotesFile("rack", "Web server interface", ecosystem = ManifestKind.RUBY)
+        val composer = NotesCore.newNotesFile("monolog/monolog", "Structured logging", ecosystem = ManifestKind.COMPOSER)
         val nuget = NotesCore.newNotesFile("Newtonsoft.Json", "JSON serialization", ecosystem = ManifestKind.NUGET)
         val go = NotesCore.newNotesFile("github.com/Masterminds/semver/v3", "Version ranges", ecosystem = ManifestKind.GO)
 
@@ -33,6 +34,7 @@ class NotesCoreTest {
         assertTrue(go.contains("format: dependency-notes/2\necosystem: go\nlang: en"))
         assertTrue(go.contains("package from the go dependency manifest"))
         assertTrue(ruby.contains("package from the ruby dependency manifest"))
+        assertTrue(composer.contains("package from the composer dependency manifest"))
         assertNull(NotesCore.findSection(NotesCore.parse(go), "github.com/masterminds/semver/v3"))
         assertEquals(
             "github.com/Masterminds/semver/v3",
