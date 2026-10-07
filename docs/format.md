@@ -1,6 +1,6 @@
 # The dependency notes formats
 
-Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, Ruby, Composer, Go, NuGet, vcpkg and Conan files use `dependency-notes/2`. VS Code supports every listed ecosystem; JetBrains does not yet support vcpkg or Conan. Visual Studio 2022+ currently supports NuGet and reads and writes the identical `dependency-notes/2` file. See [Versioning](#versioning).
+Pacmon stores dependency notes as Markdown. npm files use `dependency-notes/1`; the ecosystem-scoped Cargo, Maven, Gradle, Mix, Gleam, Zig, Python, Ruby, Composer, Go, NuGet, vcpkg and Conan files use `dependency-notes/2`. VS Code supports every listed ecosystem; JetBrains does not yet support Conan. Visual Studio 2022+ currently supports NuGet and reads and writes the identical `dependency-notes/2` file. See [Versioning](#versioning).
 
 ## The notes file
 

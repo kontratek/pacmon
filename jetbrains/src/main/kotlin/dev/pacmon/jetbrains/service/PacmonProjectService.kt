@@ -79,6 +79,7 @@ class PacmonProjectService(private val project: Project) :
         ManifestKind.COMPOSER to setOf("vendor", ".git"),
         ManifestKind.GO to setOf("vendor", "testdata", ".git"),
         ManifestKind.NUGET to setOf("bin", "obj"),
+        ManifestKind.VCPKG to setOf("vcpkg_installed", ".git"),
     )
 
     init {

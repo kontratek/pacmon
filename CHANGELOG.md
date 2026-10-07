@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+- **Pacmon supports C/C++ vcpkg projects in JetBrains IDEs, including CLion.**
+  `vcpkg.json` gets what VS Code already has: markers, quick documentation,
+  note editing and coverage for the string and object entries in the root
+  `dependencies` array and in `features.<name>.dependencies`, backed by the
+  same `.pacmon/vcpkg/DEPENDENCY-NOTES.md`. Host dependencies keep a separate
+  scope. The manifest is read statically; vcpkg is never run.
+
 - **Pacmon supports Ruby projects in VS Code and JetBrains/RubyMine.** Literal
   gems in `Gemfile`, `gems.rb` and `*.gemspec` get markers, hover, note editing
   and shared coverage backed by `.pacmon/ruby/DEPENDENCY-NOTES.md`. Groups,

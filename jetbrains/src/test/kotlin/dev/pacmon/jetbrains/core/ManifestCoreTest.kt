@@ -9,7 +9,7 @@ class ManifestCoreTest {
     @Test
     fun `registry matches only supported manifests in priority order`() {
         assertEquals(
-            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "gleam.toml", "build.zig.zon", "pyproject.toml", "requirements.txt", "Gemfile", "gems.rb", "composer.json", "Directory.Packages.props", "go.mod"),
+            listOf("package.json", "Cargo.toml", "pom.xml", "build.gradle.kts", "build.gradle", "mix.exs", "gleam.toml", "build.zig.zon", "pyproject.toml", "requirements.txt", "Gemfile", "gems.rb", "composer.json", "Directory.Packages.props", "go.mod", "vcpkg.json"),
             ManifestRegistry.adapters.flatMap { it.fileNames },
         )
         assertEquals(ManifestKind.NPM, ManifestRegistry.forFileName("package.json")?.kind)
@@ -31,6 +31,8 @@ class ManifestCoreTest {
         assertEquals(ManifestKind.NUGET, ManifestRegistry.forFileName("App.vbproj")?.kind)
         assertEquals(ManifestKind.NUGET, ManifestRegistry.forFileName("Directory.Packages.props")?.kind)
         assertEquals(ManifestKind.GO, ManifestRegistry.forFileName("go.mod")?.kind)
+        assertEquals(ManifestKind.VCPKG, ManifestRegistry.forFileName("vcpkg.json")?.kind)
+        assertNull(ManifestRegistry.forFileName("vcpkg-configuration.json"))
         assertNull(ManifestRegistry.forFileName("go.sum"))
         assertNull(ManifestRegistry.forFileName("Gemfile.lock"))
         assertNull(ManifestRegistry.forFileName("composer.lock"))

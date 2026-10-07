@@ -111,6 +111,11 @@ intellijPlatform {
                     channels = listOf(ProductRelease.Channel.RELEASE)
                     sinceBuild = "252"
                 }
+                select {
+                    types = listOf(IntelliJPlatformType.CLion)
+                    channels = listOf(ProductRelease.Channel.RELEASE)
+                    sinceBuild = "252"
+                }
             }
         }
     }
