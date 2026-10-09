@@ -7,7 +7,21 @@
 
 ## Unreleased
 
-## 0.10.0 — 2026-10-02
+- **Pacmon supports C/C++ Conan projects in JetBrains IDEs, including CLion.**
+  `conanfile.txt` and `conanfile.py` get what VS Code already has: markers,
+  quick documentation, note editing and coverage, backed by the same
+  `.pacmon/conan/DEPENDENCY-NOTES.md`. Pacmon reads the `requires`,
+  `tool_requires`, `test_requires` and `build_requires` sections of
+  `conanfile.txt`, and literal class fields and `self.requires(...)`-style
+  calls in `conanfile.py`. Both are read statically; Conan and Python are
+  never run.
+
+- **Pacmon supports C/C++ vcpkg projects in JetBrains IDEs, including CLion.**
+  `vcpkg.json` gets what VS Code already has: markers, quick documentation,
+  note editing and coverage for the string and object entries in the root
+  `dependencies` array and in `features.<name>.dependencies`, backed by the
+  same `.pacmon/vcpkg/DEPENDENCY-NOTES.md`. Host dependencies keep a separate
+  scope. The manifest is read statically; vcpkg is never run.
 
 - **Pacmon supports Ruby projects in VS Code and JetBrains/RubyMine.** Literal
   gems in `Gemfile`, `gems.rb` and `*.gemspec` get markers, hover, note editing
@@ -17,10 +31,10 @@
   ignores dynamic declarations, `eval_gemfile`, `Gemfile.lock` and transitive
   gems.
 
-- **Pacmon supports PHP/Composer projects in VS Code.** Package and platform
-  requirements in the root `require` and `require-dev` objects of
-  `composer.json` get markers, hover, note editing and coverage backed by
-  `.pacmon/composer/DEPENDENCY-NOTES.md`. Parsing is static: Pacmon never runs
+- **Pacmon supports PHP/Composer projects in VS Code and JetBrains/PhpStorm.**
+  Package and platform requirements in the root `require` and `require-dev`
+  objects of `composer.json` get markers, hover, note editing and coverage
+  backed by `.pacmon/composer/DEPENDENCY-NOTES.md`. Parsing is static: Pacmon never runs
   PHP or Composer, and ignores other package-link fields, `composer.lock` and
   transitive packages.
 
